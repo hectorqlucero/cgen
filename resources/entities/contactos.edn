@@ -27,8 +27,8 @@
  ;; :audit? true
 
  ;; Lifecycle hooks for business logic
- :hooks {:before-save :contactos.hooks.contactos/before-save
-         :after-load :contactos.hooks.contactos/after-load}
+ :hooks {:before-save :cgen.hooks.contactos/before-save
+         :after-load :cgen.hooks.contactos/after-load}
 
  ;; Subgrids for related tables (auto-detected)
  :subgrids [{:entity :cars

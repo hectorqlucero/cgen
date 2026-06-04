@@ -42,15 +42,15 @@
  ;; :audit? true
  
  ;; Lifecycle hooks for business logic
- ;; Senior developer: Implement these in src/contactos/hooks/users.clj
- :hooks {:before-save :contactos.hooks.users/before-save}
+ ;; Senior developer: Implement these in src/cgen/hooks/users.clj
+ :hooks {:before-save :cgen.hooks.users/before-save}
  ;; Uncomment and implement as needed:
- ;; :hooks {:before-load :contactos.hooks.users/before-load
- ;;         :after-load :contactos.hooks.users/after-load
- ;;         :before-save :contactos.hooks.users/before-save
- ;;         :after-save :contactos.hooks.users/after-save
- ;;         :before-delete :contactos.hooks.users/before-delete
- ;;         :after-delete :contactos.hooks.users/after-delete}
+ ;; :hooks {:before-load :cgen.hooks.users/before-load
+ ;;         :after-load :cgen.hooks.users/after-load
+ ;;         :before-save :cgen.hooks.users/before-save
+ ;;         :after-save :cgen.hooks.users/after-save
+ ;;         :before-delete :cgen.hooks.users/before-delete
+ ;;         :after-delete :cgen.hooks.users/after-delete}
  
  ;; Subgrids (parent-child relationships)
  ;; Uncomment if this entity has child records:

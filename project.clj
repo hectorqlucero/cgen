@@ -1,5 +1,5 @@
-(defproject contactos "0.1.0"
-  :description "contactos"
+(defproject cgen "0.1.0"
+  :description "cgen"
   :url "http://example.com/FIXME" ; Change me - optional
   :license {:name "MIT License"
             :url "https://opensource.org/licenses/MIT"}
@@ -23,7 +23,7 @@
                  ;; Active JDBC drivers (MySQL, PostgreSQL, SQLite)
                  [mysql/mysql-connector-java "8.0.33"]
                  [org.postgresql/postgresql "42.7.11"]
-                 [org.xerial/sqlite-jdbc "3.53.1.0"]
+                 [org.xerial/sqlite-jdbc "3.53.2.0"]
                  ;; Optional JDBC drivers (uncomment if needed)
                  ;; [com.microsoft.sqlserver/mssql-jdbc "12.8.1.jre11"]   ; SQL Server
                  ;; [com.h2database/h2 "2.2.224"]                        ; H2
@@ -34,33 +34,33 @@
                  [ring/ring-defaults "0.7.0"]
                  [ring/ring-devel "1.15.4"]
                  [ring/ring-codec "1.3.0"]]
-  :main contactos.core
+  :main cgen.core
   :plugins [[lein-ancient "1.0.0"]
             [lein-pprint "1.3.2"]]
-  :uberjar-name "contactos.jar"
+  :uberjar-name "cgen.jar"
   :target-path "target/%s"
-  :ring {:handler contactos.core
+  :ring {:handler cgen.core
          :auto-reload? true
          :auto-refresh? false}
   :resource-paths ["resources"]
-  :aliases {"migrate"  ["run" "-m" "contactos.migrations/migrate" "--"]
-            "rollback" ["run" "-m" "contactos.migrations/rollback" "--"]
+  :aliases {"migrate"  ["run" "-m" "cgen.migrations/migrate" "--"]
+            "rollback" ["run" "-m" "cgen.migrations/rollback" "--"]
             ;; Forward any extra args to the seeder fn, e.g.:
             ;;   lein database          ; default (mysql)
             ;;   lein database pg       ; postgres (:pg)
             ;;   lein database :pg      ; postgres (:pg)
             ;;   lein database localdb  ; sqlite (:localdb)
-            "database" ["run" "-m" "contactos.models.cdb/database" "--"]
+            "database" ["run" "-m" "cgen.models.cdb/database" "--"]
             ;; Seed all tables except users
             ;;   lein seed-non-users
             ;;   lein seed-non-users pg
             ;;   lein seed-non-users localdb
-            "seed-non-users" ["run" "-m" "contactos.models.cdb/seed-non-users" "--"]
-            "scaffold" ["run" "-m" "contactos.engine.scaffold"]
+            "seed-non-users" ["run" "-m" "cgen.models.cdb/seed-non-users" "--"]
+            "scaffold" ["run" "-m" "cgen.engine.scaffold"]
             ;; Convert SQLite migrations to MySQL/PostgreSQL
             ;;   lein convert-migrations mysql        ; default (mysql)
             ;;   lein convert-migrations postgresql   ; postgres
-            "convert-migrations" ["run" "-m" "contactos.db.converter" "--"]
+            "convert-migrations" ["run" "-m" "cgen.db.converter" "--"]
             ;; Copy data between databases
             ;;   lein copy-data localdb mysql          ; SQLite → MySQL
             ;;   lein copy-data mysql localdb          ; MySQL → SQLite
@@ -68,15 +68,16 @@
             ;;   lein copy-data mysql postgresql       ; MySQL → PostgreSQL
             ;;   lein copy-data localdb mysql --clear  ; clear target tables first
             ;;   lein copy-data mysql                  ; MySQL → SQLite (default target)
-            "copy-data" ["run" "-m" "contactos.db.migrator" "--"]
+            "copy-data" ["run" "-m" "cgen.db.migrator" "--"]
             ;; Generate/remove handler skeleton (controller, model, view)
             ;;   lein gen-handler reports          ; create
             ;;   lein gen-handler reports remove   ; remove
-            "gen-handler" ["run" "-m" "contactos.gen.handler" "--"]}
+             "gen-handler" ["run" "-m" "cgen.gen.handler" "--"]
+             "setup" ["run" "-m" "cgen.tools.setup" "--"]}
   :profiles {:uberjar {:aot :all
-                       :main contactos.core
+                       :main cgen.core
                        :jvm-opts ["-Dclojure.compiler.direct-linking=true"
                                   "--enable-native-access=ALL-UNNAMED"]}
              :dev {:source-paths ["src" "dev"]
-                   :main contactos.dev
+                   :main cgen.dev
                    :jvm-opts ["--enable-native-access=ALL-UNNAMED"]}})

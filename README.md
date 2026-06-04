@@ -1,25 +1,33 @@
-# contactos
+# cgen
 
-This project was generated with [WebGen](https://clojars.org/org.clojars.hector/webgen), a parameter-driven Clojure web framework. Application behavior is controlled entirely by EDN configuration files in `resources/entities/`. Editing a config file and refreshing the browser is all that is needed to change the application — no server restart required during development.
+A parameter-driven Clojure web framework. Application behavior is controlled entirely by EDN configuration files in `resources/entities/`. Editing a config file and refreshing the browser is all that is needed to change the application — no server restart required during development.
 
 ---
 
 ## Quick Start
 
-### 1. Configure the Database
-
-Edit `resources/config/app-config.edn`. The default configuration uses SQLite and works without changes for local development.
-
-For MySQL or PostgreSQL, update the credentials and change `:default` and `:main` to the appropriate connection key.
-
-### 2. Run Migrations and Seed Users
+### 1. Generate a new project
 
 ```bash
-lein migrate
-lein database
+lein setup my-project
 ```
 
-Default users created:
+This creates `../my-project/` (a sibling of cgen) with all namespaces renamed, runs migrations, and seeds the database with default users. cgen itself stays untouched and reusable.
+
+To generate to a specific path:
+
+```bash
+lein setup my-project /path/to/projects
+```
+
+### 2. Start the Development Server
+
+```bash
+cd my-project
+lein with-profile dev run
+```
+
+Visit `http://localhost:8080` and log in:
 
 | Email | Password | Level |
 |---|---|---|
@@ -28,14 +36,6 @@ Default users created:
 | `system@example.com` | `system` | S (system) |
 
 Change all passwords before deploying to production.
-
-### 3. Start the Development Server
-
-```bash
-lein with-profile dev run
-```
-
-Visit `http://localhost:8080` and log in with `admin@example.com` / `admin`.
 
 The dev server hot-reloads entity configurations every two seconds. Hook files reload on change. No restart needed.
 
@@ -54,7 +54,7 @@ resources/
     es.edn         Spanish translations
   public/          Static assets (CSS, JS, images)
 
-src/contactos/
+src/cgen/
   core.clj         Application entry point and middleware
   layout.clj       Page layout template
   menu.clj         Menu customization
@@ -76,7 +76,7 @@ src/contactos/
 lein scaffold products
 ```
 
-This creates `resources/entities/products.edn`, migration files, and `src/contactos/hooks/products.clj`. Refresh the browser and the entity appears in the menu.
+This creates `resources/entities/products.edn`, migration files, and `src/cgen/hooks/products.clj`. Refresh the browser and the entity appears in the menu.
 
 ### Scaffold all tables at once
 
@@ -161,7 +161,7 @@ lein repl                    # Start REPL
 
 ```bash
 lein uberjar
-java -jar target/uberjar/contactos-0.1.0-standalone.jar
+java -jar target/uberjar/cgen-0.1.0-standalone.jar
 ```
 
 ---
@@ -174,17 +174,17 @@ java -jar target/uberjar/contactos-0.1.0-standalone.jar
 {:connections
  {:sqlite   {:db-type  "sqlite"
              :db-class "org.sqlite.JDBC"
-             :db-name  "db/contactos.sqlite"}
+             :db-name  "db/cgen.sqlite"}
 
   :mysql    {:db-type  "mysql"
              :db-class "com.mysql.cj.jdbc.Driver"
-             :db-name  "//localhost:3306/contactos"
+             :db-name  "//localhost:3306/cgen"
              :db-user  "root"
              :db-pwd   "password"}
 
   :postgres {:db-type  "postgresql"
              :db-class "org.postgresql.Driver"
-             :db-name  "//localhost:5432/contactos"
+             :db-name  "//localhost:5432/cgen"
              :db-user  "postgres"
              :db-pwd   "password"}
 
@@ -192,8 +192,8 @@ java -jar target/uberjar/contactos-0.1.0-standalone.jar
   :main    :sqlite}  ; Connection used by migrations
 
  :port          3000
- :site-name     "contactos"
- :uploads       "./uploads/contactos/"
+ :site-name     "cgen"
+ :uploads       "./uploads/cgen/"
  :max-upload-mb 5
  :theme         "sketchy"}
 ```
@@ -236,7 +236,7 @@ kill -9 <PID>
 **Force config reload in REPL**
 
 ```clojure
-(require '[contactos.engine.config :as config])
+(require '[cgen.engine.config :as config])
 (config/reload-all!)
 ```
 

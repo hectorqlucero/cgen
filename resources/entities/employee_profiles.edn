@@ -38,5 +38,5 @@
 
  :actions {:new true :edit true :delete true}
 
- :hooks {:after-load :contactos.hooks.employee-profiles/after-load
-         :before-save :contactos.hooks.employee-profiles/before-save}}
+ :hooks {:after-load :cgen.hooks.employee-profiles/after-load
+         :before-save :cgen.hooks.employee-profiles/before-save}}

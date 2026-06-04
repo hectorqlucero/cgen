@@ -26,16 +26,16 @@
  ;; :audit? true
 
  ;; Lifecycle hooks for business logic
- ;; Senior developer: Implement these in src/contactos/hooks/siblings.clj
+ ;; Senior developer: Implement these in src/cgen/hooks/siblings.clj
  ;; Uncomment and implement as needed:
- ;; :hooks {:before-load :contactos.hooks.siblings/before-load
- ;;         :after-load :contactos.hooks.siblings/after-load
- ;;         :before-save :contactos.hooks.siblings/before-save
- ;;         :after-save :contactos.hooks.siblings/after-save
- ;;         :before-delete :contactos.hooks.siblings/before-delete
- ;;         :after-delete :contactos.hooks.siblings/after-delete}
- :hooks {:before-save :contactos.hooks.cars/before-save
-         :after-load :contactos.hooks.cars/after-load}
+ ;; :hooks {:before-load :cgen.hooks.siblings/before-load
+ ;;         :after-load :cgen.hooks.siblings/after-load
+ ;;         :before-save :cgen.hooks.siblings/before-save
+ ;;         :after-save :cgen.hooks.siblings/after-save
+ ;;         :before-delete :cgen.hooks.siblings/before-delete
+ ;;         :after-delete :cgen.hooks.siblings/after-delete}
+ :hooks {:before-save :cgen.hooks.cars/before-save
+         :after-load :cgen.hooks.cars/after-load}
 
  ;; Subgrids (parent-child relationships)
  ;; Uncomment if this entity has child records:

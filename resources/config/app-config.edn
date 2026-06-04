@@ -37,13 +37,7 @@
                :logo "/images/logo.png"
                :placeholder "/images/placeholder_profile.png"
                :thumbnail-width 42
-               :thumbnail-height 32}
-      :frontend {:css ["dataTables.bootstrap5.min.css"
-                       "bootstrap-icons/font/bootstrap-icons.css"]
-                 :js ["jquery-3.7.1.min.js"
-                      "bootstrap.bundle.min.js"
-                      "jquery.dataTables.min.js"
-                      "dataTables.bootstrap5.min.js"]}}
+                :thumbnail-height 32}}
 
  :security {:csrf-token-name "anti-forgery-token"
             :ajax-header "x-requested-with"
@@ -69,15 +63,15 @@
 
  :connections {:mysql {:db-type   "mysql"
                        :db-class  "com.mysql.cj.jdbc.Driver"
-                       :db-name   "//localhost:3306/contactos"
+                       :db-name   "//localhost:3306/cgen"
                        :db-user   "root"
                        :db-pwd    "change_me"}
                :sqlite {:db-type   "sqlite"
                         :db-class  "org.sqlite.JDBC"
-                        :db-name   "db/contactos.sqlite"}
+                        :db-name   "db/cgen.sqlite"}
                :postgres {:db-type   "postgresql"
                           :db-class  "org.postgresql.Driver"
-                          :db-name   "//localhost:5432/contactos"
+                          :db-name   "//localhost:5432/cgen"
                           :db-user   "postgres"
                           :db-pwd    "change_me"}
                :main :sqlite        ; Used for migrations (lein migrate)
@@ -87,8 +81,8 @@
                :localdb :sqlite}    ; SQLite connection reference
 
  ;; --- Application Settings ---
- :uploads      "./uploads/contactos/"
- :site-name    "change_me"
+ :uploads      "./uploads/cgen/"
+ :site-name    "cgen"
  :company-name "change_me"
  :port         3000
  :tz           "US/Pacific"

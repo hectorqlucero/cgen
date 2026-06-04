@@ -174,14 +174,6 @@
  ;; [GENERIC] Language Selector
  :lang/select "Select language"
  :lang/spanish "Español"
- :lang/english "English"
-
- ;; [GENERIC] DataTables
- :datatables/search "Search:"
- :datatables/search-placeholder "Search..."
- :datatables/length-menu "Show _MENU_ entries"
- :datatables/info "Showing _START_ to _END_ of _TOTAL_ entries"
- :datatables/info-empty "Showing 0 to 0 of 0 entries"
- :datatables/info-filtered "(filtered from _MAX_ total entries)"
- :datatables/zero-records "No matching records found"
-  :common/clear "Clear"}
+  :lang/english "English"
+  :common/clear "Clear"
+}

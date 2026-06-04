@@ -175,13 +175,5 @@
  :lang/select "Seleccionar idioma"
  :lang/spanish "Español"
  :lang/english "English"
-
- ;; [GENERIC] DataTables
- :datatables/search "Buscar:"
- :datatables/search-placeholder "Buscar..."
- :datatables/length-menu "Mostrar _MENU_ registros"
- :datatables/info "Mostrando _START_ a _END_ de _TOTAL_ registros"
- :datatables/info-empty "Mostrando 0 a 0 de 0 registros"
- :datatables/info-filtered "(filtrado de _MAX_ registros totales)"
- :datatables/zero-records "No se encontraron registros coincidentes"
-  :common/clear "Limpiar"}
+ :common/clear "Limpiar"
+}

@@ -1,0 +1,434 @@
+(ns cgen.engine.render
+  (:require
+   [cgen.engine.config :as config]
+   [cgen.engine.query :as query]
+   [cgen.models.grid :as grid]
+   [cgen.models.form :as form]
+   [cgen.models.crud :as crud]
+   [cgen.i18n.core :as i18n]
+   [clojure.string :as str]))
+
+(defn- load-fk-options
+  "Enhanced FK options with sorting, filtering, and parameter binding.
+   Completely replaces entity query system for FK fields."
+  [fk-entity fk-fields separator & {:keys [sort-by filter-field filter-value]}]
+  (try
+    ;; Build WHERE clause with parameter binding
+    (let [where-clause (when (and filter-field filter-value)
+                         (str "WHERE " (name filter-field) " = ?"))
+
+          ;; Build ORDER BY clause for sorting
+          order-by (when sort-by
+                     (str "ORDER BY "
+                          (clojure.string/join ", "
+                                               (map name
+                                                    (if (sequential? sort-by) sort-by [sort-by])))))
+
+          ;; Complete SQL replacement
+          sql (str "SELECT id, "
+                   (clojure.string/join ", " (map name fk-fields))
+                   " FROM "
+                   (name fk-entity)
+                   " "
+                   where-clause
+                   " "
+                   order-by)
+
+          ;; Parameter binding for SQL injection protection
+          sql-params (if (and filter-field filter-value)
+                       [sql filter-value]
+                       [sql])
+
+          ;; Execute with raw CRUD Query
+          rows (crud/Query crud/db sql-params)
+
+          separator (or separator " — ")
+          label-fn (fn [row]
+                     (->> fk-fields
+                          (map #(str (get row % "")))
+                          (str/join separator)))]
+
+      (cons {:value "" :label (str "-- " (i18n/tr nil :common/select) " --")}
+            (map (fn [row]
+                   {:value (str (:id row))
+                    :label (label-fn row)})
+                 rows)))
+    (catch Exception e
+      (println "[WARN] Could not load enhanced FK options for" fk-entity ":" (.getMessage e))
+      [{:value "" :label (str "-- " (i18n/tr nil :common/select) " --")}])))
+
+(defn- populate-fk-options
+  "Enhanced population with optional sort/filter parameters.
+   Safely handles nil filter parameters."
+  [field]
+  (if (and (= :fk (:type field))
+           (or (nil? (:options field))
+               (and (coll? (:options field)) (empty? (:options field)))))
+
+    (let [fk-entity (:fk field)
+          fk-fields (:fk-field field)
+          separator (:fk-separator field)
+          sort-by (:fk-sort field)
+          filter-pair (:fk-filter field)
+          ;; Safe parameter extraction with nil checks
+          filter-field (when (and filter-pair (sequential? filter-pair)) (first filter-pair))
+          filter-value (when (and filter-pair (sequential? filter-pair)) (second filter-pair))]
+
+      (if fk-entity
+        (assoc field :options (load-fk-options
+                               fk-entity
+                               fk-fields
+                               separator
+                               :sort-by sort-by
+                               :filter-field filter-field
+                               :filter-value filter-value))
+        field))
+
+    field))
+
+(defn- resolve-options
+  [options]
+  (cond
+    (vector? options) options
+    (nil? options) []
+    (keyword? options)
+    (let [ns-str (namespace options)
+          name-str (name options)]
+      (try
+        (let [fn-sym (symbol ns-str name-str)
+              fn-var (requiring-resolve fn-sym)]
+          (if (and fn-var (fn? (var-get fn-var)))
+            ((var-get fn-var))
+            (do
+              (println "[WARN] Could not resolve options function:" fn-sym)
+              [])))
+        (catch Exception e
+          (println "[WARN] Exception resolving options for" options ":" (.getMessage e))
+          [])))
+    :else []))
+
+(defn- render-field
+  "Renders a single form field based on its configuration."
+  [field row]
+  (let [fk-field? (= :fk (:type field))
+        populated-field (if fk-field? (populate-fk-options field) field)
+        {:keys [id label type required? placeholder options value]} populated-field
+        field-value (or (get row id) value "")
+        resolved-options (if fk-field? options (resolve-options options))]
+    (case type
+      :hidden
+      (form/build-field {:type "hidden"
+                         :id (name id)
+                         :name (name id)
+                         :value field-value})
+
+      :text
+      (form/build-field {:label label
+                         :type "text"
+                         :id (name id)
+                         :name (name id)
+                         :required required?
+                         :placeholder (or placeholder (str label "..."))
+                         :value field-value})
+
+      :email
+      (form/build-field {:label label
+                         :type "email"
+                         :id (name id)
+                         :name (name id)
+                         :required required?
+                         :placeholder (or placeholder (str label "..."))
+                         :value field-value})
+
+      :password
+      (form/build-field {:label label
+                         :type "password"
+                         :id (name id)
+                         :name (name id)
+                         :required required?
+                         :placeholder (or placeholder (str label "..."))
+                         :value field-value})
+
+      :date
+      (form/build-field {:label label
+                         :type "date"
+                         :id (name id)
+                         :name (name id)
+                         :required required?
+                         :value field-value})
+
+      :datetime
+      (form/build-field {:label label
+                         :type "datetime-local"
+                         :id (name id)
+                         :name (name id)
+                         :required required?
+                         :value field-value})
+
+      :number
+      (form/build-field {:label label
+                         :type "number"
+                         :id (name id)
+                         :name (name id)
+                         :required required?
+                         :placeholder (or placeholder "0")
+                         :value field-value})
+
+      :decimal
+      (form/build-field {:label label
+                         :type "number"
+                         :id (name id)
+                         :name (name id)
+                         :required required?
+                         :step "0.01"
+                         :placeholder (or placeholder "0.00")
+                         :value field-value})
+
+      :textarea
+      (form/build-field {:label label
+                         :type "textarea"
+                         :id (name id)
+                         :name (name id)
+                         :required required?
+                         :placeholder (or placeholder (str label "..."))
+                         :value field-value})
+
+      :select
+      (form/build-field {:label label
+                         :type "select"
+                         :id (name id)
+                         :name (name id)
+                         :required required?
+                         :value (str field-value)  ;; Convert to string to match option values
+                         :options resolved-options})
+
+      :fk
+      ;; Foreign key select with dependent select and create support
+      (form/build-field {:label label
+                         :type "select"
+                         :id (name id)
+                         :name (name id)
+                         :required required?
+                         :value (str field-value)
+                         :options resolved-options
+                         :fk-parent (:fk-parent field)
+                         :fk-entity (:fk field)
+                         :fk-can-create (:fk-can-create? field)
+                         :fk-form-fields (or (:fk-form-fields field) (:fk-field field))})
+
+      :radio
+      (form/build-field {:label label
+                         :type "radio"
+                         :name (name id)
+                         :value field-value
+                         :options resolved-options})
+
+      :checkbox
+      (form/build-field {:label label
+                         :type "checkbox"
+                         :id (name id)
+                         :name (name id)
+                         :checked-value (or value "T")
+                         :value field-value})
+
+      :file
+      ;; File input with preview
+      (let [filename (cond
+                       ;; Hiccup img vector case: extract src
+                       (and (vector? field-value)
+                            (keyword? (first field-value))
+                            (= (first field-value) :img))
+                       (when-let [attrs (second field-value)]
+                         (when-let [src (:src attrs)]
+                           (-> src
+                               (clojure.string/split #"\?")
+                               first
+                               (clojure.string/replace (:path crud/config) ""))))
+
+                       ;; Old HTML string case: parse src from img tag
+                       (and (string? field-value) (re-find #"^<img" field-value))
+                       (when-let [match (re-find #"src='([^']+)'" field-value)]
+                         (-> (second match)
+                             (clojure.string/split #"\?")
+                             first
+                             (clojure.string/replace (:path crud/config) "")))
+
+                       ;; Plain filename string
+                       :else field-value)]
+        [:div.mb-3
+         [:label.form-label.fw-semibold {:for (name id)} label
+          (when required? [:span.text-danger.ms-1 "*"])]
+         (when (and filename (not (map? filename)) (not (empty? filename)))
+           [:div.mb-2
+            [:img {:src (str (:path crud/config) filename "?" (random-uuid))
+                   :alt filename
+                   :style "width: 100%; max-width: 100%; height: auto; border: 1px solid #dee2e6; border-radius: 4px; padding: 4px; cursor: pointer;"
+                   :onclick "window.open(this.src, '_blank')"}]
+            [:div.text-muted.small.mt-1 filename]])
+         [:input {:type "file"
+                  :class "form-control form-control-lg"
+                  :id (name id)
+                  :name (name id)
+                  :required required?
+                  :accept "image/*"}]])
+      :computed
+      ;; computed fields are displayed but not editable
+      [:div.mb-3
+       [:label.form-label.fw-semibold label]
+       [:p.form-control-plaintext field-value]]
+
+      ;; Default
+      (form/build-field {:label label
+                         :type "text"
+                         :id (name id)
+                         :name (name id)
+                         :required required?
+                         :value field-value}))))
+
+(defn render-form
+  "Renders a form for an entity based on its configuration.
+   Optional subgrid-fk: FK field id to hide and render as hidden input instead.
+   Optional return-url: URL to redirect to after saving (used for subgrid forms).
+   Optional active-tab: tab pane id to reactivate after return.
+   Optional edited-id: record id to scroll to on the parent grid after save."
+  ([request entity row] (render-form request entity row nil nil nil nil))
+  ([request entity row subgrid-fk] (render-form request entity row subgrid-fk nil nil nil))
+  ([request entity row subgrid-fk return-url] (render-form request entity row subgrid-fk return-url nil nil))
+  ([request entity row subgrid-fk return-url active-tab] (render-form request entity row subgrid-fk return-url active-tab nil))
+  ([request entity row subgrid-fk return-url active-tab edited-id]
+   (let [config (config/get-entity-config entity)
+         fields (config/get-form-fields entity subgrid-fk)
+         entity-name (name entity)
+         href (str "/admin/" entity-name "/save")
+         custom-form-fn (get-in config [:ui :form-fn])]
+     (if custom-form-fn
+       (custom-form-fn entity row)
+       (let [fk-hidden (when (and subgrid-fk (get row subgrid-fk))
+                         (form/build-field {:type "hidden"
+                                            :id (name subgrid-fk)
+                                            :name (name subgrid-fk)
+                                            :value (get row subgrid-fk)}))
+             return-url-hidden (when return-url
+                                 (form/build-field {:type "hidden"
+                                                    :id "return_url"
+                                                    :name "return_url"
+                                                    :value return-url}))
+             active-tab-hidden (when active-tab
+                                 (form/build-field {:type "hidden"
+                                                    :id "active_tab"
+                                                    :name "active_tab"
+                                                    :value active-tab}))
+             edited-id-hidden (when edited-id
+                                (form/build-field {:type "hidden"
+                                                   :id "edited_id"
+                                                   :name "edited_id"
+                                                   :value edited-id}))
+             field-elements (map #(render-field % row) fields)
+             all-elements (cond-> field-elements
+                            fk-hidden (as-> els (cons fk-hidden els))
+                            return-url-hidden (as-> els (concat els [return-url-hidden]))
+                            active-tab-hidden (as-> els (concat els [active-tab-hidden]))
+                            edited-id-hidden (as-> els (concat els [edited-id-hidden])))
+              cancel-base (or return-url
+                              (if-let [id (:id row)]
+                                (str "/admin/" entity-name "/" id)
+                                (str "/admin/" entity-name)))
+              cancel-q (str/join "&"
+                                 (filter seq [(when active-tab (str "active_tab=" active-tab))
+                                              (when edited-id (str "edited_id=" edited-id))]))
+              cancel-url (if (seq cancel-q)
+                           (str cancel-base "?" cancel-q)
+                           cancel-base)
+             buttons (form/build-form-buttons {:cancel-url cancel-url})]
+        (form/form href all-elements buttons))))))
+
+(defn- build-fields-map
+  "Builds a field map for grid rendering from entity config."
+  [entity]
+  (let [display-fields (config/get-display-fields entity)]
+    (apply array-map
+           (mapcat (fn [field]
+                     [(:id field) (:label field)])
+                   display-fields))))
+
+(defn- extract-query-params
+  "Extracts pagination/search/sort params from a Ring request."
+  [request]
+  (let [params (:params request)]
+    {:search (get params :search "")
+     :sort-by (get params :sort-by "id")
+     :sort-order (get params :sort-order "desc")
+     :page (try (Integer/parseInt (get params :page "1"))
+                (catch Exception _ 1))}))
+
+(defn render-grid
+  "Renders a grid for an entity.
+   If page-info is provided, renders server-paginated grid with sort/search."
+  ([request entity rows]
+   (render-grid request entity rows nil nil))
+  ([request entity rows page-info current-params]
+   (let [config (config/get-entity-config entity)
+         entity-name (name entity)
+         title (:title config)
+         table-id (str entity-name "_table")
+         fields (build-fields-map entity)
+         href (str "/admin/" entity-name)
+         actions (or (:actions config) config/default-actions)
+         custom-grid-fn (get-in config [:ui :grid-fn])]
+     (if custom-grid-fn
+       (custom-grid-fn entity rows)
+       (grid/build-grid request title rows table-id fields href actions page-info current-params)))))
+
+(defn render-dashboard
+  "Renders a read-only dashboard for an entity."
+  [request title entity rows]
+  (let [config (config/get-entity-config entity)
+        entity-name (name entity)
+        table-id (str entity-name "_dashboard")
+        fields (build-fields-map entity)
+        custom-dashboard-fn (get-in config [:ui :dashboard-fn])]
+    (if custom-dashboard-fn
+      (custom-dashboard-fn entity rows)
+      (grid/build-dashboard request title rows table-id fields))))
+
+(defn render-report
+  "Renders a report view (alias for dashboard)."
+  [request title entity rows]
+  (render-dashboard request title entity rows))
+
+(defn render-subgrid
+  "Renders a subgrid for a parent-child relationship."
+  [request entity parent-id rows]
+  (let [config (config/get-entity-config entity)
+        entity-name (name entity)
+        title (:title config)
+        table-id (str entity-name "_subgrid")
+        fields (build-fields-map entity)
+        href (str "/admin/" entity-name)
+        actions (or (:actions config) config/default-actions)
+        new-href (str href "/add-form/" parent-id)]
+    (grid/build-grid-with-custom-new request title rows table-id fields href actions new-href)))
+
+(defn render-error
+  "Renders an error message."
+  [message]
+  [:div.alert.alert-danger.m-3
+   [:i.bi.bi-exclamation-triangle.me-2]
+   message])
+
+(defn render-success
+  "Renders a success message."
+  [message]
+  [:div.alert.alert-success.m-3
+   [:i.bi.bi-check-circle.me-2]
+   message])
+
+(defn render-not-authorized
+  "Renders a not authorized message."
+  [entity user-level]
+  (let [config (config/get-entity-config entity)
+        required-rights (:rights config)]
+    (render-error
+     (str "Not authorized to access " (:title config)
+          "! Required level(s): " (clojure.string/join ", " required-rights)
+          ". Your level: " user-level))))
