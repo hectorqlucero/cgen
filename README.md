@@ -9,10 +9,14 @@ A parameter-driven Clojure web framework. Application behavior is controlled ent
 ### 1. Generate a new project
 
 ```bash
+git clone https://github.com/<user>/cgen.git
+cd cgen
 lein setup my-project
+cd my-project
+lein with-profile dev run
 ```
 
-This creates `../my-project/` (a sibling of cgen) with all namespaces renamed, runs migrations, and seeds the database with default users. cgen itself stays untouched and reusable.
+This clones cgen, creates a sibling `my-project/` directory with all namespaces renamed, runs migrations, and seeds the database with default users. cgen itself stays untouched and reusable.
 
 To generate to a specific path:
 
