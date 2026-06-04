@@ -150,4 +150,6 @@
         (println "    1. cd" (.getCanonicalPath target-dir))
         (println "    2. Delete example migrations, entities, hooks you don't need")
         (println "    3. Write your own migrations, re-run lein scaffold --all")
-        (println "    4. Start the dev server: lein with-profile dev run")))))
+        (println "    4. Start the dev server: lein with-profile dev run")
+        (flush)
+        (System/exit 0)))))
