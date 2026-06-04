@@ -157,7 +157,8 @@
                      (for [field fields
                            :let [fid   (:id field)
                                  ftype (or (:type field) :text)
-                                 value (get current-row fid "")]]
+                                 options (or (:options field) [])
+                                 value (or (get current-row fid) (:value field) "")]]
                        [:div.mb-3
                         [:label.form-label (:label field)]
                         (case ftype
@@ -165,6 +166,22 @@
                                      {:type "number" :name (name fid) :value (str value)}]
                           :date     [:input.form-control
                                      {:type "date" :name (name fid) :value (str value)}]
+                          :select   [:select.form-select {:name (name fid)}
+                                     (for [opt options]
+                                       [:option {:value (:value opt)} (:label opt)])]
+                          :radio    [:div.mb-3
+                                     [:div.mt-2
+                                      (for [opt options]
+                                        [:div.form-check.form-check-inline.me-4
+                                         [:input.form-check-input
+                                          {:type "radio"
+                                           :name (name fid)
+                                           :value (:value opt)
+                                           :id (:id opt)
+                                           :checked (when (= (str value) (str (:value opt))) true)}]
+                                         [:label.form-check-label.fw-medium.ms-2
+                                          {:for (:id opt)}
+                                          (:label opt)]])]]
                           :textarea [:textarea.form-control {:name (name fid) :rows 3} (str value)]
                           [:input.form-control {:type "text" :name (name fid) :value (str value)}])])
                      [:p.text-muted (i18n/tr request :pivot/no-attributes)])
