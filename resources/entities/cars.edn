@@ -1,0 +1,40 @@
+{:entity :cars
+ :title "Cars"  ;; Edit this to your preference
+ :table "cars"
+ :connection :default
+ :rights ["U" "A" "S"]  ;; User levels: U=User, A=Admin, S=System
+ :mode :parameter-driven
+ :menu-hidden? true  ;; Hide from main menu (child entity accessed via subgrids)
+ :menu-icon "bi bi-car-front"
+
+ ;; Fields auto-detected from database schema
+ :fields [{:id :id :label "ID" :type :hidden}
+          {:id :company :label "Company" :type :text :placeholder "Company..."}
+          {:id :model :label "Model" :type :text :placeholder "Model..."}
+          {:id :year :label "Year" :type :number}
+          {:id :imagen :label "Imagen" :type :file}
+          {:id :contacto_id :label "Contactos ID" :type :hidden}]
+
+ ;; Auto-generated queries (customize as needed)
+ :queries {:list "SELECT car.*, con.name as contacto_nombre FROM cars car LEFT JOIN contactos con ON car.contacto_id = con.id ORDER BY car.id DESC"
+           :get "SELECT * FROM cars WHERE id = ?"}
+
+ ;; Available actions
+ :actions {:new true :edit true :delete true}
+
+ ;; Enable audit trail (tracks who created/modified and when)
+ ;; Uncomment to enable:
+ ;; :audit? true
+
+ ;; Lifecycle hooks for business logic
+ :hooks {:before-save :contactos.hooks.cars/before-save
+         :after-load :contactos.hooks.cars/after-load}
+
+ ;; Subgrids (parent-child relationships)
+ ;; Uncomment if this entity has child records:
+ ;; :subgrids [{:entity :related-table
+ ;;             :title "Related Records"
+ ;;             :foreign-key :parent_id
+ ;;             :icon "bi bi-list"
+ ;;             :label "Related Records"}]
+ }
