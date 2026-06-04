@@ -132,48 +132,50 @@
         return-url  (:return_url params)
         junction    (keyword through-str)
         title       (i18n/tr request :pivot/edit-title
-                           {:title (try (:title (config/get-entity-config junction))
-                                        (catch Exception _ through-str))})
+                             {:title (try (:title (config/get-entity-config junction))
+                                          (catch Exception _ through-str))})
         fields      (pivot-visible-fields junction parent-fk related-fk)
         sql         [(str "SELECT * FROM " through-str
                           " WHERE " parent-fk " = ? AND " related-fk " = ?")
                      (Long/parseLong parent-id) (Long/parseLong related-id)]
         current-row (first (crud/Query sql))]
     (application request title (get-session-id request) nil
-     [:div.container.py-4
-      [:h4.mb-3 title]
-      [:form {:method "POST" :action "/tabgrid/save-pivot"}
-       (csrf-field)
-       [:input {:type "hidden" :name "through_table" :value through-str}]
-       [:input {:type "hidden" :name "parent_fk"     :value parent-fk}]
-       [:input {:type "hidden" :name "parent_id"     :value parent-id}]
-       [:input {:type "hidden" :name "related_fk"    :value related-fk}]
-       [:input {:type "hidden" :name "related_id"    :value related-id}]
-       (when active-tab
-         [:input {:type "hidden" :name "active_tab" :value active-tab}])
-       (when return-url
-         [:input {:type "hidden" :name "return_url" :value return-url}])
-       (if (seq fields)
-         (for [field fields
-               :let [fid   (:id field)
-                     ftype (or (:type field) :text)
-                     value (get current-row fid "")]]
-           [:div.mb-3
-            [:label.form-label (:label field)]
-            (case ftype
-              :number   [:input.form-control
-                         {:type "number" :name (name fid) :value (str value)}]
-              :textarea [:textarea.form-control {:name (name fid) :rows 3} (str value)]
-              [:input.form-control {:type "text" :name (name fid) :value (str value)}])])
-          [:p.text-muted (i18n/tr request :pivot/no-attributes)])
-        [:div.d-flex.gap-2.mt-3
-         [:button.btn.btn-primary {:type "submit"}
-          [:i.bi.bi-check.me-1] (i18n/tr request :common/save)]
-         [:a.btn.btn-secondary
-          {:href (if return-url
-                   (str return-url (when active-tab (str "?active_tab=" active-tab)))
-                   "javascript:history.back()")}
-          (i18n/tr request :common/cancel)]]]])))
+                 [:div.container.py-4
+                  [:h4.mb-3 title]
+                  [:form {:method "POST" :action "/tabgrid/save-pivot"}
+                   (csrf-field)
+                   [:input {:type "hidden" :name "through_table" :value through-str}]
+                   [:input {:type "hidden" :name "parent_fk"     :value parent-fk}]
+                   [:input {:type "hidden" :name "parent_id"     :value parent-id}]
+                   [:input {:type "hidden" :name "related_fk"    :value related-fk}]
+                   [:input {:type "hidden" :name "related_id"    :value related-id}]
+                   (when active-tab
+                     [:input {:type "hidden" :name "active_tab" :value active-tab}])
+                   (when return-url
+                     [:input {:type "hidden" :name "return_url" :value return-url}])
+                   (if (seq fields)
+                     (for [field fields
+                           :let [fid   (:id field)
+                                 ftype (or (:type field) :text)
+                                 value (get current-row fid "")]]
+                       [:div.mb-3
+                        [:label.form-label (:label field)]
+                        (case ftype
+                          :number   [:input.form-control
+                                     {:type "number" :name (name fid) :value (str value)}]
+                          :date     [:input.form-control
+                                     {:type "date" :name (name fid) :value (str value)}]
+                          :textarea [:textarea.form-control {:name (name fid) :rows 3} (str value)]
+                          [:input.form-control {:type "text" :name (name fid) :value (str value)}])])
+                     [:p.text-muted (i18n/tr request :pivot/no-attributes)])
+                   [:div.d-flex.gap-2.mt-3
+                    [:button.btn.btn-primary {:type "submit"}
+                     [:i.bi.bi-check.me-1] (i18n/tr request :common/save)]
+                    [:a.btn.btn-secondary
+                     {:href (if return-url
+                              (str return-url (when active-tab (str "?active_tab=" active-tab)))
+                              "javascript:history.back()")}
+                     (i18n/tr request :common/cancel)]]]])))
 
 (defn handle-save-pivot
   "POST /tabgrid/save-pivot — updates pivot attributes on a junction table row."
@@ -228,53 +230,53 @@
         available       (data/fetch-available-for-linking related-entity linked-ids)
         fields          (data/build-fields-map related-entity)]
     (application request heading (get-session-id request) nil
-     [:div.container.py-4
-      [:h4.mb-3 heading]
-      [:form {:method "POST" :action "/tabgrid/link-save"}
-       (csrf-field)
-       [:input {:type "hidden" :name "through_table" :value through-str}]
-       [:input {:type "hidden" :name "parent_fk"     :value parent-fk}]
-       [:input {:type "hidden" :name "parent_id"     :value parent-id}]
-       [:input {:type "hidden" :name "related_fk"    :value related-fk}]
-       (when return-url
-         [:input {:type "hidden" :name "return_url" :value return-url}])
-       (when active-tab
-         [:input {:type "hidden" :name "active_tab" :value active-tab}])
-       (if (seq available)
-         [:div
-          [:p.text-muted (i18n/tr request :subgrid/select-records)]
-          [:table.table.table-hover.table-sm
-           [:thead
-            [:tr
-             [:th {:style "width:40px"}
-              [:input {:type "checkbox" :id "m2m-select-all"}]]
-             (for [[_ label] fields] [:th label])]]
-           (into [:tbody]
-                 (for [row available]
-                   [:tr
-                    [:td
-                     [:input {:type "checkbox" :name "selected_ids"
-                              :value (:id row)}]]
-                    (for [[fid _] fields]
-                      [:td.small (get row fid)])]))]
-          [:div.d-flex.gap-2.mt-3
-           [:button.btn.btn-primary {:type "submit"}
-            [:i.bi.bi-check.me-1] (i18n/tr request :common/save)]
-           [:a.btn.btn-secondary
-            {:href (if return-url
-                     (str return-url (when active-tab (str "?active_tab=" active-tab)))
-                     "javascript:history.back()")}
-            (i18n/tr request :common/cancel)]]]
-         [:div.text-center.p-4.text-muted
-          [:i.bi.bi-check-circle {:style "font-size:2rem"}]
-          [:p.mt-2 (i18n/tr request :subgrid/no-available-records)]
-          [:a.btn.btn-secondary
-           {:href (if return-url
-                    (str return-url (when active-tab (str "?active_tab=" active-tab)))
-                    "javascript:history.back()")}
-           (i18n/tr request :common/back)]])
-       [:script
-         "document.getElementById('m2m-select-all').addEventListener('change',function(){var c=document.querySelectorAll('input[name=\"selected_ids\"]');for(var i=0;i<c.length;i++)c[i].checked=this.checked;})"]]])))
+                 [:div.container.py-4
+                  [:h4.mb-3 heading]
+                  [:form {:method "POST" :action "/tabgrid/link-save"}
+                   (csrf-field)
+                   [:input {:type "hidden" :name "through_table" :value through-str}]
+                   [:input {:type "hidden" :name "parent_fk"     :value parent-fk}]
+                   [:input {:type "hidden" :name "parent_id"     :value parent-id}]
+                   [:input {:type "hidden" :name "related_fk"    :value related-fk}]
+                   (when return-url
+                     [:input {:type "hidden" :name "return_url" :value return-url}])
+                   (when active-tab
+                     [:input {:type "hidden" :name "active_tab" :value active-tab}])
+                   (if (seq available)
+                     [:div
+                      [:p.text-muted (i18n/tr request :subgrid/select-records)]
+                      [:table.table.table-hover.table-sm
+                       [:thead
+                        [:tr
+                         [:th {:style "width:40px"}
+                          [:input {:type "checkbox" :id "m2m-select-all"}]]
+                         (for [[_ label] fields] [:th label])]]
+                       (into [:tbody]
+                             (for [row available]
+                               [:tr
+                                [:td
+                                 [:input {:type "checkbox" :name "selected_ids"
+                                          :value (:id row)}]]
+                                (for [[fid _] fields]
+                                  [:td.small (get row fid)])]))]
+                      [:div.d-flex.gap-2.mt-3
+                       [:button.btn.btn-primary {:type "submit"}
+                        [:i.bi.bi-check.me-1] (i18n/tr request :common/save)]
+                       [:a.btn.btn-secondary
+                        {:href (if return-url
+                                 (str return-url (when active-tab (str "?active_tab=" active-tab)))
+                                 "javascript:history.back()")}
+                        (i18n/tr request :common/cancel)]]]
+                     [:div.text-center.p-4.text-muted
+                      [:i.bi.bi-check-circle {:style "font-size:2rem"}]
+                      [:p.mt-2 (i18n/tr request :subgrid/no-available-records)]
+                      [:a.btn.btn-secondary
+                       {:href (if return-url
+                                (str return-url (when active-tab (str "?active_tab=" active-tab)))
+                                "javascript:history.back()")}
+                       (i18n/tr request :common/back)]])
+                   [:script
+                    "document.getElementById('m2m-select-all').addEventListener('change',function(){var c=document.querySelectorAll('input[name=\"selected_ids\"]');for(var i=0;i<c.length;i++)c[i].checked=this.checked;})"]]])))
 (defn handle-link-save
   "POST /tabgrid/link-save — inserts junction rows for each selected record, then redirects."
   [request]
