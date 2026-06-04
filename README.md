@@ -1,5 +1,7 @@
 # cgen
 
+![cgen admin panel](screenshot.png)
+
 A parameter-driven Clojure web framework. Application behavior is controlled entirely by EDN configuration files in `resources/entities/`. Editing a config file and refreshing the browser is all that is needed to change the application — no server restart required during development.
 
 ---
