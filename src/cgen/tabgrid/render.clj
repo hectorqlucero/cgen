@@ -86,13 +86,13 @@
                   active?   (= row-id (str selected-parent-id))]]
       [:li.ws-record-item
        {:class (when active? "active")}
-        [:a.ws-record-link
-         {:href (str "/admin/" entity-name "/" row-id)
-          :title (str label (when secondary (str " — " secondary)))}
-         [:span.ws-avatar (ws-initials label)]
-         [:div.ws-record-info
-          [:span.ws-record-label label]
-          (when secondary [:span.ws-record-secondary secondary])]]])]])
+       [:a.ws-record-link
+        {:href (str "/admin/" entity-name "/" row-id)
+         :title (str label (when secondary (str " — " secondary)))}
+        [:span.ws-avatar (ws-initials label)]
+        [:div.ws-record-info
+         [:span.ws-record-label label]
+         (when secondary [:span.ws-record-secondary secondary])]]])]])
 
 ;;; -- Pinned record header --------------------------------------------
 
@@ -167,10 +167,10 @@
        (:title subgrid)]
       [:div.d-flex.align-items-center.gap-2
        (if record
-          [:span.ws-o2o-status-linked
-           [:i.bi.bi-check-circle-fill.me-1] (i18n/tr request :subgrid/linked)]
-          [:span.ws-o2o-status-unlinked
-           [:i.bi.bi-dash-circle.me-1] (i18n/tr request :subgrid/not-set)])
+         [:span.ws-o2o-status-linked
+          [:i.bi.bi-check-circle-fill.me-1] (i18n/tr request :subgrid/linked)]
+         [:span.ws-o2o-status-unlinked
+          [:i.bi.bi-dash-circle.me-1] (i18n/tr request :subgrid/not-set)])
        (if record
          (when (:edit actions)
            [:a.btn.btn-sm.btn-outline-primary
@@ -183,18 +183,18 @@
                       "&parent_entity=" parent-entity-name
                       "&active_tab=" pane-id)}
           [:i.bi.bi-plus-circle.me-1]
-           (i18n/tr request :subgrid/create {:title (:title subgrid)})])]]
-      (if record
-        [:div.ws-o2o-body
-         (for [[fid flabel] fields
-               :let [v (get record fid)]
-               :when (some? v)]
-           [:div.ws-o2o-field
-            [:span.ws-o2o-field-label flabel]
-            [:span.ws-o2o-field-value (render-field-value v)]])]
-        [:div.ws-o2o-empty
-         [:i.bi.bi-dash-circle.me-2]
-         (i18n/tr request :subgrid/no-linked-yet {:title (:title subgrid)})])]))
+          (i18n/tr request :subgrid/create {:title (:title subgrid)})])]]
+     (if record
+       [:div.ws-o2o-body
+        (for [[fid flabel] fields
+              :let [v (get record fid)]
+              :when (some? v)]
+          [:div.ws-o2o-field
+           [:span.ws-o2o-field-label flabel]
+           [:span.ws-o2o-field-value (render-field-value v)]])]
+       [:div.ws-o2o-empty
+        [:i.bi.bi-dash-circle.me-2]
+        (i18n/tr request :subgrid/no-linked-yet {:title (:title subgrid)})])]))
 
 ;;; -- 1:M pane --------------------------------------------------------
 
@@ -207,41 +207,41 @@
         show-delete? (:delete actions)]
     (if (seq records)
       (into [:table.table.table-hover.table-bordered.table-sm.subgrid-table
-              {:id (str parent-entity "-" sg-name "-table")}
-              [:thead
-               [:tr
-                (for [[_ label] fields] [:th.subgrid-sortable label [:i.bi.bi-chevron-expand.ms-1]])
-                (when (or show-edit? show-delete?)
-                  [:th {:style "width:120px"} (i18n/tr request :common/actions)])]]]
+             {:id (str parent-entity "-" sg-name "-table")}
+             [:thead
+              [:tr
+               (for [[_ label] fields] [:th.subgrid-sortable label [:i.bi.bi-chevron-expand.ms-1]])
+               (when (or show-edit? show-delete?)
+                 [:th {:style "width:120px"} (i18n/tr request :common/actions)])]]]
             [(into [:tbody]
                    (for [row records]
-                      (into [:tr {:data-row-id (:id row)}]
-                            (concat
-                              (for [[fid _] fields]
-                                [:td.small {:title (some-> (get row fid) str)}
-                                 (render-field-value (get row fid))])
-                             (when (or show-edit? show-delete?)
-                               [[:td
-                                  [:div.d-flex.gap-1
-                                   (when show-edit?
-                                     [:a.btn.btn-sm.btn-outline-primary
-                                      {:href (str "/admin/" sg-name "/edit-form/" (:id row)
-                                                  "?return_url=" return-url "&active_tab=" pane-id "&edited_id=" (:id row))}
-                                      [:i.bi.bi-pencil]])
-                                   (when show-delete?
-                                     [:form.d-inline
-                                      {:method "POST"
-                                       :action (str "/admin/" sg-name "/delete/" (:id row))}
-                                      (csrf-field)
-                                      [:input {:type "hidden" :name "return_url" :value return-url}]
-                                      [:input {:type "hidden" :name "active_tab" :value pane-id}]
-                                      [:button.btn.btn-sm.btn-outline-danger
-                                       {:type "submit"
-                                        :onclick (str "return confirm('" (i18n/tr request :confirm/delete) "')")}
-                                          [:i.bi.bi-trash]]])]]])))))])
+                     (into [:tr {:data-row-id (:id row)}]
+                           (concat
+                            (for [[fid _] fields]
+                              [:td.small {:title (some-> (get row fid) str)}
+                               (render-field-value (get row fid))])
+                            (when (or show-edit? show-delete?)
+                              [[:td
+                                [:div.d-flex.gap-1
+                                 (when show-edit?
+                                   [:a.btn.btn-sm.btn-outline-primary
+                                    {:href (str "/admin/" sg-name "/edit-form/" (:id row)
+                                                "?return_url=" return-url "&active_tab=" pane-id "&edited_id=" (:id row))}
+                                    [:i.bi.bi-pencil]])
+                                 (when show-delete?
+                                   [:form.d-inline
+                                    {:method "POST"
+                                     :action (str "/admin/" sg-name "/delete/" (:id row))}
+                                    (csrf-field)
+                                    [:input {:type "hidden" :name "return_url" :value return-url}]
+                                    [:input {:type "hidden" :name "active_tab" :value pane-id}]
+                                    [:button.btn.btn-sm.btn-outline-danger
+                                     {:type "submit"
+                                      :onclick (str "return confirm('" (i18n/tr request :confirm/delete) "')")}
+                                     [:i.bi.bi-trash]]])]]])))))])
       [:div.text-center.p-4.text-muted
        [:i.bi.bi-inbox {:style "font-size:1.5rem"}]
-        [:p.mt-2 (i18n/tr request :grid/no-records)]])))
+       [:p.mt-2 (i18n/tr request :grid/no-records)]])))
 
 (defn- render-otm-pane
   [request entity-name subgrid selected-parent-id]
@@ -261,7 +261,7 @@
                    "?parent_id=" selected-parent-id
                    "&parent_entity=" entity-name
                    "&active_tab=" entity-name "-" sg-name "-pane")}
-        [:i.bi.bi-plus-circle.me-1] (i18n/tr request :common/new)]]
+       [:i.bi.bi-plus-circle.me-1] (i18n/tr request :common/new)]]
      (when (seq records)
        [:div.subgrid-search-wrap
         [:input.subgrid-search.form-control.form-control-sm
@@ -269,47 +269,43 @@
         [:span.badge.rounded-pill.bg-light.text-secondary.border.subgrid-clear
          [:i.bi.bi-x] (str " " (i18n/tr request :common/clear))]])
      (render-subgrid-table request entity-name selected-parent-id
-                          sg-name fields records actions)]))
+                           sg-name fields records actions)]))
 
 (defn- render-m2m-row
   [request fields has-pivot? through fk related-fk parent-id entity-name pane-id row]
   (let [return-url (str "/admin/" entity-name "/" parent-id)]
     [:tr {:data-row-id (:id row)}
-      (for [[fid _] fields]
-        [:td.small {:title (some-> (get row fid) str)} (render-field-value (get row fid))])
-      [:td
-       [:div.d-flex.gap-1
-        (when has-pivot?
-          [:a.btn.btn-sm.btn-outline-primary
-           {:href (str "/tabgrid/pivot-form"
-                       "?through_table=" through
-                       "&parent_fk=" fk
-                       "&parent_id=" parent-id
-                       "&related_fk=" related-fk
-                       "&related_id=" (:id row)
-                       "&active_tab=" pane-id
-                       "&return_url=" return-url)
-            :title (i18n/tr request :pivot/edit-attributes)}
-           [:i.bi.bi-sliders]])
-         [:button.btn.btn-sm.btn-outline-danger.m2m-unlink-btn
-          {:type "button"
-           :title (i18n/tr request :subgrid/unlink)}
-          [:i.bi.bi-x-circle-fill]]
-        [:span.m2m-unlink-confirm.d-none
-         [:form.d-inline
-          {:method "POST" :action "/tabgrid/dissociate"}
-          (csrf-field)
-          [:input {:type "hidden" :name "through_table" :value through}]
-          [:input {:type "hidden" :name "parent_fk" :value fk}]
-          [:input {:type "hidden" :name "parent_id" :value parent-id}]
-          [:input {:type "hidden" :name "related_fk" :value related-fk}]
-          [:input {:type "hidden" :name "related_id" :value (:id row)}]
-          [:input {:type "hidden" :name "active_tab" :value pane-id}]
-          [:button.btn.btn-sm.btn-danger {:type "submit"}
-           [:i.bi.bi-check]]]
-         [:button.btn.btn-sm.btn-secondary.m2m-confirm-no
-          {:type "button"}
-          [:i.bi.bi-x]]]]]]))
+     (for [[fid _] fields]
+       [:td.small {:title (some-> (get row fid) str)}
+        (render-field-value (get row fid))])
+     [:td
+      [:div.d-flex.gap-1
+       (when has-pivot?
+         [:a.btn.btn-sm.btn-outline-primary
+          {:href (str "/tabgrid/pivot-form"
+                      "?through_table=" through
+                      "&parent_fk=" fk
+                      "&parent_id=" parent-id
+                      "&related_fk=" related-fk
+                      "&related_id=" (:id row)
+                      "&active_tab=" pane-id
+                      "&return_url=" return-url)
+           :title (i18n/tr request :pivot/edit-attributes)}
+          [:i.bi.bi-sliders]])
+       [:form.d-inline
+        {:method "POST" :action "/tabgrid/dissociate"}
+        (csrf-field)
+        [:input {:type "hidden" :name "through_table" :value through}]
+        [:input {:type "hidden" :name "parent_fk" :value fk}]
+        [:input {:type "hidden" :name "parent_id" :value parent-id}]
+        [:input {:type "hidden" :name "related_fk" :value related-fk}]
+        [:input {:type "hidden" :name "related_id" :value (:id row)}]
+        [:input {:type "hidden" :name "active_tab" :value pane-id}]
+        [:button.btn.btn-sm.btn-outline-danger
+         {:type "submit"
+          :title (i18n/tr request :subgrid/unlink)
+          :onclick (str "return confirm('" (i18n/tr request :confirm/unlink) "')")}
+         [:i.bi.bi-x-circle-fill]]]]]]))
 
 (defn render-m2m-pane
   [request entity-name entity-title parent-display subgrid selected-parent-id]
@@ -343,7 +339,7 @@
        [:span.badge.bg-secondary.ms-2 (or (:count subgrid) 0)]]
       [:a.btn.btn-sm.btn-success
        {:href link-url}
-        [:i.bi.bi-plus-circle.me-1] (i18n/tr request :subgrid/link)]]
+       [:i.bi.bi-plus-circle.me-1] (i18n/tr request :subgrid/link)]]
      (when (seq records)
        [:div.subgrid-search-wrap
         [:input.subgrid-search.form-control.form-control-sm
@@ -384,9 +380,9 @@
                  pane-id (str entity-name "-" sg-name "-pane")
                  rel-type (:relationship-type sg)
                  rel-label (case rel-type
-                              :one-to-one (i18n/tr request :subgrid/rel-11)
-                              :one-to-many (i18n/tr request :subgrid/rel-1n)
-                              :many-to-many (i18n/tr request :subgrid/rel-nm))
+                             :one-to-one (i18n/tr request :subgrid/rel-11)
+                             :one-to-many (i18n/tr request :subgrid/rel-1n)
+                             :many-to-many (i18n/tr request :subgrid/rel-nm))
                  cnt (:count sg)]
              [:button
               {:class (tab-cls rel-type idx)
@@ -421,93 +417,85 @@
 ;;; -- Tab switching JS (minimal, inline) ------------------------------
 
 (defn- tab-switch-js
-  "Inline vanilla JS for tab switching - ~15 lines."
+  "Inline vanilla JS for tab switching"
   []
   [:script
    "(function(){
-     var s=document.querySelector('.ws-tab-strip');
-     if(!s)return;
-     s.addEventListener('click',function(e){
-       var t=e.target.closest('.ws-tab');
-       if(!t)return;
-       var p=t.getAttribute('data-pane');
-       if(!p)return;
-       s.querySelectorAll('.ws-tab').forEach(function(x){x.classList.remove('active');});
-       t.classList.add('active');
-       document.querySelectorAll('.ws-tab-pane').forEach(function(x){x.classList.remove('active');});
-       var pane=document.querySelector(p);
-       if(pane)pane.classList.add('active');
-     });
-     var u=document.querySelector('.m2m-unlink-btn');
-     if(u){
-       document.addEventListener('click',function(e){
-         var b=e.target.closest('.m2m-unlink-btn');
-         if(b){b.style.display='none';b.parentNode.querySelector('.m2m-unlink-confirm').style.display='inline';}
-         var n=e.target.closest('.m2m-confirm-no');
-         if(n){var c=n.closest('.m2m-unlink-confirm');c.style.display='none';c.parentNode.querySelector('.m2m-unlink-btn').style.display='inline';}
+      var s=document.querySelector('.ws-tab-strip');
+      if(!s)return;
+      s.addEventListener('click',function(e){
+        var t=e.target.closest('.ws-tab');
+        if(!t)return;
+        var p=t.getAttribute('data-pane');
+        if(!p)return;
+        s.querySelectorAll('.ws-tab').forEach(function(x){x.classList.remove('active');});
+        t.classList.add('active');
+        document.querySelectorAll('.ws-tab-pane').forEach(function(x){x.classList.remove('active');});
+        var pane=document.querySelector(p);
+        if(pane)pane.classList.add('active');
+      });
+
+       var p=new URLSearchParams(window.location.search).get('active_tab');
+       if(p){
+         var b=document.querySelector('[data-pane=\"#'+p+'\"]');
+         if(b)b.click();
+         setTimeout(function(){
+           var l=document.querySelector('.ws-record-list'),
+               a=l&&l.querySelector('.ws-record-item.active');
+           if(a)l.scrollTop=Math.max(0,a.offsetTop-l.clientHeight/2);
+         },0);
+       }
+       var ei=new URLSearchParams(window.location.search).get('edited_id');
+       if(ei){
+         (function eiPoll(){
+           var r=document.querySelector('[data-row-id=\"'+ei+'\"]');
+           if(r){
+             r.style.background='#c7d2fe';
+             setTimeout(function(){r.scrollIntoView({block:'center',inline:'nearest'});},50);
+           }else{setTimeout(eiPoll,50);}
+         })();
+       }
+       var si=document.querySelectorAll('.subgrid-search');
+       [].forEach.call(si,function(i){
+         var sk='sg_'+i.closest('.ws-pane-card').querySelector('.subgrid-table').id;
+         var sv=sessionStorage.getItem(sk);
+         if(sv){i.value=sv;}
+         i.addEventListener('input',function(){
+           var q=this.value.toLowerCase().trim(),t=this.closest('.ws-pane-card').querySelector('.subgrid-table');
+           if(!t)return;
+           sessionStorage.setItem(sk,q);
+           [].forEach.call(t.querySelectorAll('tbody tr'),function(r){
+             var f=0; [].forEach.call(r.cells,function(c){if(c.textContent.toLowerCase().indexOf(q)>-1)f=1;});
+             r.style.display=f?'':'none';
+           });
+         });
+         if(sv){i.dispatchEvent(new Event('input',{bubbles:true}));}
+         var ci=i.parentNode.querySelector('.subgrid-clear');
+         if(ci){
+           if(i.value)ci.style.display='inline';
+           i.addEventListener('input',function(){ci.style.display=this.value?'inline':'none';});
+           ci.addEventListener('click',function(){
+             i.value='';ci.style.display='none';sessionStorage.setItem(sk,'');
+             [].forEach.call(i.closest('.ws-pane-card').querySelector('.subgrid-table').querySelectorAll('tbody tr'),function(r){r.style.display='';});
+           });
+         }
        });
-     }
-      var p=new URLSearchParams(window.location.search).get('active_tab');
-      if(p){
-        var b=document.querySelector('[data-pane=\"#'+p+'\"]');
-        if(b)b.click();
-        setTimeout(function(){
-          var l=document.querySelector('.ws-record-list'),
-              a=l&&l.querySelector('.ws-record-item.active');
-          if(a)l.scrollTop=Math.max(0,a.offsetTop-l.clientHeight/2);
-        },0);
-      }
-      var ei=new URLSearchParams(window.location.search).get('edited_id');
-      if(ei){
-        (function eiPoll(){
-          var r=document.querySelector('[data-row-id=\"'+ei+'\"]');
-          if(r){
-            r.style.background='#c7d2fe';
-            setTimeout(function(){r.scrollIntoView({block:'center',inline:'nearest'});},50);
-          }else{setTimeout(eiPoll,50);}
-        })();
-      }
-      var si=document.querySelectorAll('.subgrid-search');
-      [].forEach.call(si,function(i){
-        var sk='sg_'+i.closest('.ws-pane-card').querySelector('.subgrid-table').id;
-        var sv=sessionStorage.getItem(sk);
-        if(sv){i.value=sv;}
-        i.addEventListener('input',function(){
-          var q=this.value.toLowerCase().trim(),t=this.closest('.ws-pane-card').querySelector('.subgrid-table');
-          if(!t)return;
-          sessionStorage.setItem(sk,q);
-          [].forEach.call(t.querySelectorAll('tbody tr'),function(r){
-            var f=0; [].forEach.call(r.cells,function(c){if(c.textContent.toLowerCase().indexOf(q)>-1)f=1;});
-            r.style.display=f?'':'none';
-          });
-        });
-        if(sv){i.dispatchEvent(new Event('input',{bubbles:true}));}
-        var ci=i.parentNode.querySelector('.subgrid-clear');
-        if(ci){
-          if(i.value)ci.style.display='inline';
-          i.addEventListener('input',function(){ci.style.display=this.value?'inline':'none';});
-          ci.addEventListener('click',function(){
-            i.value='';ci.style.display='none';sessionStorage.setItem(sk,'');
-            [].forEach.call(i.closest('.ws-pane-card').querySelector('.subgrid-table').querySelectorAll('tbody tr'),function(r){r.style.display='';});
-          });
-        }
-      });
-      [].forEach.call(document.querySelectorAll('.subgrid-table'),function(t){
-        var hs=t.querySelectorAll('th.subgrid-sortable');
-        [].forEach.call(hs,function(h){h.addEventListener('click',function(){
-          var c=this.cellIndex,d=this.getAttribute('data-dir')||'asc';d=d==='asc'?'desc':'asc';
-          this.setAttribute('data-dir',d);
-          [].forEach.call(hs,function(x){x.querySelector('i').className='bi bi-chevron-expand ms-1';});
-          this.querySelector('i').className=d==='asc'?'bi bi-chevron-up ms-1':'bi bi-chevron-down ms-1';
-          var a=[].slice.call(t.querySelector('tbody').rows).sort(function(x,y){
-            var u=x.cells[c].textContent.trim(),v=y.cells[c].textContent.trim();
-            var p=parseFloat(u),q=parseFloat(v);
-            return!isNaN(p)&&!isNaN(q)?(d==='asc'?p-q:q-p):d==='asc'?u.localeCompare(v):v.localeCompare(u);
-          });
-          a.forEach(function(r){t.querySelector('tbody').appendChild(r);});
-        });});
-      });
-    })()"])
+       [].forEach.call(document.querySelectorAll('.subgrid-table'),function(t){
+         var hs=t.querySelectorAll('th.subgrid-sortable');
+         [].forEach.call(hs,function(h){h.addEventListener('click',function(){
+           var c=this.cellIndex,d=this.getAttribute('data-dir')||'asc';d=d==='asc'?'desc':'asc';
+           this.setAttribute('data-dir',d);
+           [].forEach.call(hs,function(x){x.querySelector('i').className='bi bi-chevron-expand ms-1';});
+           this.querySelector('i').className=d==='asc'?'bi bi-chevron-up ms-1':'bi bi-chevron-down ms-1';
+           var a=[].slice.call(t.querySelector('tbody').rows).sort(function(x,y){
+             var u=x.cells[c].textContent.trim(),v=y.cells[c].textContent.trim();
+             var p=parseFloat(u),q=parseFloat(v);
+             return!isNaN(p)&&!isNaN(q)?(d==='asc'?p-q:q-p):d==='asc'?u.localeCompare(v):v.localeCompare(u);
+           });
+           a.forEach(function(r){t.querySelector('tbody').appendChild(r);});
+         });});
+       });
+     })()"])
 
 (defn render-accordion-content
   "Renders workspace tab content."
@@ -517,7 +505,7 @@
      (render-record-header request entity-name title fields parent-row actions)
      (when (seq subgrids)
        [:div.ws-tabs-container
-         (render-tab-strip request entity-name subgrids)
+        (render-tab-strip request entity-name subgrids)
         (render-tab-panes request entity-name subgrids selected-parent-id)])
      (tab-switch-js)]))
 
