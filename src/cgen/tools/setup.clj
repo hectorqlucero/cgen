@@ -91,8 +91,12 @@
       (println "  Removed" (.getPath tools-dir)))))
 
 (defn -main [& args]
-  (let [[project-name target-parent] args
+  (let [[arg1 arg2] args
         cgen-root (.getCanonicalFile (io/file "."))
+        [project-name target-parent]
+        (if (and arg1 (re-find #"[/\\]" arg1))
+          [(.getName (io/file arg1)) (.getParent (io/file arg1))]
+          [arg1 arg2])
         parent-dir (if target-parent
                      (io/file target-parent)
                      (.getParentFile cgen-root))]
@@ -100,6 +104,7 @@
       (println "Usage: lein setup <project-name> [target-dir]")
       (println "  e.g.  lein setup my-project              ; creates ../my-project/")
       (println "  e.g.  lein setup my-project /path/to     ; creates /path/to/my-project/")
+      (println "  e.g.  lein setup /tmp/contactos          ; creates /tmp/contactos/")
       (System/exit 1))
 
     (let [target-dir (io/file parent-dir project-name)]
@@ -142,7 +147,7 @@
         (println "    system@example.com / system")
         (println)
         (println "  Next steps:")
-        (println "    1. cd" project-name)
+        (println "    1. cd" (.getCanonicalPath target-dir))
         (println "    2. Delete example migrations, entities, hooks you don't need")
         (println "    3. Write your own migrations, re-run lein scaffold --all")
         (println "    4. Start the dev server: lein with-profile dev run")))))
