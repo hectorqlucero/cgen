@@ -31,10 +31,15 @@
           {:id :last_name :label "Last Name" :type :text :required? true :placeholder "Last Name..."}
           {:id :email :label "Email" :type :email :placeholder "user@example.com"}
           {:id :active :label "Active" :type :radio :value "T" :options [{:id "activeT" :value "T" :label "Activo"}
-                                                                         {:id "activeF" :value "F" :label "Inactivo"}]}]
+                                                                         {:id "activeF" :value "F" :label "Inactivo"}] :hidden-in-grid? true}
+          {:id :status :label "Status" :grid-only? true}]
 
  :queries {:list "SELECT 
            emp.*, 
+           case
+           when emp.active = 'T' then 'Active'
+           else 'Inactive'
+           end as status,
            dep.name as department_nombre, 
            emp1.department_id as employee_nombre 
            FROM employees emp 
@@ -43,6 +48,10 @@
            ORDER BY emp.id DESC"
            :get "SELECT 
            emp.*, 
+           case
+           when emp.active = 'T' then 'Active'
+           else 'Inactive'
+           end as status,
            dep.name as department_nombre, 
            emp1.department_id as employee_nombre 
            FROM employees emp 
