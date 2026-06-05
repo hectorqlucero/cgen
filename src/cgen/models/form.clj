@@ -42,6 +42,16 @@
           :placeholder (i18n/tr nil :form/password)
           :required true
           :autocomplete "new-password"}]]
+       [:div.mb-4
+        [:label.form-label.fw-semibold {:for "confirm-password"}
+         [:i.bi.bi-lock.me-2] "Confirm password"]
+        [:input.form-control.form-control-lg
+         {:id "confirm-password"
+          :name "confirm-password"
+          :type "password"
+          :placeholder "Confirm password"
+          :required true
+          :autocomplete "new-password"}]]
        [:div.d-flex.gap-2.justify-content-end.mt-4
         [:button.btn.btn-success.btn-lg.fw-semibold
          {:type "submit"}

@@ -11,4 +11,6 @@
 
 (defroutes password-routes
   (GET "/change/password" params [] (home-controller/change-password params))
-  (POST "/change/password" params [] (home-controller/process-password params)))
+  (POST "/change/password" params [] (home-controller/process-password params))
+  (GET "/home/temp-password" params [] (home-controller/temp-password params))
+  (POST "/home/temp-password" params [] (home-controller/process-temp-password params)))

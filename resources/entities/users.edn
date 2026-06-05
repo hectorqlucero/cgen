@@ -2,15 +2,14 @@
  :title "Users"  ;; Edit this to your preference
  :table "users"
  :connection :default
- :rights ["U" "A" "S"]  ;; User levels: U=User, A=Admin, S=System
+ :rights ["A" "S"]  ;; User levels: U=User, A=Admin, S=System
  :mode :parameter-driven
  :menu-category :Users
  :menu-icon "bi bi-person-circle"
  :dropdown-menu "bi bi-people"
- 
+
  ;; Fields auto-detected from database schema
- :fields [
-          {:id :id :label "ID" :type :hidden}
+ :fields [{:id :id :label "ID" :type :hidden}
           {:id :lastname :label "Lastname" :type :text :placeholder "Lastname..."}
           {:id :firstname :label "Firstname" :type :text :placeholder "Firstname..."}
           {:id :username :label "Username" :type :text :placeholder "Username..."}
@@ -29,18 +28,18 @@
           ; {:id :imagen :label "Imagen" :type :file}
           ; {:id :last_login :label "Last Login" :type :textarea :placeholder "Last Login..."}
           ]
- 
+
  ;; Auto-generated queries (customize as needed)
  :queries {:list "SELECT * FROM users ORDER BY id DESC"
            :get "SELECT * FROM users WHERE id = ?"}
- 
+
  ;; Available actions
  :actions {:new true :edit true :delete true}
- 
+
  ;; Enable audit trail (tracks who created/modified and when)
  ;; Uncomment to enable:
  ;; :audit? true
- 
+
  ;; Lifecycle hooks for business logic
  ;; Senior developer: Implement these in src/cgen/hooks/users.clj
  :hooks {:before-save :cgen.hooks.users/before-save}
@@ -51,7 +50,7 @@
  ;;         :after-save :cgen.hooks.users/after-save
  ;;         :before-delete :cgen.hooks.users/before-delete
  ;;         :after-delete :cgen.hooks.users/after-delete}
- 
+
  ;; Subgrids (parent-child relationships)
  ;; Uncomment if this entity has child records:
  ;; :subgrids [{:entity :related-table
@@ -59,4 +58,4 @@
  ;;             :foreign-key :parent_id
  ;;             :icon "bi bi-list"
  ;;             :label "Related Records"}]
-}
+ }
