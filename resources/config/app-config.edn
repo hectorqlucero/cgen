@@ -32,12 +32,12 @@
                "morph" "pulse" "quartz" "sandstone" "simplex" "sketchy"
                "slate" "solar" "spacelab" "superhero" "united" "vapor"
                "yeti" "lumen"]
-      :default-theme "sketchy"
+      :default-theme "sandstone"
       :assets {:base-path "/assets"
                :logo "/images/logo.png"
                :placeholder "/images/placeholder_profile.png"
                :thumbnail-width 42
-                :thumbnail-height 32}}
+               :thumbnail-height 32}}
 
  :security {:csrf-token-name "anti-forgery-token"
             :ajax-header "x-requested-with"
