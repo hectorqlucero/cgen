@@ -273,8 +273,9 @@
 
 (defn- render-m2m-row
   [request fields has-pivot? through fk related-fk parent-id entity-name pane-id row]
-  (let [return-url (str "/admin/" entity-name "/" parent-id)]
-    [:tr {:data-row-id (:id row)}
+  (let [return-url (str "/admin/" entity-name "/" parent-id)
+        related-id (or (get row (keyword related-fk)) (:id row))]
+    [:tr {:data-row-id related-id}
      (for [[fid _] fields]
        [:td.small {:title (some-> (get row fid) str)}
         (render-field-value (get row fid))])
@@ -287,7 +288,7 @@
                       "&parent_fk=" fk
                       "&parent_id=" parent-id
                       "&related_fk=" related-fk
-                      "&related_id=" (:id row)
+                      "&related_id=" related-id
                       "&active_tab=" pane-id
                       "&return_url=" return-url)
            :title (i18n/tr request :pivot/edit-attributes)}
@@ -299,7 +300,7 @@
         [:input {:type "hidden" :name "parent_fk" :value fk}]
         [:input {:type "hidden" :name "parent_id" :value parent-id}]
         [:input {:type "hidden" :name "related_fk" :value related-fk}]
-        [:input {:type "hidden" :name "related_id" :value (:id row)}]
+        [:input {:type "hidden" :name "related_id" :value related-id}]
         [:input {:type "hidden" :name "active_tab" :value pane-id}]
         [:button.btn.btn-sm.btn-outline-danger
          {:type "submit"
