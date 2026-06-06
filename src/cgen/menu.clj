@@ -41,6 +41,13 @@
   "Custom dropdown menus (not entity-based)"
   {})
 
+(def custom-dropdown-items
+  "Extra items to append to existing dropdowns (auto-generated or custom).
+   Maps a category keyword to items in [href label rights order icon] format.
+   Example:
+   {:Users [[\"/users/report\" \"User Report\" \"A\" 30 \"bi bi-file-text\"]]}"
+  {:Users [["/home/temp-password" "Temp Password" "A" 10 "bi bi-file-text"]]})
+
 (defn ^:private parse-custom-menu-item
   "Parses a custom nav link or dropdown item vector.
    Supported forms:
@@ -159,8 +166,17 @@
                                              (:dropdowns auto-config)))
         ; Combine all dropdowns
         combined-dropdowns (merge auto-dropdowns-as-maps formatted-custom-dropdowns)
+        ; Merge custom dropdown items into existing dropdowns
+        combined-with-extra-items (reduce-kv
+                                   (fn [acc k items]
+                                     (if (contains? acc k)
+                                       (update acc k update :items
+                                               #(concat % (map format-custom-dropdown-item items)))
+                                       acc))
+                                   combined-dropdowns
+                                   custom-dropdown-items)
         ; Sort dropdowns by :order, then sort items within each and convert back to vectors
-        sorted-dropdowns (->> combined-dropdowns
+        sorted-dropdowns (->> combined-with-extra-items
                               (sort-by (fn [[_ cfg]] (or (:order cfg) 999)))
                               (map (fn [[category dropdown-config]]
                                      [category (update dropdown-config :items
