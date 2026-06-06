@@ -309,7 +309,7 @@
          [:i.bi.bi-x-circle-fill]]]]]]))
 
 (defn render-m2m-pane
-  [request entity-name entity-title parent-display subgrid selected-parent-id]
+  [request entity-name entity-title subgrid selected-parent-id]
   (let [sg-name (safe-id (name (:entity subgrid)))
         records (:records subgrid)
         fields (:fields subgrid)
@@ -411,7 +411,7 @@
                 :one-to-one
                 (render-o2o-pane request entity-name selected-parent-id sg)
                 :many-to-many
-                (render-m2m-pane request entity-name nil nil sg selected-parent-id)
+                (render-m2m-pane request entity-name nil sg selected-parent-id)
                 (render-otm-pane request entity-name sg selected-parent-id))]))
          subgrids)))
 

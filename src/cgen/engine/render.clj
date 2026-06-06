@@ -257,7 +257,7 @@
         [:div.mb-3
          [:label.form-label.fw-semibold {:for (name id)} label
           (when required? [:span.text-danger.ms-1 "*"])]
-         (when (and filename (not (map? filename)) (not (empty? filename)))
+         (when (and filename (not (map? filename)) (seq filename))
            [:div.mb-2
             [:img {:src (str (:path crud/config) filename "?" (random-uuid))
                    :alt filename
@@ -290,11 +290,11 @@
    Optional return-url: URL to redirect to after saving (used for subgrid forms).
    Optional active-tab: tab pane id to reactivate after return.
    Optional edited-id: record id to scroll to on the parent grid after save."
-  ([request entity row] (render-form request entity row nil nil nil nil))
-  ([request entity row subgrid-fk] (render-form request entity row subgrid-fk nil nil nil))
-  ([request entity row subgrid-fk return-url] (render-form request entity row subgrid-fk return-url nil nil))
-  ([request entity row subgrid-fk return-url active-tab] (render-form request entity row subgrid-fk return-url active-tab nil))
-  ([request entity row subgrid-fk return-url active-tab edited-id]
+  ([entity row] (render-form entity row nil nil nil nil))
+  ([entity row subgrid-fk] (render-form entity row subgrid-fk nil nil nil))
+  ([entity row subgrid-fk return-url] (render-form entity row subgrid-fk return-url nil nil))
+  ([entity row subgrid-fk return-url active-tab] (render-form entity row subgrid-fk return-url active-tab nil))
+  ([entity row subgrid-fk return-url active-tab edited-id]
    (let [config (config/get-entity-config entity)
          fields (config/get-form-fields entity subgrid-fk)
          entity-name (name entity)
@@ -349,16 +349,6 @@
            (mapcat (fn [field]
                      [(:id field) (:label field)])
                    display-fields))))
-
-(defn- extract-query-params
-  "Extracts pagination/search/sort params from a Ring request."
-  [request]
-  (let [params (:params request)]
-    {:search (get params :search "")
-     :sort-by (get params :sort-by "id")
-     :sort-order (get params :sort-order "desc")
-     :page (try (Integer/parseInt (get params :page "1"))
-                (catch Exception _ 1))}))
 
 (defn render-grid
   "Renders a grid for an entity.

@@ -10,9 +10,9 @@
 
 (defn- page-url [base-url params extra-params]
   (str base-url "?" (st/join "&"
-       (map (fn [[k v]]
-              (str (name k) "=" (java.net.URLEncoder/encode (str v) "UTF-8")))
-            (merge params extra-params)))))
+                             (map (fn [[k v]]
+                                    (str (name k) "=" (java.net.URLEncoder/encode (str v) "UTF-8")))
+                                  (merge params extra-params)))))
 
 (defn- pagination-link [label url active? disabled?]
   [:li.page-item
@@ -26,7 +26,7 @@
    page-info is a map with :page, :total-pages, :per-page, :total.
    base-url is the URL path to link to.
    current-params is a map of query params to preserve (search, sort-by, etc)."
-  [request page-info base-url current-params]
+  [page-info base-url current-params]
   (let [{:keys [page total-pages per-page total]} page-info]
     (when (and per-page (pos? per-page) total-pages (pos? total-pages))
       (let [base (dissoc current-params :page)]
@@ -37,14 +37,14 @@
           (pagination-link "&lsaquo;" (page-url base-url base {:page (dec page)})
                            false (= page 1))
           (for [p (take 7
-                       (if (<= total-pages 7)
-                         (range 1 (inc total-pages))
-                         (let [start (max 1 (- page 3))
-                               end (min total-pages (+ page 3))]
-                           (if (<= (- end start) 6)
-                             (range start (inc end))
-                             (sort (set (concat (range (max 1 (- page 3)) (inc page))
-                                                (range page (min (inc total-pages) (+ page 4))))))))))]
+                        (if (<= total-pages 7)
+                          (range 1 (inc total-pages))
+                          (let [start (max 1 (- page 3))
+                                end (min total-pages (+ page 3))]
+                            (if (<= (- end start) 6)
+                              (range start (inc end))
+                              (sort (set (concat (range (max 1 (- page 3)) (inc page))
+                                                 (range page (min (inc total-pages) (+ page 4))))))))))]
             (pagination-link (str p) (page-url base-url base {:page p})
                              (= p page) false))
           (when (> total-pages 7)
@@ -65,7 +65,7 @@
    field-id is a keyword, field-label is a string.
    current-sort-by and current-sort-order control the active sort indicator.
    base-url is the URL path. current-params preserves existing params."
-  [request field-id field-label base-url current-params current-sort-by current-sort-order]
+  [field-id field-label base-url current-params current-sort-by current-sort-order]
   (let [field-name (name field-id)
         is-active (= (name current-sort-by) field-name)
         new-order (if (and is-active (= current-sort-order :asc)) :desc :asc)
@@ -75,9 +75,9 @@
                     :else " &#9660;")
         params (assoc current-params :sort-by field-name :sort-order (name new-order) :page 1)
         href (str base-url "?" (st/join "&"
-                  (map (fn [[k v]]
-                         (str (name k) "=" (java.net.URLEncoder/encode (str v) "UTF-8")))
-                       params)))]
+                                        (map (fn [[k v]]
+                                               (str (name k) "=" (java.net.URLEncoder/encode (str v) "UTF-8")))
+                                             params)))]
     [:th.text-nowrap.text-uppercase.fw-semibold.px-2
      [:a {:href href
           :class (when is-active "text-decoration-underline")
@@ -124,7 +124,7 @@
      [:tr
       (for [field fields]
         (if (and page-info sort-by)
-          (sortable-header request (key field) (val field) href
+          (sortable-header (key field) (val field) href
                            (or current-params {})
                            (keyword (or sort-by :id)) (keyword (or sort-order :desc)))
           [:th.text-nowrap.text-uppercase.fw-semibold.px-2
@@ -205,7 +205,7 @@
         (build-grid-head request href fields args page-info current-params)
         (build-grid-body request rows href fields args)]]
       (when page-info
-        (pagination-bar request page-info href (or current-params {})))]]))
+        (pagination-bar page-info href (or current-params {})))]]))
 
 ;; =============================================================================
 ;; Dashboard (read-only table, no actions)
@@ -268,7 +268,6 @@
                [:i.bi.bi-plus-lg.me-1]
                (i18n/tr request :common/new)])]]]]
         (build-grid-body request rows href fields args)]]]]))
-
 
 (comment
   ;; Usage examples for pagination-bar

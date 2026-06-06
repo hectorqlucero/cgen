@@ -120,13 +120,13 @@
                                  matching-sg (first (filter #(= (:entity %) entity)
                                                             (:subgrids parent-config)))]
                              (:foreign-key matching-sg)))
-               active-tab (get-in request [:params :active_tab])
-               row (when (and parent-id subgrid-fk)
-                     {subgrid-fk parent-id})
-               return-url (when parent-entity-str
-                             (str "/admin/" parent-entity-str
-                                  (when parent-id (str "/" parent-id))))
-               content (render/render-form request entity row subgrid-fk return-url active-tab)]
+              active-tab (get-in request [:params :active_tab])
+              row (when (and parent-id subgrid-fk)
+                    {subgrid-fk parent-id})
+              return-url (when parent-entity-str
+                           (str "/admin/" parent-entity-str
+                                (when parent-id (str "/" parent-id))))
+              content (render/render-form entity row subgrid-fk return-url active-tab)]
           (application request title ok nil content))
         (catch Exception e
           (println "[ERROR] Add form handler failed:" (.getMessage e))
@@ -153,7 +153,7 @@
               ok (get-session-id request)]
           (if row
             (application request title ok nil
-                         (render/render-form request entity row nil return-url active-tab edited-id))
+                         (render/render-form entity row nil return-url active-tab edited-id))
             (application request "Record Not Found" ok nil
                          (render/render-error "Record not found"))))
         (catch Exception e
@@ -201,16 +201,16 @@
                   active-tab (or (get params :active_tab) (get params "active_tab"))
                   edited-id (or (get params :edited_id) (get params "edited_id")
                                 (when (and return-url selected-id) (str selected-id)))
-                   url (or (let [base (if (and return-url active-tab)
-                                        (str return-url "?active_tab=" active-tab)
-                                        return-url)]
-                             (cond-> base
-                               (and base edited-id)
-                               (str (if (re-find #"\?" base) "&" "?") "edited_id=" edited-id)))
-                           (str "/admin/" entity-name
-                                (when selected-id
-                                  (str "/" selected-id))))]
-                (redirect url))
+                  url (or (let [base (if (and return-url active-tab)
+                                       (str return-url "?active_tab=" active-tab)
+                                       return-url)]
+                            (cond-> base
+                              (and base edited-id)
+                              (str (if (re-find #"\?" base) "&" "?") "edited_id=" edited-id)))
+                          (str "/admin/" entity-name
+                               (when selected-id
+                                 (str "/" selected-id))))]
+              (redirect url))
             {:status 400
              :headers {"Content-Type" "application/json"}
              :body (str "{\"ok\":false,\"errors\":"

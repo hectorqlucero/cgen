@@ -315,7 +315,7 @@
 "
     "});})()")])
 
-(defn app-scripts [request]
+(defn app-scripts []
   (list
    [:script {:src "/vendor/bootstrap.bundle.min.js"}]
    (theme-js)
@@ -361,7 +361,7 @@
      [:div.container-fluid.px-4
       {:style "flex:1;min-height:0;max-height:calc(100vh - 200px);overflow-y:auto;padding-bottom:80px;"}
       (doall content)]]
-    (app-scripts request)
+    (app-scripts)
     js
     [:footer.bg-light.text-center.fixed-bottom.py-2.shadow-sm
      [:span "Copyright © "

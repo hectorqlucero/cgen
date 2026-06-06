@@ -93,8 +93,8 @@
         from-app (get-in config (into [:app] ks))
         from-top (get-in config ks)]
     (cond
-      (not (nil? from-app)) from-app
-      (not (nil? from-top)) from-top
+      (some? from-app) from-app
+      (some? from-top) from-top
       :else default)))
 
 (defn image-link

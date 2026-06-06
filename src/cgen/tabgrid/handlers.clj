@@ -109,7 +109,7 @@
     {:status 200
      :headers {"Content-Type" "text/html; charset=utf-8"}
      :body (render-html (render/render-m2m-pane request (name entity) entity-title
-                                                parent-display subgrid parent-id))}))
+                                                subgrid parent-id))}))
 
 (defn- pivot-visible-fields
   "Returns non-hidden, non-FK fields from a junction entity config."
