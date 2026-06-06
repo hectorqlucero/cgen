@@ -146,9 +146,7 @@
         return-path "/home/login"
         back-msg (i18n/tr request :common/back)
         error-general (i18n/tr request :error/general)
-        content-error-general [:p error-general [:a {:href return-path} back-msg]]
-        success-updated (i18n/tr request :success/updated)
-        content-success [:p success-updated [:a {:href return-path} back-msg]]]
+        content-error-general [:p error-general [:a {:href return-path} back-msg]]]
     (if (nil? user-id)
       (redirect "/home/login")
       (if (and row (= (:active row) "T") (= (:id row) user-id))
@@ -165,7 +163,8 @@
             :else
             (let [result (or (update-password username (hashers/derive password)) 0)]
               (if (> result 0)
-                (application request title (get-session-id request) nil content-success)
+                (-> (redirect "/home/login")
+                    (assoc :session {}))
                 (application request title (get-session-id request) nil content-error-general)))))
         (application request title (get-session-id request) nil content-error-general)))))
 

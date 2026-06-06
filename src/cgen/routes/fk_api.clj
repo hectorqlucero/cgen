@@ -186,7 +186,7 @@
               form-fields (map #(select-keys % [:id :label :type :required? :placeholder
                                                 :options :fk :fk-field :fk-parent])
                                fields)
-              rendered (let [render-fn #'cgen.engine.render/render-field]
+              rendered (let [render-fn #'render/render-field]
                          ;; Render each field separately and concatenate HTML to avoid fragment artifacts.
                          (->> fields
                               (map #(str (html (render-fn % {}))))

@@ -2,7 +2,6 @@
   (:require
    [clojure.java.io :as io]
    [clojure.edn :as edn]
-   [clojure.pprint :as pp]
    [clojure.string :as str]))
 
 (def default-category-key :admin)
@@ -15,19 +14,19 @@
     (when res
       (case (.getProtocol res)
         "file"
-         (->> (file-seq (io/file res))
-              (filter #(.isFile ^java.io.File %))
-              (filter #(str/ends-with? (.getName ^java.io.File %) ".edn"))
-              (map #(.getName ^java.io.File %))
-              (map #(str/replace % #"\.edn$" ""))
-              (sort))
+        (->> (file-seq (io/file res))
+             (filter #(.isFile ^java.io.File %))
+             (filter #(str/ends-with? (.getName ^java.io.File %) ".edn"))
+             (map #(.getName ^java.io.File %))
+             (map #(str/replace % #"\.edn$" ""))
+             (sort))
 
-         "jar"
-         (let [url-str (.toString res)
-               m (re-find #"jar:file:(.+?)!/" url-str)
-               jar-path (when m (second m))]
-           (when jar-path
-             (with-open [jf (java.util.jar.JarFile. ^String jar-path)]
+        "jar"
+        (let [url-str (.toString res)
+              m (re-find #"jar:file:(.+?)!/" url-str)
+              jar-path (when m (second m))]
+          (when jar-path
+            (with-open [jf (java.util.jar.JarFile. ^String jar-path)]
               (->> (.entries jf)
                    enumeration-seq
                    (map #(.getName ^java.util.jar.JarEntry %))
@@ -183,7 +182,7 @@
   (get-entity-info "clientes")
 
   ;; Generate full menu
-  (pp/pprint (generate-full-menu-config))
+  (generate-full-menu-config)
 
   ;; Test menu items by category
   (generate-menu-items))

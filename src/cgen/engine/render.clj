@@ -1,7 +1,6 @@
 (ns cgen.engine.render
   (:require
    [cgen.engine.config :as config]
-   [cgen.engine.query :as query]
    [cgen.models.grid :as grid]
    [cgen.models.form :as form]
    [cgen.models.crud :as crud]
@@ -329,18 +328,18 @@
                             return-url-hidden (as-> els (concat els [return-url-hidden]))
                             active-tab-hidden (as-> els (concat els [active-tab-hidden]))
                             edited-id-hidden (as-> els (concat els [edited-id-hidden])))
-              cancel-base (or return-url
-                              (if-let [id (:id row)]
-                                (str "/admin/" entity-name "/" id)
-                                (str "/admin/" entity-name)))
-              cancel-q (str/join "&"
-                                 (filter seq [(when active-tab (str "active_tab=" active-tab))
-                                              (when edited-id (str "edited_id=" edited-id))]))
-              cancel-url (if (seq cancel-q)
-                           (str cancel-base "?" cancel-q)
-                           cancel-base)
+             cancel-base (or return-url
+                             (if-let [id (:id row)]
+                               (str "/admin/" entity-name "/" id)
+                               (str "/admin/" entity-name)))
+             cancel-q (str/join "&"
+                                (filter seq [(when active-tab (str "active_tab=" active-tab))
+                                             (when edited-id (str "edited_id=" edited-id))]))
+             cancel-url (if (seq cancel-q)
+                          (str cancel-base "?" cancel-q)
+                          cancel-base)
              buttons (form/build-form-buttons {:cancel-url cancel-url})]
-        (form/form href all-elements buttons))))))
+         (form/form href all-elements buttons))))))
 
 (defn- build-fields-map
   "Builds a field map for grid rendering from entity config."

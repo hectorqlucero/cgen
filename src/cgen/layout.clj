@@ -16,7 +16,6 @@
       (str/replace #"[^a-zA-Z0-9\-]" "")
       (str/replace #"^$" "home")))
 
-
 (defn build-link [request href label & [icon]]
   (let [uri (:uri request)
         data-id (generate-data-id href)
@@ -30,7 +29,6 @@
        :onclick "localStorage.setItem('active-link', this.dataset.id)"}
       (when icon [:i.me-2 {:class icon}])
       label]]))
-
 
 (defn build-dropdown-link [request href label & [icon]]
   (let [uri (:uri request)
@@ -200,7 +198,7 @@
 
 ;; MENU FUNCTIONS
 (defn menus-private [request]
-  (let [{:keys [nav-links dropdowns]} (cgen.menu/get-menu-config)]
+  (let [{:keys [nav-links dropdowns]} (menu/get-menu-config)]
     [:nav.navbar.navbar-expand-lg.navbar-dark.bg-gradient.bg-primary.shadow-lg.fixed-top
      [:div.container-fluid
       (brand-logo)
@@ -317,13 +315,11 @@
 "
     "});})()")])
 
-
 (defn app-scripts [request]
   (list
    [:script {:src "/vendor/bootstrap.bundle.min.js"}]
    (theme-js)
-    [:script {:src "/js/fk-dependent.js?v=6"}]))
-
+   [:script {:src "/js/fk-dependent.js?v=6"}]))
 
 ;; LAYOUT FUNCTIONS
 
@@ -364,8 +360,8 @@
        (> ok 0) (menus-private request))
      [:div.container-fluid.px-4
       {:style "flex:1;min-height:0;max-height:calc(100vh - 200px);overflow-y:auto;padding-bottom:80px;"}
-       (doall content)]]
-     (app-scripts request)
+      (doall content)]]
+    (app-scripts request)
     js
     [:footer.bg-light.text-center.fixed-bottom.py-2.shadow-sm
      [:span "Copyright © "
