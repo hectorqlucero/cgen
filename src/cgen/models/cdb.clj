@@ -1,5 +1,6 @@
 (ns cgen.models.cdb
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as st]
    [buddy.hashers :as hashers]
    [cgen.models.crud :as crud :refer [Insert-multi Query!]]))
@@ -55,10 +56,10 @@
    {:id 3 :name "Project Management" :category "Management"}])
 
 (def employee-profiles-rows
-  [{:id 1 :employee_id 1 :bio "Engineering manager" :avatar nil :emergency_phone "555-1001"}
-   {:id 2 :employee_id 2 :bio "Senior developer" :avatar nil :emergency_phone "555-1002"}
-   {:id 3 :employee_id 3 :bio "Operations specialist" :avatar nil :emergency_phone "555-1003"}
-   {:id 4 :employee_id 4 :bio "Sales lead" :avatar nil :emergency_phone "555-1004"}])
+  [{:id 1 :employee_id 1 :bio "Engineering manager" :avatar "employee_profiles_1.png" :emergency_phone "555-1001"}
+   {:id 2 :employee_id 2 :bio "Senior developer" :avatar "employee_profiles_2.png" :emergency_phone "555-1002"}
+   {:id 3 :employee_id 3 :bio "Operations specialist" :avatar "employee_profiles_3.png" :emergency_phone "555-1003"}
+   {:id 4 :employee_id 4 :bio "Sales lead" :avatar "employee_profiles_4.png" :emergency_phone "555-1004"}])
 
 (def employee-projects-rows
   [{:id 1 :employee_id 1 :project_id 1 :role "Lead" :hours_per_week 20 :assigned_on "2024-01-20"}
@@ -122,7 +123,7 @@
                :name (str first-name " " last-name)
                :email (str (st/lower-case first-name) "." (st/lower-case last-name) i "@example.com")
                :phone (str "555-" (format "%04d" (+ 3000 i)))
-               :imagen nil}))
+                 :imagen (str "contactos_" i ".png")}))
           (range start-id (inc n)))))
 
 (defn- random-siblings
@@ -143,12 +144,13 @@
                                                            (count nombres-hijos)))
                                                  " "
                                                  (last (re-find #"^(\S+)\s+(\S+)" (:name contacto))))]
-                               {:name sib-name
-                                :age (+ 1 (mod (.nextInt rng) 80))
-                                :imagen nil
-                                :contacto_id (:id contacto)}))
-                           (range n-sibs)))))
-         (map-indexed (fn [idx m] (assoc m :id (inc idx))))
+                              {:name sib-name
+                                 :age (+ 1 (mod (.nextInt rng) 80))
+                                 :contacto_id (:id contacto)}))
+                            (range n-sibs)))))
+         (map-indexed (fn [idx m] (-> m
+                                       (assoc :id (inc idx))
+                                       (assoc :imagen (str "siblings_" (inc idx) ".png")))))
          (vec))))
 
 (defn- random-cars
@@ -162,18 +164,43 @@
                                                 (mod (+ (* (:id contacto) 13) j)
                                                      (count car-companies)))
                                    models (get car-models company (car-models "Toyota"))]
-                               {:company company
-                                :model (nth models (mod (+ (* (:id contacto) 3) j) (count models)))
-                                :year (+ 2005 (mod (.nextInt rng) 20))
-                                :imagen nil
-                                :contacto_id (:id contacto)}))
+                                {:company company
+                                 :model (nth models (mod (+ (* (:id contacto) 3) j) (count models)))
+                                 :year (+ 2005 (mod (.nextInt rng) 20))
+                                 :contacto_id (:id contacto)}))
                             (range n-cars)))))
-         (map-indexed (fn [idx m] (assoc m :id (inc idx))))
+         (map-indexed (fn [idx m] (-> m
+                                       (assoc :id (inc idx))
+                                       (assoc :imagen (str "cars_" (inc idx) ".png")))))
          (vec))))
 
 (def contactos-rows (random-contactos 30 1))
 (def siblings-rows (random-siblings contactos-rows))
 (def cars-rows (random-cars contactos-rows))
+
+(defn- generate-placeholder-image!
+  [filepath & {:keys [red green blue]}]
+  (let [img (java.awt.image.BufferedImage. 100 60 java.awt.image.BufferedImage/TYPE_INT_RGB)
+        g   (.createGraphics img)
+        c   (java.awt.Color. (or red 200) (or green 200) (or blue 200))]
+    (.setColor g c)
+    (.fillRect g 0 0 100 60)
+    (.dispose g)
+    (javax.imageio.ImageIO/write img "png" (java.io.File. filepath))))
+
+(defn- seed-placeholder-images!
+  [rows table-name column-name]
+  (let [uploads-dir (:uploads crud/config)]
+    (doseq [row rows]
+      (when-let [filename (get row column-name)]
+        (let [filepath (str uploads-dir filename)
+              id       (:id row)
+              r        (mod (* id 73) 256)
+              g        (mod (* id 149) 256)
+              b        (mod (* id 97) 256)]
+          (io/make-parents filepath)
+          (generate-placeholder-image! filepath :red r :green g :blue b)
+          (println (format "[database]   Created placeholder: %s" filename)))))))
 
 (def audit-log-rows
   [{:id 1 :entity "employees" :operation "seed" :data "initial dataset" :user_id 1 :timestamp "2024-01-01 10:00:00"}
@@ -308,6 +335,12 @@
     ;; Insert parent tables first, then dependent/link tables.
     (doseq [{:keys [table rows]} non-users-seed-plan]
       (insert-rows table rows :conn conn))
+    ;; Generate placeholder images for tables with image columns
+    (println "[database] Generating placeholder images...")
+    (seed-placeholder-images! contactos-rows "contactos" :imagen)
+    (seed-placeholder-images! siblings-rows "siblings" :imagen)
+    (seed-placeholder-images! cars-rows "cars" :imagen)
+    (seed-placeholder-images! employee-profiles-rows "employee_profiles" :avatar)
     (println "[database] Non-user seed completed.")))
 
 (defn database
