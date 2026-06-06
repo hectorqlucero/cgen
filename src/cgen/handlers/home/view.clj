@@ -1,6 +1,7 @@
 (ns cgen.handlers.home.view
   (:require
    [cgen.models.form :refer [login-form password-form]]
+   [cgen.models.util :refer [user-email user-level]]
    [cgen.web.csrf :refer [csrf-field]]))
 
 (defn home-view
@@ -54,5 +55,8 @@
           [:pre.p-3.bg-light.rounded [:code temp-password]]])]]]]])
 
 (defn change-password-view
-  [title]
-  (password-form title))
+  [request title]
+  (let [level (user-level request)
+        email (user-email request)
+        email-readonly? (not (some #(= level %) #{"A" "S"}))]
+    (password-form title :user-email email :email-readonly? email-readonly?)))

@@ -88,7 +88,7 @@
   (let [title (i18n/tr request :auth/change-password)
         ok (get-session-id request)
         js nil
-        content (change-password-view title)]
+        content (change-password-view request title)]
     (application request title ok js content)))
 
 (defn temp-password

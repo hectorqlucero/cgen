@@ -8,7 +8,7 @@
 
 (defn password-form
   "Renders a professional password change form with Bootstrap 5 styling"
-  [title]
+  [title & {:keys [user-email email-readonly?]}]
   (list
    [:div.container.d-flex.justify-content-center.align-items-center
     {:style "min-height: 80vh;"}
@@ -26,12 +26,15 @@
         [:label.form-label.fw-semibold {:for "email"}
          [:i.bi.bi-envelope.me-2] (i18n/tr nil :form/email)]
         [:input.form-control.form-control-lg
-         {:id "email"
-          :name "email"
-          :type "email"
-          :placeholder (i18n/tr nil :form/email)
-          :required true
-          :autocomplete "username"}]]
+         (merge
+          {:id "email"
+           :name "email"
+           :type "email"
+           :placeholder (i18n/tr nil :form/email)
+           :required true
+           :autocomplete "username"}
+          (when user-email {:value user-email})
+          (when email-readonly? {:readonly true}))]]
        [:div.mb-4
         [:label.form-label.fw-semibold {:for "password"}
          [:i.bi.bi-lock.me-2] (i18n/tr nil :form/password)]
