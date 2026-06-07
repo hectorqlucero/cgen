@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as st]
    [cgen.i18n.core :as i18n]
+   [cgen.models.export :as export]
    [cgen.web.csrf :refer [csrf-field]]))
 
 ;; =============================================================================
@@ -251,52 +252,105 @@
                     (str (name k) "=" (java.net.URLEncoder/encode (str v) "UTF-8")))
                   params))))
 
+(defn- filter-rows
+  "Filters rows where any field value contains search string (case-insensitive)."
+  [rows fields search]
+  (let [s (st/lower-case search)]
+    (filter (fn [row]
+              (some (fn [[k _]]
+                      (let [v (str (get row k ""))]
+                        (st/includes? (st/lower-case v) s)))
+                    fields))
+            rows)))
+
+(defn- sort-rows
+  "Sorts rows by field-key, case-insensitive, in the given direction."
+  [rows field-key direction]
+  (let [key-fn #(st/lower-case (str (get % field-key "")))]
+    (if (= direction :desc)
+      (reverse (sort-by key-fn (remove nil? rows)))
+      (sort-by key-fn (remove nil? rows)))))
+
 (defn build-report
-  "Renders a read-only report table with export buttons, search, sort, and pagination.
-   Optional page-info map (:sort-by, :sort-order, :page, :total-pages, :per-page, :total)
-   enables sortable headers and pagination.
-   Optional current-params map preserves query params across requests."
+  "Renders a read-only report table with export buttons, search, and sort.
+   Automatically handles ?export=csv, ?export=pdf, ?search=, ?sort-by=, and
+   ?sort-order= query parameters from the request.
+   Optional page-info and current-params can override auto-detection."
   [request title rows table-id fields & [page-info current-params]]
-  (let [base-url (:uri request)
-        cp (or current-params {})
-        export-params (dissoc cp :export)
-        qs (build-query-string export-params)
-        export-base (str base-url (when qs (str "?" qs)))]
-    [:div.card.shadow.mb-4
-     [:style "@media print{nav.navbar,footer,#export-toolbar,.search-form{display:none!important}.card{box-shadow:none!important;border:1px solid #dee2e6}.bg-gradient{background:#0d6efd!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}"]
-     [:div.card-body.bg-gradient.bg-primary.text-white.rounded-top.d-flex.justify-content-between.align-items-center
-      [:h4.mb-0.fw-bold title]
-      [:div#export-toolbar.d-flex.gap-1
-       [:a.btn.btn-sm.btn-light {:href (str export-base (if qs "&" "?") "export=csv") :role "button"}
-        [:i.bi.bi-file-earmark-spreadsheet.me-1] "Excel"]
-       [:a.btn.btn-sm.btn-light {:href (str export-base (if qs "&" "?") "export=pdf") :role "button"}
-        [:i.bi.bi-file-earmark-pdf.me-1] "PDF"]
-       [:button.btn.btn-sm.btn-light {:type "button" :onclick "window.print()"}
-        [:i.bi.bi-printer.me-1] "Print"]]]
-     [:div.p-3.bg-white.rounded-bottom
-      [:div.search-form (search-form request base-url cp)]
-      [:div.table-responsive
-       [:table.table.table-hover.table-bordered.table-striped.table-sm.compact.align-middle.w-100
-        {:id table-id}
-        [:thead
-         [:tr
-          (for [field fields]
-            (sortable-header (key field) (val field) base-url cp
-                             (keyword (:sort-by page-info "id"))
-                             (keyword (:sort-order page-info "asc"))))]]
-        [:tbody
-         (if (empty? rows)
-           [:tr
-            [:td.text-center.text-muted.py-4
-             {:colspan (count fields)}
-             [:em (i18n/tr request :grid/no-records)]]]
-           (for [row rows]
-             [:tr
-              (for [field fields]
-                [:td.text-truncate.align-middle
-                 ((key field) row)])]))]]]
-      (when page-info
-        (pagination-bar page-info base-url cp))]]))
+  (let [cp (or current-params
+               (let [qp (:query-params request)]
+                 (reduce-kv (fn [m k v]
+                              (if (contains? #{"search" "sort-by" "sort-order"} k)
+                                (assoc m (keyword k) v)
+                                m))
+                            {} (or qp {}))))
+        search (get cp :search)
+        rows (if (and search (not (st/blank? (str search))))
+               (filter-rows rows fields search)
+               rows)
+        sort-by-field (get cp :sort-by)
+        sort-order (get cp :sort-order "asc")
+        rows (if sort-by-field
+               (sort-rows rows (keyword sort-by-field) (keyword sort-order))
+               rows)
+        pi (or page-info
+               (cond-> {}
+                 sort-by-field (assoc :sort-by sort-by-field :sort-order sort-order)))
+        export-fmt (get-in request [:query-params "export"])]
+    (case export-fmt
+      "csv"
+      (let [csv-str (export/rows->csv rows fields)]
+        {:type :response
+         :response {:status 200
+                    :headers {"Content-Type" "text/csv; charset=utf-8"
+                              "Content-Disposition" (str "attachment; filename=\"" table-id ".csv\"")}
+                    :body csv-str}})
+      "pdf"
+      (let [pdf-bytes (export/rows->pdf title rows fields)]
+        {:type :response
+         :response {:status 200
+                    :headers {"Content-Type" "application/pdf"
+                              "Content-Disposition" (str "attachment; filename=\"" table-id ".pdf\"")}
+                    :body pdf-bytes}})
+      ;; Default: render HTML with search and sort
+      (let [base-url (:uri request)
+            qs (build-query-string (dissoc cp :export))
+            export-base (str base-url (when qs (str "?" qs)))]
+        {:type :html
+         :content
+         [:div.card.shadow.mb-4
+          [:style "@media print{nav.navbar,footer,#export-toolbar,.search-form{display:none!important}.card{box-shadow:none!important;border:1px solid #dee2e6}.bg-gradient{background:#0d6efd!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}"]
+          [:div.card-body.bg-gradient.bg-primary.text-white.rounded-top.d-flex.justify-content-between.align-items-center
+           [:h4.mb-0.fw-bold title]
+           [:div#export-toolbar.d-flex.gap-1
+            [:a.btn.btn-sm.btn-light {:href (str export-base (if qs "&" "?") "export=csv") :role "button"}
+             [:i.bi.bi-file-earmark-spreadsheet.me-1] "Excel"]
+            [:a.btn.btn-sm.btn-light {:href (str export-base (if qs "&" "?") "export=pdf") :role "button"}
+             [:i.bi.bi-file-earmark-pdf.me-1] "PDF"]
+            [:button.btn.btn-sm.btn-light {:type "button" :onclick "window.print()"}
+             [:i.bi.bi-printer.me-1] "Print"]]]
+          [:div.p-3.bg-white.rounded-bottom
+           [:div.search-form (search-form request base-url cp)]
+           [:div.table-responsive
+            [:table.table.table-hover.table-bordered.table-striped.table-sm.compact.align-middle.w-100
+             {:id table-id}
+             [:thead
+              [:tr
+               (for [field fields]
+                 (sortable-header (key field) (val field) base-url cp
+                                  (keyword (or (:sort-by pi) "id"))
+                                  (keyword (or (:sort-order pi) "asc"))))]]
+             [:tbody
+              (if (empty? rows)
+                [:tr
+                 [:td.text-center.text-muted.py-4
+                  {:colspan (count fields)}
+                  [:em (i18n/tr request :grid/no-records)]]]
+                (for [row rows]
+                  [:tr
+                   (for [field fields]
+                     [:td.text-truncate.align-middle
+                      ((key field) row)])]))]]]]]}))))
 
 ;; =============================================================================
 ;; Grid with custom new-record URL (used by render-subgrid in tabgrid)
