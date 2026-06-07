@@ -23,7 +23,7 @@ This clones cgen, creates a sibling `my-project/` directory with all namespaces 
 To generate to a specific path:
 
 ```bash
-lein setup my-project /path/to/projects
+lein setup /path/to/my-project
 ```
 
 ### 2. Start the Development Server
@@ -33,7 +33,7 @@ cd my-project
 lein with-profile dev run
 ```
 
-Visit `http://localhost:8080` and log in:
+Visit `http://localhost:3000` and log in:
 
 | Email | Password | Level |
 |---|---|---|
