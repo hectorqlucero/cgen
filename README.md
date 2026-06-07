@@ -1413,11 +1413,38 @@ Runs before/after a record is deleted. Use `before-delete` to check if it's safe
 
 ## Audit Trail (Who Did What and When)
 
-The framework can automatically log every insert, update, and delete to an `audit_log` table. Enable it per entity by adding `:audit? true` to the entity EDN file.
+The framework can automatically log every insert, update, and delete to an `audit_log` table, and stamp every record with who created/modified it and when. Enable it per entity by adding `:audit? true` to the entity EDN file.
 
-### Prerequisite: The `audit_log` Table
+### Required Fields on Entity Tables
 
-Your database must have an `audit_log` table with this schema:
+When audit is enabled, the framework injects four fields directly into your entity's table on every save:
+
+| Field | Type | When set |
+|---|---|---|
+| `created_by` | INTEGER (user ID) | On first insert |
+| `created_at` | TEXT (ISO-8601) | On first insert |
+| `modified_by` | INTEGER (user ID) | On every insert and update |
+| `modified_at` | TEXT (ISO-8601) | On every insert and update |
+
+Your entity's migration must include these columns:
+
+```sql
+CREATE TABLE products (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  name        TEXT NOT NULL,
+  price       REAL,
+  created_by  INTEGER,
+  created_at  TEXT,
+  modified_by INTEGER,
+  modified_at TEXT
+);
+```
+
+Alternatively, the framework auto-detects these columns — if they exist in the table, the stamps are applied even without `:audit? true` in the EDN.
+
+### The `audit_log` Table
+
+The audit log itself stores a separate history of every operation:
 
 ```sql
 CREATE TABLE IF NOT EXISTS audit_log (
@@ -1446,20 +1473,19 @@ Then put the `CREATE TABLE` SQL above into the up file and `DROP TABLE IF EXISTS
 
 ### What Gets Recorded
 
-| Operation | When | `data` column contains |
-|---|---|---|
-| `create` | After a new record is saved | The full record data map |
-| `update` | After a record is edited | The full record data map (before save, with `:id`) |
-| `delete` | Before a record is deleted | The entity name and record ID |
-
-Each entry also records:
-- **`user_id`** — The logged-in user who performed the action (`null` for anonymous operations)
-- **`timestamp`** — ISO-8601 instant when the action occurred
+| Column | Purpose |
+|---|---|
+| `entity` | Entity keyword (e.g. `"products"`) |
+| `operation` | `"create"`, `"update"`, or `"delete"` |
+| `data` | Full record data (serialized as string via `pr-str`) |
+| `user_id` | Logged-in user who performed the action (`null` for anonymous) |
+| `timestamp` | ISO-8601 instant when the action occurred |
 
 ### How to Use
 
-1. Ensure the `audit_log` table exists in your database
-2. Add `:audit? true` to your entity EDN:
+1. Add the four audit fields (`created_by`, `created_at`, `modified_by`, `modified_at`) to your entity's migration
+2. Ensure the `audit_log` table exists in your database
+3. Add `:audit? true` to your entity EDN:
 
 ```clojure
 {:entity :products
@@ -1468,7 +1494,7 @@ Each entry also records:
  ...}
 ```
 
-3. Restart or refresh — every create, update, and delete on `products` is now logged
+4. Restart or refresh — every create, update, and delete on `products` is now logged and stamped
 
 ### Querying the Audit Log
 
