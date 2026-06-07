@@ -4,10 +4,13 @@
 
 A parameter-driven Clojure web framework. Application behavior is controlled entirely by EDN configuration files in `resources/entities/`. Edit a config file and refresh the browser — no server restart required during development.
 
+> **👋 For new developers:** This framework lets you build database-driven web apps by editing configuration files — no need to write backend code for basic features. If you know basic SQL (database queries) and can edit text files, you can be productive from day one. See [Before You Start](#before-you-start) for what you need installed.
+
 ---
 
 ## Table of Contents
 
+- [Before You Start](#before-you-start)
 - [Quick Start](#quick-start)
 - [Project Structure](#project-structure)
 - [Configuration Reference](#configuration-reference)
@@ -19,23 +22,55 @@ A parameter-driven Clojure web framework. Application behavior is controlled ent
 - [Custom MVC Handlers](#custom-mvc-handlers)
 - [Manual Routes](#manual-routes)
 - [Menu Customization](#menu-customization)
-- [Creating a Dashboard](#creating-a-dashboard)
 - [Creating a Report](#creating-a-report)
 - [Creating a User and Assigning a Temporary Password](#creating-a-user-and-assigning-a-temporary-password)
 - [Lifecycle Hooks](#lifecycle-hooks)
 - [Audit Trail](#audit-trail)
 - [TabGrid Interface](#tabgrid-interface)
 - [Internationalization (i18n)](#internationalization-i18n)
-- [Engine Dashboard with Export](#engine-dashboard-with-export)
+- [Entity Dashboards (Auto-Generated)](#entity-dashboards-auto-generated)
 - [Full Tutorial: Building a Pizza Delivery App](#full-tutorial-building-a-pizza-delivery-app)
+- [Cheat Sheet](#cheat-sheet-experienced-devs)
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
 
 ---
 
+## Before You Start
+
+You need these tools installed on your computer:
+
+| Tool | What it is | Where to get it |
+|---|---|---|
+| **Java 11+** | The runtime that runs Clojure code | [adoptium.net](https://adoptium.net) |
+| **Leiningen** (`lein`) | Clojure's build tool (like `npm` for Node or `pip` for Python) | [leiningen.org](https://leiningen.org) |
+
+Check they work by running these commands in your terminal:
+
+```bash
+java -version
+lein version
+```
+
+If you see version numbers, you're ready to go.
+
+### Key concepts you'll see in this guide
+
+| Term | What it means |
+|---|---|
+| **EDN** | Clojure's configuration format (like JSON but with `:` prefixes on keys). You write entity configs in `.edn` files. |
+| **Entity** | A database table and all its configuration (fields, permissions, menus). One `.edn` file = one entity. |
+| **SQL** | The language databases speak. You'll write simple SQL queries for your entities. |
+| **Migration** | A SQL file that creates or changes a database table. |
+| **CRUD** | **C**reate, **R**ead, **U**pdate, **D**elete — the four basic operations on a database record. |
+| **FK** | Foreign Key — a column that links one table to another (e.g., `department_id` links an employee to a department). |
+| **Parameter-driven** | The engine reads your config files and auto-generates the admin UI. You don't write HTML or JavaScript. |
+
 ## Quick Start
 
-### 1. Generate a new project
+### 1. Create a new project
+
+Open a terminal and run these commands one by one:
 
 ```bash
 git clone https://github.com/<user>/cgen.git
@@ -45,34 +80,39 @@ cd my-project
 lein with-profile dev run
 ```
 
-This clones cgen, creates a sibling `my-project/` directory with all namespaces renamed, runs migrations, and seeds the database with default users. cgen itself stays untouched and reusable.
+**What this does:** It copies the framework into a new folder called `my-project/`, sets up the database with example tables, creates default user accounts, and starts the development web server.
 
-To generate to a specific path:
+> 💡 **Tip:** Replace `my-project` with your project name. To put it somewhere specific: `lein setup /path/to/my-project`
+
+### 2. Open the app in your browser
+
+Once the server is running, open `http://localhost:3000` in your browser. Log in with one of these accounts:
+
+| Email | Password | Level | What they can do |
+|---|---|---|---|---|
+| `user@example.com` | `user` | **U** (User) | View records only |
+| `admin@example.com` | `admin` | **A** (Admin) | Create, view, edit, delete records |
+| `system@example.com` | `system` | **S** (System) | Everything |
+
+> **Change all passwords before deploying to production.**
+
+### 3. How development works
+
+The dev server **hot-reloads** your changes automatically. This means:
+- Edit any configuration file in `resources/entities/`
+- Wait 2 seconds or refresh your browser
+- Your changes appear immediately — **no server restart needed**
+
+Hot-reload also applies to hook files (business logic files in `src/your-project/hooks/`).
+
+To force an immediate reload without waiting:
 
 ```bash
-lein setup /path/to/my-project
+# In your browser, visit:
+http://localhost:3000/admin/reload-config
+
+# Or from the REPL:
 ```
-
-### 2. Start the Development Server
-
-```bash
-cd my-project
-lein with-profile dev run
-```
-
-Visit `http://localhost:3000` and log in:
-
-| Email | Password | Level |
-|---|---|---|
-| `user@example.com` | `user` | U (regular user) |
-| `admin@example.com` | `admin` | A (administrator) |
-| `system@example.com` | `system` | S (system) |
-
-Change all passwords before deploying to production.
-
-The dev server hot-reloads entity configurations every two seconds. Hook files reload on change. No restart needed.
-
-For forced reload without waiting: visit `/admin/reload-config` in the browser, or from the REPL:
 
 ```clojure
 (require '[my-project.engine.config :as config])
@@ -81,49 +121,49 @@ For forced reload without waiting: visit `/admin/reload-config` in the browser, 
 
 ---
 
-## Project Structure
+## Project Structure (Where Things Go)
+
+Here's a tour of the files and folders in your generated project. You'll mostly work in `resources/` and occasionally in `src/`.
 
 ```
-resources/
-  entities/        Entity EDN configuration files (one per entity)
-  migrations/      Database migration SQL files
+resources/                          ← Files you edit most often
+  entities/                           Entity configs (.edn files, one per database table)
+  migrations/                         Database migration files (SQL to create/change tables)
   config/
-    app-config.edn Application and database configuration
+    app-config.edn                    Main app settings (database, email, themes, etc.)
   i18n/
-    en.edn         English translations
-    es.edn         Spanish translations
-  public/          Static assets (CSS, JS, images)
+    en.edn                            English labels/translations
+    es.edn                            Spanish labels/translations
+  public/                             Images, CSS, and JavaScript files
 
-src/
-  <project-name>/
-    core.clj         Application entry point and middleware
-    layout.clj       Page layout template (application function, nav bars)
-    menu.clj         Menu customization
-    migrations.clj   Ragtime migration runner
-    engine/          Framework core — config, CRUD, query, render, router, scaffold
-    hooks/           Business logic lifecycle hooks (one file per entity)
-    gen/             Generator namespace for handler scaffolding
-    routes/
-      routes.clj     Public routes (no authentication required)
-      proutes.clj    Protected routes (authentication required)
-    handlers/        Custom MVC handlers
-    models/          Database, email, export, form, grid utilities
-    i18n/            Locale-based translation system
-    web/             CSRF helper, etc.
-    config/          Config loading from EDN files
-    db/              Data migrator, SQL converter
-    tabgrid/         Tabbed subgrid interface
-    tools/           Project setup utility
+src/<project-name>/
+  core.clj                            App startup — wires everything together
+  layout.clj                          Page layout (header, nav bar, footer, theme)
+  menu.clj                            **Menu customization** — add/edit nav links and dropdowns
+  hooks/                              Business logic files (one per entity, optional)
+  routes/
+    routes.clj                        **Public routes** — pages anyone can visit (login, etc.)
+    proutes.clj                       **Protected routes** — pages that need login
+  handlers/                           Custom page handlers (for pages beyond basic CRUD)
+  engine/                             Framework internals (you rarely touch these)
 
-target/              Compiled artifacts
-test/                Unit tests
+target/                               Compiled code (auto-generated, ignore it)
+test/                                 Unit tests
 ```
+
+**Your workflow as a developer:**
+
+1. Create a database table → write a migration in `resources/migrations/`
+2. Configure the admin UI → create/edit an `.edn` file in `resources/entities/`
+3. Add custom business logic → write a hook in `src/<project>/hooks/`
+4. Build custom pages → create a handler in `src/<project>/handlers/`
+5. Add nav links → edit `src/<project>/menu.clj`
 
 ---
 
-## Configuration Reference
+## Configuration Reference (app-config.edn)
 
-`resources/config/app-config.edn`:
+This is your main app settings file at `resources/config/app-config.edn`. You only need to change a few values to get started — most defaults work out of the box. Here's the full file with explanations:
 
 ```clojure
 {:app {:session-timeout 28800                    ; 8 hours in seconds
@@ -205,33 +245,35 @@ Only three keys must change per environment: `:default` (app DB), `:main` (migra
 
 ## Database Commands
 
-```bash
-lein migrate                          # Apply pending migrations
-lein rollback                         # Rollback the last migration
-lein database                         # Seed default users and example data
-lein convert-migrations mysql         # Convert SQLite migrations to MySQL syntax
-lein convert-migrations postgresql    # Convert SQLite migrations to PostgreSQL syntax
-lein copy-data mysql                  # Copy SQLite data to MySQL (handles FK order)
-lein copy-data postgresql             # Copy SQLite data to PostgreSQL
-```
+These are commands you run in your project folder to manage the database:
 
-### Migrations
+| Command | What it does |
+|---|---|
+| `lein migrate` | Apply any new migration files to your database |
+| `lein rollback` | Undo the last migration (reverts the last change) |
+| `lein database` | Fill the database with starter data (default users, examples) |
+| `lein convert-migrations mysql` | Convert your SQLite migrations to MySQL format |
+| `lein convert-migrations postgresql` | Convert your SQLite migrations to PostgreSQL format |
+| `lein copy-data mysql` | Copy all your data from SQLite to a MySQL database |
+| `lein copy-data postgresql` | Copy all your data from SQLite to a PostgreSQL database |
 
-Migration files live in `resources/migrations/` and follow Ragtime conventions:
+### Migrations (Database Version Control)
+
+A **migration** is a SQL file that makes a change to your database (create a table, add a column, etc.). Migration files live in `resources/migrations/` and work in pairs:
 
 ```
 resources/migrations/
-  001-users.sqlite.up.sql              # CREATE TABLE, indexes, etc.
-  001-users.sqlite.down.sql            # DROP TABLE (rollback)
+  001-users.sqlite.up.sql              ← Creates the users table
+  001-users.sqlite.down.sql            ← Reverses it (drops the table)
   002-users_view.sqlite.up.sql
   002-users_view.sqlite.down.sql
   ...
 ```
 
-- Each migration **must** have matching `.up.sql` and `.down.sql` files.
-- The numeric prefix determines execution order.
-- The `.sqlite` part is the database type — converters produce `.mysql` and `.postgresql` variants.
-- SQL that blocks (e.g. `BEGIN` / `COMMIT` or `CREATE TRIGGER`) is detected and wrapped with `execute!` instead of `execute-batch!`.
+**Rules:**
+- Each migration needs both an `.up.sql` (apply) and `.down.sql` (undo) file
+- The number prefix (`001`, `002`...) controls the order they run
+- The `.sqlite` part means "this is for SQLite" — the framework can convert to MySQL/PostgreSQL format automatically
 
 **Example migration** (`001-users.sqlite.up.sql`):
 
@@ -270,27 +312,38 @@ To copy existing data: `lein copy-data mysql` (uses topological sort for FK depe
 
 ## Development Commands
 
-```bash
-lein with-profile dev run    # Start dev server with hot-reload (2s poll)
-lein run                     # Start production server
-lein compile                 # Compile Clojure sources
-lein test                    # Run unit tests
-lein uberjar                 # Build standalone JAR
-lein repl                    # Start REPL
-```
+These are the most common `lein` commands you'll use:
 
-### Production
+| Command | What it does |
+|---|---|
+| `lein with-profile dev run` | Start the dev server (hot-reload enabled — edit files, refresh browser) |
+| `lein run` | Start the production server (no hot-reload) |
+| `lein test` | Run all unit tests |
+| `lein compile` | Check your code for errors and compile it |
+| `lein uberjar` | Build a standalone `.jar` file for deployment |
+| `lein repl` | Start an interactive Clojure REPL (advanced) |
+
+### Deploying to Production
 
 ```bash
-lein uberjar
-java -jar target/uberjar/my-project-0.1.0-standalone.jar
+lein uberjar                                    # Build the package
+java -jar target/uberjar/my-project-0.1.0-standalone.jar   # Run it
 ```
 
 ---
 
 ## Entity Configuration (The Core of the Framework)
 
-Every database table you manage is configured by an EDN file in `resources/entities/`. These files define fields, queries, permissions, relationships, hooks, and UI behavior. The engine reads them dynamically — no code generation needed.
+Every database table you want to manage through the admin UI gets a **configuration file** in `resources/entities/`. These `.edn` files tell the engine:
+
+- What **fields** the table has (name, type, whether required)
+- What **SQL queries** to use for listing and editing records
+- Who has **permission** to view or edit
+- Where it appears in the **menu**
+- What **relationships** it has with other tables (subgrids)
+- Any custom **business logic** (hooks)
+
+The engine reads these files and auto-generates the admin interface — **no code needed for basic CRUD**.
 
 ### Minimal Entity
 
@@ -312,7 +365,9 @@ Every database table you manage is configured by an EDN file in `resources/entit
  :actions {:new true :edit true :delete true}}
 ```
 
-### Full Entity with All Options
+### Full Entity with All Options (Reference Example)
+
+This example shows every field type and configuration option available. You don't need to use all of them — start with the [Minimal Entity](#minimal-entity) above and add options as needed.
 
 ```clojure
 {:entity     :employees
@@ -546,21 +601,21 @@ The scaffold engine auto-detects:
 lein scaffold products --force
 ```
 
-By default, scaffold is **idempotent**: if the entity EDN or hook file already exists, it merges changes (e.g., new subgrids) without touching your customisations. Use `--force` to overwrite completely:
+By default, scaffold **safely updates existing files** — it adds any new fields or subgrids it finds but leaves your custom changes alone. Use `--force` to overwrite everything:
 
-| What | Without `--force` (default) | With `--force` |
+| What | Without `--force` (default — safe) | With `--force` (⚠️ overwrites) |
 |---|---|---|
-| **Entity EDN** (`resources/entities/products.edn`) | Merges new fields/subgrids into the existing file. Your custom `:queries`, `:hooks`, `:menu-category`, etc. are preserved. | **Overwrites** the file entirely with a fresh scaffold. All your custom edits are lost. |
-| **Hook file** (`src/<project>/hooks/products.clj`) | **Skipped** with a warning if it already exists. Your custom hook code is untouched. | **Regenerated** from scratch. All your custom hook logic is lost. |
+| **Entity EDN** (`resources/entities/products.edn`) | Adds new fields/subgrids only. Your custom `:queries`, `:hooks`, `:menu-category`, etc. stay as-is. | **Overwrites** the whole file. All your custom edits are lost. |
+| **Hook file** (`src/<project>/hooks/products.clj`) | **Skipped** with a warning if the file already exists. Your custom code is untouched. | **Regenerated** from scratch. All your custom hook code is lost. |
 
-Use `--force` when:
-- You renamed columns in the database and want the entity EDN to match exactly
-- You deleted and recreated a table with a different schema
-- The hook file was accidentally corrupted or you want a clean slate
+**Use `--force` when:**
+- You renamed database columns and the entity config needs to match
+- You deleted and recreated a table with different columns
+- You want a completely fresh start
 
-Without `--force` when:
-- You added custom SQL queries, hooks, or menu settings you want to keep
-- You only added a new FK column to the table and want it merged in
+**Skip `--force` (safe mode) when:**
+- You've added custom SQL queries, hooks, or menu settings you want to keep
+- You only added a new column to the table and want it merged in
 
 ### Scaffold all tables at once
 
@@ -584,12 +639,12 @@ lein scaffold employees --conn :pg         # Use a different database connection
 lein scaffold --all --exclude sessions,schema_migrations   # Skip certain tables
 ```
 
-### Create manually
+### Create manually (step by step)
 
-1. **Write a migration** in `resources/migrations/`:
+**Step 1: Write a migration file** — this creates your database table. Create two files in `resources/migrations/`:
 
 ```sql
--- 001-products.sqlite.up.sql
+-- 001-products.sqlite.up.sql    ← Creates the table
 CREATE TABLE IF NOT EXISTS products (
   id      INTEGER PRIMARY KEY AUTOINCREMENT,
   name    TEXT NOT NULL,
@@ -599,19 +654,21 @@ CREATE TABLE IF NOT EXISTS products (
 ```
 
 ```sql
--- 001-products.sqlite.down.sql
+-- 001-products.sqlite.down.sql  ← Reverses the creation (for rollback)
 DROP TABLE IF EXISTS products;
 ```
 
-2. **Run the migration**:
+> 💡 **Naming rule:** Each migration needs `.up.sql` (to create) and `.down.sql` (to undo). The number (`001`, `002`...) determines the order they run.
+
+**Step 2: Apply the migration** to your database:
 
 ```bash
 lein migrate
 ```
 
-3. **Create the entity EDN** at `resources/entities/products.edn` (see "Minimal Entity" above).
+**Step 3: Create the entity config file** at `resources/entities/products.edn`. Start with the [Minimal Entity](#minimal-entity) example above.
 
-4. **Refresh the browser** — the entity appears in the menu with full CRUD.
+**Step 4: Refresh your browser** — the new entity appears in the admin menu with full Create/Read/Update/Delete.
 
 ---
 
@@ -645,24 +702,32 @@ These are defined by the migrations in `resources/migrations/` and pre-configure
 - Tracks record changes when `:audit? true` is set on an entity config.
 
 ### Relationship Examples (`007-relationship_examples`)
-Eight tables demonstrating real-world relational patterns:
+Eight tables demonstrating real-world relational patterns — great to study if you're new to database relationships:
 
-- **organizations** — Columns: `id`, `name`, `code`, `active`. Top level. Subgrids: departments.
-- **departments** — Columns: `id`, `organization_id` (FK), `name`, `code`. With FK to organizations (`:fk :organizations`, `:fk-field [:name :code]`). Subgrids: employees.
-- **employees** — Columns: `id`, `department_id` (FK), `manager_id` (self-FK), `first_name`, `last_name`, `email`, `active`. With FKs to departments and self-referencing manager. Subgrids: employee_profiles (1:1), employee_projects (M:N via junction), employee_skills (M:N via junction).
-- **employee_profiles** — Columns: `id`, `employee_id` (FK, UNIQUE), `bio`, `avatar`, `emergency_phone`. One-to-one with employees (`:menu-hidden true`).
-- **projects** — Columns: `id`, `project_code`, `name`, `starts_on`, `ends_on`. Subgrids: employee_projects (M:N via junction).
-- **employee_projects** — Junction table with `employee_id`, `project_id`, `role`, `hours_per_week`, `assigned_on`. UNIQUE(employee_id, project_id). `:menu-hidden true`.
-- **skills** — Columns: `id`, `name`, `category`. Subgrids: employee_skills (M:N via junction).
-- **employee_skills** — Junction table with composite PK(`employee_id`, `skill_id`) and `proficiency` column. `:menu-hidden true`.
+- **organizations** — Top-level table. Each organization has multiple departments (subgrid).
+- **departments** — Has a FK `organization_id` linking to organizations. Each department has multiple employees.
+- **employees** — Linked to a department. Also has a `manager_id` linking to another employee (your boss is also in the same table!). Has three subgrids: one-to-one profile, and two many-to-many relationships (projects and skills).
+- **employee_profiles** — One-to-one with employees (each employee has exactly one profile).
+- **projects** — Linked to employees through a junction table (many-to-many: an employee can work on many projects, a project can have many employees).
+- **employee_projects** — A **junction table** linking employees to projects. Also stores extra info: `role`, `hours_per_week`.
+- **skills** — Linked to employees through a junction table (many-to-many).
+- **employee_skills** — A junction table linking employees to skills, with a `proficiency` column.
 
 All use `:mode :parameter-driven`, `:connection :default`, and `:rights ["U" "A" "S"]`.
 
 ---
 
-## Custom MVC Handlers
+## Custom Page Handlers (MVC)
 
-When you need custom business logic beyond what the parameter-driven engine provides, you can create standard MVC handlers with controller, model, and view files.
+The parameter-driven engine handles basic CRUD automatically, but when you need a custom page (like a dashboard, a phone-order screen, or a kitchen display board), you build a **handler**. Each handler has three files that work together:
+
+| File | What it does | Analogy |
+|---|---|---|
+| **Controller** (`controller.clj`) | Receives the web request, calls the model, sends the result to the view | Like a restaurant host — seats customers (routes requests) |
+| **Model** (`model.clj`) | Fetches data from the database | Like the kitchen — prepares the food (data) |
+| **View** (`view.clj`) | Renders HTML for the browser | Like the plating chef — makes it look good |
+
+This is called the **MVC pattern** (Model-View-Controller). Don't worry if that sounds fancy — the framework keeps it simple.
 
 ### Generating a Handler Skeleton
 
@@ -690,7 +755,7 @@ lein gen-handler reports remove
 
 #### Controller (`controller.clj`)
 
-The controller receives the Ring request map, calls the model to fetch data, renders it through the view, and wraps the result in the application layout.
+The controller receives the incoming web request, asks the model for data, passes it to the view to generate HTML, then wraps the page in the app's layout (nav bar, footer, theme).
 
 ```clojure
 (ns my-project.handlers.reports.controller
@@ -716,11 +781,11 @@ The `application` function from `layout.clj` wraps content in the full HTML page
 (application request title ok js content)
 ```
 
-- `request` — the Ring request map
-- `title` — page title string
-- `ok` — session ID (0 for anonymous, >0 for logged in)
-- `js` — optional Hiccup `[:script ...]` to inject
-- `content` — Hiccup HTML for the page body
+- `request` — the incoming web request (contains browser info, form data, etc.)
+- `title` — page title (shown in the browser tab)
+- `ok` — user ID (0 = not logged in, >0 = logged in)
+- `js` — optional extra JavaScript to add to the page
+- `content` — the HTML for the page body (generated by the view)
 
 #### Model (`model.clj`)
 
@@ -751,7 +816,7 @@ The model contains SQL queries and data access functions using `Query` from `mod
 
 #### View (`view.clj`)
 
-The view renders HTML using [Hiccup](https://github.com/weavejester/hiccup) (Clojure vectors that map to HTML). For report tables, use the shared `build-report` function from `models.grid`:
+The view renders HTML using **Hiccup** — a Clojure way of writing HTML using vectors (square brackets `[...]`). For example, `[:h1 "Hello"]` becomes `<h1>Hello</h1>`. For report tables, use the ready-made `build-report` function from `models.grid` — it handles sorting, searching, and export buttons for you:
 
 ```clojure
 (ns my-project.handlers.reports.view
@@ -781,11 +846,13 @@ The `build-report` function:
 - Adds `@media print` CSS for clean print output
 - Auto-detects `?search=`, `?sort-by=`, `?sort-order=` query parameters
 
-Full signature:
+The full `build-report` function accepts a few advanced options as well:
 
 ```clojure
 (build-report request title rows table-id fields & [page-info current-params])
 ```
+
+Don't worry about the extra parameters — for simple reports, the 5-parameter version shown above is all you need.
 
 ### Generating Custom Route Registrations
 
@@ -806,13 +873,14 @@ When you use `lein gen-handler <name>`, the tool automatically adds a require an
 
 ---
 
-## Manual Routes
+## Manual Routes (Connecting URLs to Pages)
 
-Custom routes are defined in two files under `src/<project>/routes/`:
+A **route** tells the app: "When someone visits this URL, run this code." Routes live in two files under `src/<project>/routes/`:
 
-### Public Routes (`routes.clj`)
+- **`routes.clj`** — pages that anyone can visit (login page, etc.)
+- **`proutes.clj`** — pages that require a login (protected)
 
-No authentication required. Currently includes login/logout and temp-password flow:
+### Public Routes (`routes.clj`) — No Login Needed
 
 ```clojure
 (ns my-project.routes.routes
@@ -880,7 +948,7 @@ Engine routes are composed in `core.clj` with login middleware:
 
 ## Menu Customization
 
-The navigation menu is assembled by `src/<project>/menu.clj`, which merges auto-generated entity menus with your custom links and dropdowns. The `get-menu-config` function combines everything, sorts by `:order`, and returns the complete menu map.
+The navigation menu is assembled by `src/<project>/menu.clj`. It automatically creates dropdown groups from your entity configs and lets you add custom links. The three sections below show how to add your own menu items.
 
 ### Custom Nav Links
 
@@ -1055,6 +1123,18 @@ Add the route in `src/<project>/routes/proutes.clj`:
 (GET "/dashboard" req (dashboard/main req))
 ```
 
+### Add to Menu
+
+The dashboard is not an entity-based page, so it needs a manual nav link in `src/<project>/menu.clj`:
+
+```clojure
+(def custom-nav-links
+  [["/"          "HOME"      "bi bi-house"        nil 0]
+   ["/dashboard" "DASHBOARD" "bi bi-speedometer2" "U" 10]])
+```
+
+See [Menu Customization](#menu-customization) for all menu configuration options.
+
 ### Entity-Specific Dashboards
 
 The engine provides entity dashboards automatically at `GET /dashboard/:entity`. For example, `GET /dashboard/users` shows a grid of all users with search, sort, export (`?export=csv`, `?export=pdf`), and print. No code needed.
@@ -1141,7 +1221,7 @@ Define the column map (keyword → label) and call `build-report`:
   (build-report request title rows "users-report" users-fields))
 ```
 
-`array-map` preserves insertion order so columns appear in the desired sequence.
+> 💡 **Note:** `array-map` keeps columns in the order you write them. If you used a regular map (`{}`), Clojure might reorder them alphabetically instead.
 
 ### Step 4: Implement the Controller
 
@@ -1187,21 +1267,34 @@ Edit `src/<project>/routes/proutes.clj`:
   (GET "/reports/users" req (reports/users req)))
 ```
 
+### Step 6: Add to Menu
+
+Reports are custom handlers (no entity EDN), so add a nav link or dropdown item in `src/<project>/menu.clj`. For standalone nav links:
+
+```clojure
+(def custom-nav-links
+  [["/"                  "HOME"      "bi bi-house"        nil 0]
+   ["/reports/contactos" "Contacts"  "bi bi-people"       "U" 10]
+   ["/reports/users"     "Users"     "bi bi-people"       "A" 20]])
+```
+
+Or add them to an existing or custom dropdown — see [Menu Customization](#menu-customization) for all options.
+
 ### What the Report Provides
 
 Once registered, the report at `/reports/contactos` automatically includes:
 - **Sortable columns** — click any column header to sort ascending, click again for descending
-- **Search/filter** — type in the search box to filter rows (client-side via query param `?search=`)
-- **CSV export** — click "Excel" button or navigate to `?export=csv`
-- **PDF export** — click "PDF" button or navigate to `?export=pdf`
-- **Print** — click "Print" button (`@media print` CSS hides nav, footer, toolbar)
-- Persisted URL: `/reports/contactos?search=juan&sort-by=name&sort-order=asc`
+- **Search/filter** — type in the search box to filter rows (adds `?search=...` to the URL automatically)
+- **CSV export** — click "Excel" button, or add `?export=csv` to the URL to download a spreadsheet
+- **PDF export** — click "PDF" button, or add `?export=pdf` to the URL
+- **Print** — click "Print" button (hides nav bar and buttons for a clean printout)
+- **Bookmarkable URLs** — the search term, sort column, and sort order are all saved in the URL, so you can bookmark or share specific filtered views
 
 ---
 
 ## Creating a User and Assigning a Temporary Password
 
-The framework includes a complete flow for administrators to create users and give them temporary passwords, with automatic email notification when SMTP is configured.
+This section covers the admin workflow for creating new user accounts and giving them a temporary password to log in with. The system can email the password automatically if you've set up email (see [Configuring Email](#configuring-email)).
 
 ### 1. Create the User Record
 
@@ -1260,9 +1353,9 @@ The system validates that all four fields are non-blank and not set to `"change_
 
 ---
 
-## Lifecycle Hooks
+## Lifecycle Hooks (Adding Custom Logic)
 
-Hooks allow custom logic at each CRUD lifecycle stage. They are defined in entity EDN as keyword references to functions in `src/<project>/hooks/<entity>.clj`:
+Hooks let you run your own code at specific points when a record is saved, loaded, or deleted. They're defined in the entity EDN file as references to functions in `src/<project>/hooks/<entity>.clj`:
 
 ```clojure
 ;; resources/entities/products.edn
@@ -1274,7 +1367,7 @@ Each hook receives a map and must return a (possibly modified) map.
 
 ### Before-Save
 
-Called before INSERT or UPDATE. Modify params, validate data, process file uploads, set audit fields, or cancel by throwing:
+Runs just before a record is saved (new or updated). Use this to validate data, process file uploads, auto-fill fields, or stop the save if something's wrong:
 
 ```clojure
 (ns my-project.hooks.products)
@@ -1292,7 +1385,7 @@ Called before INSERT or UPDATE. Modify params, validate data, process file uploa
 
 ### After-Load
 
-Called after SELECT. Transform loaded data for display — format dates, compute virtual fields, decrypt data:
+Runs after a record is loaded from the database. Use this to format data for display — like converting date formats, computing full names, or adding extra info:
 
 ```clojure
 (defn after-load [row]
@@ -1303,29 +1396,32 @@ Called after SELECT. Transform loaded data for display — format dates, compute
 
 ### Before-Delete / After-Delete
 
-Called before/after record deletion. Use `before-delete` to check constraints or cleanup related files. Throw an exception to abort.
+Runs before/after a record is deleted. Use `before-delete` to check if it's safe to delete (e.g., prevent deleting a customer who has orders). Throw an error to cancel the delete.
 
-### All Available Hook Points
+### All Available Hook Points (Cheat Sheet)
 
-- `:before-load` — before the SELECT query (modify query params)
-- `:after-load` — after the SELECT query (transform result row)
-- `:before-save` — before INSERT/UPDATE (validate or modify params)
-- `:after-save` — after INSERT/UPDATE (log, notify, etc.)
-- `:before-delete` — before DELETE (check constraints, abort if needed)
-- `:after-delete` — after DELETE (cleanup, notify)
+| Hook | When it runs | What you can do |
+|---|---|---|
+| `:before-load` | Before loading a record for editing | Add extra filtering or permissions |
+| `:after-load` | After loading a record | Format dates, add computed fields |
+| `:before-save` | Before saving (new or update) | Validate, process uploads, set defaults |
+| `:after-save` | After saving | Send notifications, log activity |
+| `:before-delete` | Before deleting | Check if deletion is safe, abort if needed |
+| `:after-delete` | After deleting | Cleanup related files, notify users |
 
 ---
 
-## Audit Trail
+## Audit Trail (Who Did What and When)
 
-Enable record-level audit by setting `:audit? true` in the entity EDN and ensuring the `audit_log` table exists (migration `006-audit_log`). The engine automatically tracks:
+Turn on `:audit? true` in your entity EDN file, and the engine automatically tracks every change. You need the `audit_log` table in your database (migration `006-audit_log` creates it).
 
-- Who created the record (`created_by`)
-- When it was created (`created_at`)
-- Who last modified it (`modified_by`)
-- When it was last modified (`modified_at`)
+It records:
 
-The `audit_log` table stores all changes with old/new values for each field.
+- Who **created** the record and when
+- Who **last edited** the record and when
+- What the **old and new values** were for each field
+
+This is useful for compliance and troubleshooting — you can always see who changed what.
 
 ---
 
@@ -1341,20 +1437,22 @@ This replaces the default flat grid view when subgrids are configured.
 
 ### Subgrid Config Options
 
+Each entry in `:subgrids` defines one child tab:
+
 ```clojure
-:subgrids [{:entity      :cars              ; Child entity keyword
-            :title       "Cars"            ; Tab label
-            :foreign-key :contacto_id      ; FK in child table
-            :icon        "bi bi-car"       ; Bootstrap icon
-            :label       "Cars"            ; Dropdown label
-            :relationship-type :one-to-many}]
+:subgrids [{:entity      :cars              ; Child table (must have its own .edn file)
+            :title       "Cars"            ; Text shown on the tab
+            :foreign-key :contacto_id      ; Column in child table that links back to parent
+            :icon        "bi bi-car"       ; Bootstrap icon for the tab
+            :label       "Cars"            ; Label in the dropdown
+            :relationship-type :one-to-many}]  ; See table below
 ```
 
 ---
 
-## Internationalization (i18n)
+## Internationalization (i18n) — Multiple Languages
 
-Translation files are EDN maps in `resources/i18n/`:
+Want your app in English, Spanish, or more? Translation files live in `resources/i18n/` as simple key-value maps:
 
 ```clojure
 ;; resources/i18n/es.edn
@@ -1375,17 +1473,16 @@ To translate a string in code:
 
 ---
 
-## Engine Dashboard with Export
+## Entity Dashboards (Auto-Generated)
 
-Every entity automatically gets a dashboard at `GET /dashboard/:entity` (e.g., `/dashboard/users`) that displays all records in a grid with:
+Every entity automatically gets a read-only dashboard at `/dashboard/:entity` (e.g., `/dashboard/users`). No configuration needed — just open the URL.
 
-- Search bar
-- Sortable columns
-- CSV export: `/dashboard/users?export=csv`
-- PDF export: `/dashboard/users?export=pdf`
-- Print support
-
-No code or configuration needed.
+Each dashboard gives you:
+- **Search bar** — filter records by any field
+- **Sortable columns** — click a column header to sort
+- **CSV export** — download as a spreadsheet: add `?export=csv` to the URL
+- **PDF export** — download as PDF: add `?export=pdf` to the URL
+- **Print** — clean print layout (hides nav and buttons)
 
 ---
 
@@ -2612,22 +2709,164 @@ and the Kanban dispatch board.
 
 ---
 
+## Cheat Sheet (Experienced Devs)
+
+### Commands
+
+| `lein setup <name>` | Generate new project from template |
+|---|---|
+| `lein with-profile dev run` | Start dev server (hot-reload on, 2s poll) |
+| `lein run` | Start production server |
+| `lein migrate` / `lein rollback` | Apply / undo last migration |
+| `lein database` | Seed default users and data |
+| `lein scaffold <table>` | Auto-gen entity EDN + hooks from DB table |
+| `lein scaffold --all` | Scaffold every non-system table |
+| `lein scaffold <t> --force` | Overwrite existing entity + hooks |
+| `lein scaffold <t> --no-hooks` | Skip hook stub generation |
+| `lein gen-handler <name>` | Generate MVC handler skeleton |
+| `lein gen-handler <name> remove` | Remove generated handler |
+| `lein test` | Run unit tests |
+| `lein uberjar` | Build standalone deployable JAR |
+
+### Entity EDN — Minimal (`resources/entities/<name>.edn`)
+
+```clojure
+{:entity :products, :title "Products", :table "products"
+ :rights ["U" "A" "S"], :menu-category :Inventory
+ :fields [{:id :name, :label "Name", :type :text, :required? true}
+          {:id :price, :label "Price", :type :decimal, :min 0, :step 0.01}]
+ :queries {:list "SELECT * FROM products ORDER BY name"
+           :get  "SELECT * FROM products WHERE id = ?"}
+ :actions {:new true, :edit true, :delete true}}
+```
+
+### Field Types
+
+| Type | HTML | Extra keys |
+|---|---|---|
+| `:text` | `<input type="text">` | `:placeholder` |
+| `:email` | `<input type="email">` | — |
+| `:password` | `<input type="password">` | — |
+| `:number` | `<input type="number">` | `:min` `:max` |
+| `:decimal` | `<input type="number" step="0.01">` | `:min` `:step` |
+| `:date` | `<input type="date">` | — |
+| `:datetime` | `<input type="datetime-local">` | — |
+| `:textarea` | `<textarea>` | `:placeholder` |
+| `:select` | `<select>` with static options | `:options [{:value "" :label "..."}]` |
+| `:fk` | `<select>` from referenced entity | `:fk` `:fk-field` `:fk-can-create?` `:fk-parent` `:fk-filter` `:hidden-in-grid?` |
+| `:radio` | radio button group | `:options` `:value` |
+| `:checkbox` | single checkbox | — |
+| `:file` | `<input type="file">` | — |
+| `:hidden` | `<input type="hidden">` | — |
+| `:computed` | read-only grid display | `:compute-fn` |
+
+### FK / Relationship Options
+
+| Key | Purpose |
+|---|---|
+| `:fk :departments` | Referenced entity keyword |
+| `:fk-field :name` or `[:first :last]` | Display column(s) from FK entity |
+| `:fk-parent :estado_id` | Parent field for dependent (cascading) dropdown |
+| `:fk-filter [:active "T"]` | Static WHERE clause on FK query |
+| `:fk-can-create? true` | Show "+" inline-create button |
+| `:hidden-in-grid? true` | Hide FK ID column (use `:grid-only?` field for label) |
+| `:grid-only? true` | Display-only field (SQL alias, not in form) |
+
+### Subgrids (Child Tabs)
+
+```clojure
+:subgrids [{:entity :employee_profiles, :title "Profile", :foreign-key :employee_id
+            :relationship-type :one-to-one}           ; :one-to-one | :one-to-many | :many-to-many
+           {:entity :employee_projects, :title "Projects", :foreign-key :employee_id
+            :relationship-type :many-to-many
+            :through-table :employee_projects          ; junction table
+            :related-entity :projects                   ; other side of M:N
+            :related-fk :project_id}]                   ; FK in junction table
+```
+
+### Menu Config
+
+| Entity EDN key | Purpose |
+|---|---|
+| `:menu-category :Inventory` | Group entities into a dropdown |
+| `:menu-order 10` | Sort position within dropdown |
+| `:menu-icon "bi bi-people"` | Bootstrap icon class |
+| `:menu-hidden true` | Hide from menu (subgrid-only entities) |
+
+**Custom links** (`src/<project>/menu.clj`):
+```clojure
+(def custom-nav-links
+  [["/path" "Label" "bi-icon" "rights" order]])           ;; standalone nav link
+
+(def custom-dropdowns
+  {:Reports {:id "navdrop-r", :label "Reports", :order 40,
+             :icon "bi bi-printer"
+             :items [["/reports/x" "X" "U" 10]]}})        ;; custom dropdown group
+
+(def custom-dropdown-items
+  {:Users [["/home/temp-password" "Temp PW" "A" 10]]})    ;; add to existing dropdown
+```
+
+### Lifecycle Hooks
+
+```clojure
+;; In entity EDN:
+{:hooks {:before-save :my-proj.hooks.products/before-save
+         :after-load  :my-proj.hooks.products/after-load}}
+
+;; Implement in src/<project>/hooks/products.clj:
+(defn before-save [params] (assoc params :updated_at (str (java.util.Date.))))
+(defn after-load  [row]    (update row :dob #(some-> % (.toString "yyyy-MM-dd"))))
+```
+
+| Hook | When | Common use |
+|---|---|---|
+| `:before-load` | Before SELECT | Add query filters |
+| `:after-load` | After SELECT | Format dates, compute fields |
+| `:before-save` | Before INSERT/UPDATE | Validate, process uploads |
+| `:after-save` | After INSERT/UPDATE | Notify, log |
+| `:before-delete` | Before DELETE | Check constraints |
+| `:after-delete` | After DELETE | Cleanup files |
+
+### Route Patterns (Auto-Generated)
+
+| URL | Purpose |
+|---|---|
+| `GET /admin/:entity` | Grid list with search/sort/pagination |
+| `GET /admin/:entity/add-form` | New record form |
+| `GET /admin/:entity/edit-form/:id` | Edit record form |
+| `POST /admin/:entity/save` | Create or update |
+| `POST /admin/:entity/delete/:id` | Delete record |
+| `GET /dashboard/:entity` | Read-only grid with CSV/PDF export |
+
+### Audit
+
+```clojure
+;; Entity EDN
+{:audit? true}   ;; requires audit_log table (migration 006)
+```
+
+---
+
 ## Troubleshooting
 
 **Entity not showing in menu**
-Verify `resources/entities/your_entity.edn` exists, is valid EDN, and `:menu-hidden` is not `true`. Check that `:rights` includes your user's level.
+Check that:
+- The `.edn` file exists in `resources/entities/` and is valid
+- `:menu-hidden` is not set to `true` (or is missing)
+- Your user's level (`U`, `A`, `S`) is listed in `:rights`
 
-**Database table not found**
-Run `lein migrate` to apply pending migrations.
+**Database table not found** (`"no such table"` error)
+Run `lein migrate` to create the table from your migration files.
 
-**Permission denied**
-Update `:rights` in the entity configuration to include the user's level.
+**Permission denied** (you see an error when trying to create/edit/delete)
+Update `:rights` in the entity config to include your user level. `["U" "A" "S"]` allows everyone.
 
-**FK select shows no options**
-Verify the referenced entity has a valid entity EDN and that `:fk-entity` points to it. The referenced entity's `:queries :list` must return the expected rows.
+**FK / dropdown select shows no options**
+Make sure the referenced entity has its own `.edn` file. The entity must exist and its `:queries :list` must return data.
 
 **File upload not working**
-Check `:uploads` directory exists and is writable. Check `:allowed-file-types` in config.
+Check that the upload folder (`:uploads` in config) exists and is writable by the server. Check `:allowed-file-types` for supported formats.
 
 **Port already in use**
 
