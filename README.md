@@ -18,6 +18,7 @@ A parameter-driven Clojure web framework. Application behavior is controlled ent
 - [Included Example Entities](#included-example-entities)
 - [Custom MVC Handlers](#custom-mvc-handlers)
 - [Manual Routes](#manual-routes)
+- [Menu Customization](#menu-customization)
 - [Creating a Dashboard](#creating-a-dashboard)
 - [Creating a Report](#creating-a-report)
 - [Creating a User and Assigning a Temporary Password](#creating-a-user-and-assigning-a-temporary-password)
@@ -877,9 +878,102 @@ Engine routes are composed in `core.clj` with login middleware:
 
 ---
 
-## Creating a Dashboard
+## Menu Customization
 
-The included dashboard at `GET /dashboard` collects record counts from all tables and displays them as Bootstrap cards. It is a standard MVC handler.
+The navigation menu is assembled by `src/<project>/menu.clj`, which merges auto-generated entity menus with your custom links and dropdowns. The `get-menu-config` function combines everything, sorts by `:order`, and returns the complete menu map.
+
+### Custom Nav Links
+
+Add standalone nav links (no dropdown) for pages without a backing entity — custom handlers, dashboards, external URLs:
+
+```clojure
+;; src/<project>/menu.clj
+(def custom-nav-links
+  "Custom navigation links (non-dropdown, not entity-based)"
+  [["/"          "HOME"      "bi bi-house"        nil 0]
+   ["/dashboard" "DASHBOARD" "bi bi-speedometer2" "U" 10]
+   ["/pedido"    "PEDIDO"    "bi bi-telephone"    "U" 20]
+   ["/despacho"  "DESPACHO"  "bi bi-truck"        "U" 30]])
+```
+
+Each entry follows `["/path" "Label" "icon-class" "rights" order]`:
+
+| Element | Description |
+|---|---|
+| `"/path"` | URL path |
+| `"Label"` | Display text |
+| `"icon-class"` (optional) | Bootstrap icon class, e.g. `"bi bi-house"`. Can appear in 3rd or 4th position — auto-detected by the `bi ` prefix |
+| `"rights"` (optional) | User level: `nil` = everyone, `"U"` = Users+, `"A"` = Admins only |
+| `order` (optional) | Sort order (lower = first). Defaults to `0` |
+
+Supported shorthand forms: `["/" "HOME"]`, `["/" "HOME" "U"]`, `["/" "HOME" "U" 10]`, `["/" "HOME" "bi bi-house"]`, `["/" "HOME" "bi bi-house" 10]`.
+
+### Custom Dropdown Menus
+
+Create entirely new dropdown menu groups (not tied to any entity category):
+
+```clojure
+;; src/<project>/menu.clj
+(def custom-dropdowns
+  "Custom dropdown menus (not entity-based)"
+  {:Reports
+   {:id      "navdrop-reports"
+    :data-id "Reports"
+    :label   "Reports"
+    :order   40
+    :icon    "bi bi-printer"
+    :items   [["/reports/contactos" "Contacts"  "U" 10 "bi bi-people"]
+              ["/reports/users"     "Users"     "A" 50 "bi bi-people"]]}})
+```
+
+| Key | Description |
+|---|---|
+| `:label` | Dropdown display text |
+| `:order` | Position among all dropdowns (lower = first) |
+| `:icon` | Bootstrap icon for the dropdown toggle |
+| `:items` | Vector of nav-link entries (same format as `custom-nav-links`) |
+
+Each item in `:items` follows the same `["/path" "Label" "rights" order "icon"]` format as nav links.
+
+### Adding Items to Existing Dropdowns
+
+Append extra items to auto-generated entity dropdowns (or custom ones) without modifying the entity EDN:
+
+```clojure
+;; src/<project>/menu.clj
+(def custom-dropdown-items
+  "Extra items to append to existing dropdowns (auto-generated or custom).
+   Maps a category keyword to items in [href label rights order icon] format."
+  {:Users    [["/home/temp-password" "Temp Password" "A" 10 "bi bi-file-text"]]
+   :Reports  [["/reports/orders" "Orders" "U" 60 "bi bi-receipt"]]})
+```
+
+The category keyword matches the `:menu-category` value from entity EDN files (`:Users`, `:Reports`, `:Catalogos`, etc.). Items are merged into the existing dropdown and sorted by `:order`.
+
+### Entity-Level Menu Config
+
+Entity EDN fields that affect menu placement (already documented in the [Field Spec](#field-spec)):
+
+| Key | Description |
+|---|---|
+| `:menu-category` | Dropdown group (keyword). Entities with the same category appear in the same dropdown |
+| `:menu-order` | Sort order within the dropdown |
+| `:menu-icon` | Bootstrap icon for the nav link |
+| `:dropdown-icon` | Icon override for the dropdown toggle when this entity defines the category |
+| `:menu-hidden` | `true` = hide from menu (for subgrid-only entities) |
+
+### Menu Refresh
+
+Entity menus auto-refresh with config hot-reload (every 2s in dev). For custom nav links and dropdowns, a dev server restart is required, or call from the REPL:
+
+```clojure
+(require '[my-project.engine.menu :as menu])
+(menu/refresh-menu!)
+```<｜end▁of▁thinking｜>Now verify the TOC also needs a link. Let me update it:
+
+<｜｜DSML｜｜tool_calls>
+<｜｜DSML｜｜invoke name="read">
+<｜｜DSML｜｜parameter name="offset" string="false">18
 
 ### Controller
 
