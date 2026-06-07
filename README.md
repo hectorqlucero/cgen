@@ -25,7 +25,7 @@ A parameter-driven Clojure web framework. Application behavior is controlled ent
 - [Creating a Report](#creating-a-report)
 - [Creating a User and Assigning a Temporary Password](#creating-a-user-and-assigning-a-temporary-password)
 - [Lifecycle Hooks](#lifecycle-hooks)
-- [Audit Trail](#audit-trail)
+- [Audit Trail](#audit-trail-who-did-what-and-when)
 - [TabGrid Interface](#tabgrid-interface)
 - [Internationalization (i18n)](#internationalization-i18n)
 - [Entity Dashboards (Auto-Generated)](#entity-dashboards-auto-generated)
@@ -1413,15 +1413,78 @@ Runs before/after a record is deleted. Use `before-delete` to check if it's safe
 
 ## Audit Trail (Who Did What and When)
 
-Turn on `:audit? true` in your entity EDN file, and the engine automatically tracks every change. You need the `audit_log` table in your database (migration `006-audit_log` creates it).
+The framework can automatically log every insert, update, and delete to an `audit_log` table. Enable it per entity by adding `:audit? true` to the entity EDN file.
 
-It records:
+### Prerequisite: The `audit_log` Table
 
-- Who **created** the record and when
-- Who **last edited** the record and when
-- What the **old and new values** were for each field
+Your database must have an `audit_log` table with this schema:
 
-This is useful for compliance and troubleshooting — you can always see who changed what.
+```sql
+CREATE TABLE IF NOT EXISTS audit_log (
+  id        INTEGER PRIMARY KEY AUTOINCREMENT,
+  entity    TEXT    NOT NULL,
+  operation TEXT    NOT NULL,
+  data      TEXT,
+  user_id   INTEGER,
+  timestamp TEXT
+);
+```
+
+If you created your project with `lein setup`, migration `006-audit_log` already creates this table. Run it:
+
+```bash
+lein migrate
+```
+
+If you added audit support later, create a new migration:
+
+```bash
+lein scaffold-migration add-audit-log
+```
+
+Then put the `CREATE TABLE` SQL above into the up file and `DROP TABLE IF EXISTS audit_log` into the down file.
+
+### What Gets Recorded
+
+| Operation | When | `data` column contains |
+|---|---|---|
+| `create` | After a new record is saved | The full record data map |
+| `update` | After a record is edited | The full record data map (before save, with `:id`) |
+| `delete` | Before a record is deleted | The entity name and record ID |
+
+Each entry also records:
+- **`user_id`** — The logged-in user who performed the action (`null` for anonymous operations)
+- **`timestamp`** — ISO-8601 instant when the action occurred
+
+### How to Use
+
+1. Ensure the `audit_log` table exists in your database
+2. Add `:audit? true` to your entity EDN:
+
+```clojure
+{:entity :products
+ :audit? true
+ :fields [...]
+ ...}
+```
+
+3. Restart or refresh — every create, update, and delete on `products` is now logged
+
+### Querying the Audit Log
+
+The audit log is a plain table — query it directly with SQL:
+
+```sql
+-- See all changes for a specific entity
+SELECT * FROM audit_log WHERE entity = 'products' ORDER BY id DESC;
+
+-- See who changed what
+SELECT al.*, u.email
+FROM audit_log al
+JOIN users u ON al.user_id = u.id
+WHERE al.entity = 'products'
+ORDER BY al.id DESC;
+```
 
 ---
 
