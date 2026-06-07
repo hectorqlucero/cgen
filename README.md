@@ -381,12 +381,22 @@ Every database table you manage is configured by an EDN file in `resources/entit
            :hidden-in-grid? true}
           {:id :employee_nombre :label "Manager" :grid-only? true}
 
-          ;; DEPENDENT FK — second dropdown filtered by the parent FK value
+          ;; DEPENDENT FK — second dropdown filtered by the parent FK value.
+          ;; :fk-parent is the field name (keyword) in the same entity whose
+          ;; selected value drives the filter.
           {:id :municipio_id :label "Municipio" :type :fk
            :fk :municipios
            :fk-field :nombre
-           :fk-parent {:field :estado_id :entity :estados}  ; parent FK
+           :fk-parent :estado_id
            :fk-can-create? true}
+
+          ;; FK WITH FILTER — static filter applied to all FK dropdown queries.
+          ;; A vector of [field value] that adds WHERE field = value to the
+          ;; FK options query.
+          {:id :department_id :label "Department" :type :fk
+           :fk :departments
+           :fk-field :name
+           :fk-filter [:active "T"]}
 
           ;; RADIO — single choice (horizontal buttons)
           {:id :active     :label "Active" :type :radio :value "T"
@@ -498,7 +508,8 @@ Each field supports:
 | `:compute-fn` | no | keyword/fn | Computed field function (for `:computed` type) |
 | `:fk` | no | keyword | Referenced entity keyword (used with `:type :fk`). E.g., `:departments` |
 | `:fk-field` | no | keyword or vec | Display column(s) from the FK entity. Single: `:name`, composite: `[:first_name :last_name]` |
-| `:fk-parent` | no | map | `{:field <parent_fk> :entity <parent_entity>}` for dependent FK selects |
+| `:fk-parent` | no | keyword | Parent field keyword for dependent FK selects. E.g., `:estado_id` |
+| `:fk-filter` | no | `[field value]` | Static filter on FK options. E.g., `[:active "T"]` adds `WHERE active = ?` |
 | `:fk-can-create?` | no | boolean | Show "+" button to create FK record inline via modal |
 | `:hidden-in-grid?` | no | boolean | Hide FK ID in grid (show display name from `:grid-only?` field instead) |
 | `:hidden-in-form?` | no | boolean | Hide in forms (for grid-only fields) |
@@ -1237,11 +1248,12 @@ This replaces the default flat grid view when subgrids are configured.
 ### Subgrid Config Options
 
 ```clojure
-:subgrids [{:entity      :cars          ; Child entity keyword
-            :title       "Cars"        ; Tab label
-            :foreign-key :contacto_id  ; FK in child table
-            :icon        "bi bi-car"   ; Bootstrap icon
-            :label       "Cars"}]      ; Dropdown label
+:subgrids [{:entity      :cars              ; Child entity keyword
+            :title       "Cars"            ; Tab label
+            :foreign-key :contacto_id      ; FK in child table
+            :icon        "bi bi-car"       ; Bootstrap icon
+            :label       "Cars"            ; Dropdown label
+            :relationship-type :one-to-many}]
 ```
 
 ---
@@ -1646,7 +1658,8 @@ These define what the parameter-driven engine shows for each table.
              :title       "Detalle del Pedido"
              :foreign-key :pedido_id
              :icon        "bi bi-list-ul"
-             :label       "Productos"}]}
+             :label       "Productos"
+             :relationship-type :one-to-many}]}
 ```
 
 **`resources/entities/pedido_detalle.edn`** — Order line items (hidden menu, subgrid only):
