@@ -1384,6 +1384,9 @@ rm db/pizza.sqlite
 
 # Re-run migrations (only the ones you kept)
 lein migrate
+
+# Seed Example users
+lein database
 ```
 
 Also clean up the uploaded files directory:
@@ -2246,7 +2249,8 @@ lein gen-handler despacho
 
 ```clojure
 (ns pizza.handlers.despacho.view
-  (:require [ring.util.anti-forgery :refer [anti-forgery-field]]))
+  (:require [clojure.string :as str]
+            [ring.util.anti-forgery :refer [anti-forgery-field]]))
 
 (def ^:private status-cfg
   {"nuevo"      {:label "Nuevo"      :color "danger"  :next "preparando" :next-label "→ Preparando"}
@@ -2327,7 +2331,7 @@ lein gen-handler despacho
           (for [r repartidores] [:option {:value (:id r)} (:nombre r)])]]
         [:div.col-auto
          [:button.btn.btn-info.text-white {:type "submit"}
-          [:i.bi.bi-send.me-2] "Enviar ruta"]]]]])))
+          [:i.bi.bi-send.me-2] "Enviar ruta"]]]]]]))
 
 (defn- status-column [label color orders]
   [:div.col-md-3.col-sm-6.mb-4
@@ -2393,6 +2397,34 @@ lein gen-handler despacho
     (when (seq pedido-ids) (model/asignar! pedido-ids repartidor-id))
     (redirect "/despacho")))
 ```
+
+#### 9d. Update Custom Menus
+
+The custom handlers `/pedido` and `/despacho` are not entity-based (they have no EDN file), so they need manual nav links in `src/pizza/menu.clj`.
+
+The file uses a `custom-nav-links` vector where each entry follows:
+
+```clojure
+["/path" "Label" "icon-class" "rights" order]
+```
+
+Edit `src/pizza/menu.clj` and set `custom-nav-links` to:
+
+```clojure
+(def custom-nav-links
+  "Custom navigation links (non-dropdown, not entity-based)"
+  [["/"          "HOME"     "bi bi-house"        nil 0]
+   ["/pedido"    "PEDIDO"   "bi bi-telephone"    "U" 10]
+   ["/despacho"  "DESPACHO" "bi bi-truck"        "U" 20]])
+```
+
+- **Rights**: `nil` = everyone, `"U"` = Users and above (U, A, S).
+- **Order**: Lower numbers appear first in the nav bar.
+- **Icons**: Bootstrap icon classes (e.g., `bi bi-telephone`).
+
+The `get-menu-config` function in the same file automatically merges these custom links with the auto-generated entity menus, sorts them by `:order`, and returns the complete menu map. No route registration is needed for the menu itself (routes were already registered in Step 8).
+
+After editing, restart the dev server — `HOME`, `PEDIDO`, and `DESPACHO` will appear in the navigation bar.
 
 ---
 
