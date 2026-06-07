@@ -99,16 +99,16 @@
         [:input {:type "hidden" :name (name k) :value (str v)}]))
      [:div.col-auto
       [:input.form-control.form-control-sm
-       {:type "search" :name "search" :placeholder (i18n/tr request :common/search "Search...")
+       {:type "search" :name "search" :placeholder (i18n/tr request :common/search)
         :value search
         :aria-label "Search"}]]
      [:div.col-auto
       [:button.btn.btn-sm.btn-outline-primary {:type "submit"}
-       [:i.bi.bi-search.me-1] (i18n/tr request :common/search "Search")]]
+       [:i.bi.bi-search.me-1] (i18n/tr request :common/search)]]
      (when (and search (not (st/blank? search)))
        [:div.col-auto
         [:a.btn.btn-sm.btn-outline-secondary {:href base-url}
-         [:i.bi.bi-x-lg.me-1] (i18n/tr request :common/clear "Clear")]])]))
+         [:i.bi.bi-x-lg.me-1] (i18n/tr request :common/clear)]])]))
 
 ;; =============================================================================
 ;; Table head (with optional sortable headers)
@@ -151,7 +151,7 @@
        [:tr
         [:td.text-center.text-muted.py-4
          {:colspan (+ (count fields) 1)}
-         [:em (i18n/tr request :grid/no-records "No records found")]]]
+         [:em (i18n/tr request :grid/no-records)]]]
        (for [row rows]
          [:tr
           (for [field fields]
@@ -231,12 +231,72 @@
          [:tr
           [:td.text-center.text-muted.py-4
            {:colspan (count fields)}
-           [:em (i18n/tr request :grid/no-records "No records found")]]]
+           [:em (i18n/tr request :grid/no-records)]]]
          (for [row rows]
            [:tr
             (for [field fields]
               [:td.text-truncate.align-middle
                ((key field) row)])]))]]]]])
+
+;; =============================================================================
+;; Report (read-only table with export buttons)
+;; =============================================================================
+
+(defn- build-query-string
+  "Builds a URL query string from a map of params, URL-encoding values."
+  [params]
+  (when (seq params)
+    (st/join "&"
+             (map (fn [[k v]]
+                    (str (name k) "=" (java.net.URLEncoder/encode (str v) "UTF-8")))
+                  params))))
+
+(defn build-report
+  "Renders a read-only report table with export buttons, search, sort, and pagination.
+   Optional page-info map (:sort-by, :sort-order, :page, :total-pages, :per-page, :total)
+   enables sortable headers and pagination.
+   Optional current-params map preserves query params across requests."
+  [request title rows table-id fields & [page-info current-params]]
+  (let [base-url (:uri request)
+        cp (or current-params {})
+        export-params (dissoc cp :export)
+        qs (build-query-string export-params)
+        export-base (str base-url (when qs (str "?" qs)))]
+    [:div.card.shadow.mb-4
+     [:style "@media print{nav.navbar,footer,#export-toolbar,.search-form{display:none!important}.card{box-shadow:none!important;border:1px solid #dee2e6}.bg-gradient{background:#0d6efd!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}"]
+     [:div.card-body.bg-gradient.bg-primary.text-white.rounded-top.d-flex.justify-content-between.align-items-center
+      [:h4.mb-0.fw-bold title]
+      [:div#export-toolbar.d-flex.gap-1
+       [:a.btn.btn-sm.btn-light {:href (str export-base (if qs "&" "?") "export=csv") :role "button"}
+        [:i.bi.bi-file-earmark-spreadsheet.me-1] "Excel"]
+       [:a.btn.btn-sm.btn-light {:href (str export-base (if qs "&" "?") "export=pdf") :role "button"}
+        [:i.bi.bi-file-earmark-pdf.me-1] "PDF"]
+       [:button.btn.btn-sm.btn-light {:type "button" :onclick "window.print()"}
+        [:i.bi.bi-printer.me-1] "Print"]]]
+     [:div.p-3.bg-white.rounded-bottom
+      [:div.search-form (search-form request base-url cp)]
+      [:div.table-responsive
+       [:table.table.table-hover.table-bordered.table-striped.table-sm.compact.align-middle.w-100
+        {:id table-id}
+        [:thead
+         [:tr
+          (for [field fields]
+            (sortable-header (key field) (val field) base-url cp
+                             (keyword (:sort-by page-info "id"))
+                             (keyword (:sort-order page-info "asc"))))]]
+        [:tbody
+         (if (empty? rows)
+           [:tr
+            [:td.text-center.text-muted.py-4
+             {:colspan (count fields)}
+             [:em (i18n/tr request :grid/no-records)]]]
+           (for [row rows]
+             [:tr
+              (for [field fields]
+                [:td.text-truncate.align-middle
+                 ((key field) row)])]))]]]
+      (when page-info
+        (pagination-bar page-info base-url cp))]]))
 
 ;; =============================================================================
 ;; Grid with custom new-record URL (used by render-subgrid in tabgrid)

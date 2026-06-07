@@ -9,6 +9,8 @@
    [cgen.engine.crud :as crud]
    [cgen.engine.render :as render]
    [cgen.tabgrid.core :as tabgrid]
+   [cgen.tabgrid.data :as tabgrid-data]
+   [cgen.models.export :as export]
    [cgen.models.util :refer [get-session-id user-level]]
    [cgen.layout :refer [application error-404]]))
 
@@ -81,7 +83,8 @@
     (error-404 "Entity not found" "/")))
 
 (defn handle-dashboard
-  "Handles dashboard view for an entity."
+  "Handles dashboard view for an entity.
+   Supports optional export via ?export=csv or ?export=pdf."
   [request]
   (if-let [entity (get-entity-from-request request)]
     (if (check-permission entity request)
@@ -90,8 +93,27 @@
               title (:title config)
               ok (get-session-id request)
               rows (query/list-with-hooks entity)
-              content (render/render-dashboard request title entity rows)]
-          (application request title ok nil content))
+              export-fmt (get-in request [:query-params "export"])]
+          (case export-fmt
+            "csv"
+            (let [fields (tabgrid-data/build-fields-map entity)
+                  csv-str (export/rows->csv rows fields)
+                  filename (str (name entity) ".csv")]
+              {:status 200
+               :headers {"Content-Type" "text/csv; charset=utf-8"
+                         "Content-Disposition" (str "attachment; filename=\"" filename "\"")}
+               :body csv-str})
+            "pdf"
+            (let [fields (tabgrid-data/build-fields-map entity)
+                  pdf-bytes (export/rows->pdf title rows fields)
+                  filename (str (name entity) ".pdf")]
+              {:status 200
+               :headers {"Content-Type" "application/pdf"
+                         "Content-Disposition" (str "attachment; filename=\"" filename "\"")}
+               :body pdf-bytes})
+            ;; Default: render HTML dashboard
+            (let [content (render/render-dashboard request title entity rows)]
+              (application request title ok nil content))))
         (catch Exception e
           (println "[ERROR] Dashboard handler failed:" (.getMessage e))
           (.printStackTrace e)

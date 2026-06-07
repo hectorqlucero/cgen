@@ -1,7 +1,6 @@
 (ns cgen.layout
   (:require
    [clj-time.core :as t]
-
    [clojure.string :as str]
    [hiccup.page :refer [html5]]
    [cgen.models.crud :refer [config]]

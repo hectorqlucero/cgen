@@ -381,9 +381,13 @@
       (grid/build-dashboard request title rows table-id fields))))
 
 (defn render-report
-  "Renders a report view (alias for dashboard)."
+  "Renders a report view with export buttons."
   [request title entity rows]
-  (render-dashboard request title entity rows))
+  (let [config (config/get-entity-config entity)
+        entity-name (name entity)
+        table-id (str entity-name "_report")
+        fields (build-fields-map entity)]
+    (grid/build-report request title rows table-id fields)))
 
 (defn render-subgrid
   "Renders a subgrid for a parent-child relationship."
