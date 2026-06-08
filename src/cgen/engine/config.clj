@@ -6,7 +6,7 @@
    [clojure.spec.alpha :as s]))
 
 (s/def ::id keyword?)
-(s/def ::label string?)
+(s/def ::label (s/or :string string? :keyword keyword?))
 (s/def ::type #{:text :email :password :date :datetime :number :decimal :select :radio :checkbox :textarea :file :hidden :computed})
 (s/def ::required? boolean?)
 (s/def ::placeholder string?)
@@ -181,7 +181,7 @@
       (case (.getProtocol res)
         "file"
         (->> (file-seq (io/file res))
-              (filter #(and (.isFile ^java.io.File %) (.endsWith (.getName ^java.io.File %) ".edn")))
+             (filter #(and (.isFile ^java.io.File %) (.endsWith (.getName ^java.io.File %) ".edn")))
              (map #(.getName ^java.io.File %))
              (map #(-> % (str/replace #"\.edn$" "") keyword))
              sort
@@ -313,7 +313,7 @@
                   (:hidden-in-form? %)
                   (= (:type %) :computed)
                   (and exclude-fk-id (= (:id %) exclude-fk-id)))
-              (:fields config)))))
+             (:fields config)))))
 
 (defn has-permission?
   "Checks if a user level has permission to access an entity."

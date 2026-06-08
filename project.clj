@@ -69,11 +69,14 @@
             ;;   lein copy-data localdb mysql --clear  ; clear target tables first
             ;;   lein copy-data mysql                  ; MySQL → SQLite (default target)
             "copy-data" ["run" "-m" "cgen.db.migrator" "--"]
-            ;; Generate/remove handler skeleton (controller, model, view)
-            ;;   lein gen-handler reports          ; create
-            ;;   lein gen-handler reports remove   ; remove
-             "gen-handler" ["run" "-m" "cgen.gen.handler" "--"]
-             "setup" ["run" "-m" "cgen.tools.setup" "--"]}
+             ;; Generate/remove handler skeleton (controller, model, view)
+             ;;   lein gen-handler reports          ; create
+             ;;   lein gen-handler reports remove   ; remove
+            "gen-handler" ["run" "-m" "cgen.gen.handler" "--"]
+             ;; i18n lint: validate translation keys across source and locale files
+             ;;   lein i18n-lint
+             ;;   lein i18n-lint src        ; scan a specific directory
+            "i18n-lint" ["run" "-m" "cgen.i18n.lint"]}
   :profiles {:uberjar {:aot :all
                        :main cgen.core
                        :jvm-opts ["-Dclojure.compiler.direct-linking=true"

@@ -1,11 +1,24 @@
 (ns cgen.i18n.core
   "Internationalization (i18n) system for the application.
-   Supports multiple languages with easy translation management."
+   Supports multiple languages with easy translation management.
+
+   API (preferred):
+     (tr :common/save)                 => \"Guardar\"
+     (tr :common/save {:count 5})      => \"Guardar (5)\"
+     (t :common/save :en)              => \"Save\"
+
+   API (backward-compat, deprecated):
+     (tr request :common/save)         => \"Guardar\"
+     (tr request :common/save {..})    => \"Guardar (5)\"
+
+   The *locale* dynamic var is bound per-request by wrap-locale middleware.
+   When a key is missing from the requested locale, falls back to default-locale."
   (:require
    [clojure.edn :as edn]
    [clojure.java.io :as io]))
 
-(def default-locale :es)  ;; Spanish by default
+(def default-locale :es)
+(def ^:dynamic *locale* nil)
 
 (def supported-locales
   "Map of supported locales with their display names"
@@ -45,36 +58,39 @@
     (ensure-translations-loaded locale)))
 
 (defn t
-  "Translates a key to the current locale.
-   
-   Usage:
-     (t :common/save) => \"Guardar\"
-     (t :common/save :en) => \"Save\"
-     (t :errors/required {:field \"Email\"}) => \"Email es requerido\"
-     (t :missing-key) => \"missing-key\" (returns key if not found)"
+  "Translates a key to the given locale with optional param interpolation.
+
+   Falls back to default-locale when the key is missing from the requested locale.
+   As a last resort returns the key name."
   ([key]
    (t key default-locale))
-
   ([key locale]
    (t key locale {}))
-
   ([key locale params]
    (ensure-translations-loaded locale)
    (let [translations (get @translations-cache locale {})
          translation (get translations key)]
-     (cond
-       ;; Translation found - interpolate params
-       (string? translation)
+     (if (string? translation)
        (reduce (fn [result [k v]]
                  (clojure.string/replace result
                                          (str "{" (name k) "}")
                                          (str v)))
                translation
                params)
-
-       ;; Translation not found - return key as string
-       :else
-       (name key)))))
+       (let [default-translation (do
+                                   (ensure-translations-loaded default-locale)
+                                   (get (get @translations-cache default-locale {}) key))]
+         (if (string? default-translation)
+           (do
+             (println "[I18N] Missing" key "for" (name locale)
+                      "- falling back to" (name default-locale))
+             (reduce (fn [result [k v]]
+                       (clojure.string/replace result
+                                               (str "{" (name k) "}")
+                                               (str v)))
+                     default-translation
+                     params))
+           (name key)))))))
 
 (defn translate
   "Alias for t function"
@@ -82,7 +98,7 @@
   (apply t args))
 
 (defn get-locale-from-session
-  "Gets the current locale from session, defaults to :es"
+  "Gets the current locale from session, defaults to default-locale"
   [session]
   (or (:locale session) default-locale))
 
@@ -104,18 +120,43 @@
   (get-in supported-locales [locale :flag] ""))
 
 (defn tr
-  "Translates using request's session locale.
-   
-   Usage:
-     (tr request :common/save)
-     (tr request :errors/required {:field \"Email\"})"
-  ([request key]
-   (let [locale (get-locale-from-session (:session request))]
-     (t key locale)))
+  "Translate using the current request context.
 
+   New API (preferred):
+     (tr :common/save)                  => one arg — key only
+     (tr :common/save {:field \"Email\"}) => two args — key + params
+
+   Deprecated backward-compat API:
+     (tr request :common/save)           => two args — request + key
+     (tr request :common/save {..})      => three args — request + key + params
+
+   Locale is resolved from *locale* (bound by wrap-locale middleware)
+   or falls back to default-locale."
+  ([key]
+   (let [locale (or *locale* default-locale)]
+     (t key locale)))
+  ([key params]
+   (if (map? key)
+     ;; backward compat: (tr request :key)
+     (let [locale (get-locale-from-session (:session key))]
+       (t params locale))
+     ;; new API: (tr :key params)
+     (let [locale (or *locale* default-locale)]
+       (t key locale params))))
   ([request key params]
+   ;; backward compat: (tr request :key params)
    (let [locale (get-locale-from-session (:session request))]
      (t key locale params))))
+
+(defn wrap-locale
+  "Ring middleware that binds *locale* from the session for each request.
+   Apply this early in the middleware stack so downstream code can use
+   (tr :key) without threading the request object."
+  [handler]
+  (fn [request]
+    (let [locale (get-locale-from-session (:session request))]
+      (binding [*locale* locale]
+        (handler request)))))
 
 (defn init!
   "Initializes the i18n system by loading all translations"

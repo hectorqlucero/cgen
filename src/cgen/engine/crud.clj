@@ -2,7 +2,8 @@
   (:require
    [cgen.engine.config :as config]
    [cgen.engine.query :as query]
-   [cgen.models.crud :as crud]))
+   [cgen.models.crud :as crud]
+   [cgen.i18n.core :as i18n]))
 
 (defn- execute-hook
   "Executes a hook function or Var if it exists."
@@ -27,7 +28,9 @@
           (when (or (nil? value) (and (string? value) (empty? value)))
             (swap! errors conj
                    {:field field-id
-                    :message (str (:label field) " is required")})))))
+                    :message (i18n/tr :validation/required {:field (if (keyword? (:label field))
+                                                                     (i18n/tr (:label field))
+                                                                     (:label field))})})))))
 
     ;; Execute custom validators
     (doseq [field fields]
@@ -38,7 +41,9 @@
             (when-not (validator value data)
               (swap! errors conj
                      {:field field-id
-                      :message (str (:label field) " is invalid")}))
+                      :message (i18n/tr :validation/invalid-data {:field (if (keyword? (:label field))
+                                                                           (i18n/tr (:label field))
+                                                                           (:label field))})}))
             (catch Exception e
               (swap! errors conj
                      {:field field-id

@@ -29,11 +29,11 @@
 (defn- temp-password-email-body [to temp-pass]
   {:from (or (:email-user (cfg/get-app-config)) "no-reply@example.com")
    :to to
-   :subject "Temporary password created"
+   :subject (i18n/tr :temp-password/created)
    :body [{:type "text/plain"
-           :content (str "A temporary password has been generated for your account.\n\n"
-                         "Temporary password: " temp-pass "\n\n"
-                         "Please log in and change it immediately.")}]})
+           :content (str (i18n/tr :success/temp-password) "\n\n"
+                         (i18n/tr :temp-password/title) ": " temp-pass "\n\n"
+                         (i18n/tr :temp-password/copy-warning))}]})
 
 (defn- send-temp-password-email [email-address temp-pass]
   (try
@@ -47,17 +47,17 @@
 
 (defn main
   [request]
-  (let [title "Home"
+  (let [title (i18n/tr :layout/home)
         ok (get-session-id request)
         js nil
         content (if (> ok 0)
                   (home-view)
-                  [:h2.text-info.text-center (i18n/tr request :auth/welcome)])]
+                  [:h2.text-info.text-center (i18n/tr :auth/welcome)])]
     (application request title ok js content)))
 
 (defn login
   [request]
-  (let [title (i18n/tr request :auth/login)
+  (let [title (i18n/tr :auth/login)
         ok (get-session-id request)
         js nil
         content (main-view title)]
@@ -65,16 +65,16 @@
 
 (defn login-user
   [{:keys [params session]}]
-  (let [title (i18n/tr params :auth/login)
+  (let [title (i18n/tr :auth/login)
         username (:username params)
         password (:password params)
         row (first (get-user username))
         active (:active row)
         return-path "/"
-        back-msg (i18n/tr params :common/back)
-        error-general (i18n/tr params :error/general)
+        back-msg (i18n/tr :common/back)
+        error-general (i18n/tr :error/general)
         content-error-general [:p error-general [:a {:href return-path} back-msg]]
-        error-forbidden (i18n/tr params :auth/invalid-credentials)
+        error-forbidden (i18n/tr :auth/invalid-credentials)
         content-error-forbidden [:p error-forbidden [:a {:href return-path} back-msg]]]
     (if (= active "T")
       (if (hashers/check password (:password row))
@@ -85,7 +85,7 @@
 
 (defn change-password
   [request]
-  (let [title (i18n/tr request :auth/change-password)
+  (let [title (i18n/tr :auth/change-password)
         ok (get-session-id request)
         js nil
         content (change-password-view request title)]
@@ -94,7 +94,7 @@
 (defn temp-password
   [request]
   (if (user-auth request ["A" "S"])
-    (let [title "Create Temporary Password"
+    (let [title (i18n/tr :temp-password/title)
           ok (get-session-id request)
           users (get-users)
           content (temp-password-view users nil nil nil)]
@@ -104,7 +104,7 @@
 (defn process-temp-password
   [{:keys [params] :as request}]
   (if (user-auth request ["A" "S"])
-    (let [title "Create Temporary Password"
+    (let [title (i18n/tr :temp-password/title)
           ok (get-session-id request)
           username (:username params)
           users (get-users)
@@ -116,36 +116,36 @@
             (let [email-address (:email row)
                   email-message (cond
                                   (not (valid-email-config?))
-                                  "Email not sent because SMTP is not configured."
+                                  (i18n/tr :error/email-not-configured)
 
                                   (st/blank? email-address)
-                                  "Email not sent because user has no email address."
+                                  (i18n/tr :error/no-email-address)
 
                                   :else
                                   (let [send-result (send-temp-password-email email-address temp-pass)]
                                     (if (:ok send-result)
-                                      (str "Email sent to " email-address " .")
-                                      (str "Email failed: " (:error send-result)))))]
+                                      (i18n/tr :temp-password/email-sent {:email email-address})
+                                      (i18n/tr :temp-password/email-failed {:error (:error send-result)}))))]
               (application request title ok nil
                            (temp-password-view users username
-                                               (str "Temporary password created. " email-message)
+                                               (str (i18n/tr :success/temp-password) ". " email-message)
                                                temp-pass)))
             (application request title ok nil
-                         (temp-password-view users username "Unable to update password." nil))))
+                         (temp-password-view users username (i18n/tr :error/password-update) nil))))
         (application request title ok nil
-                     (temp-password-view users username "Selected user not found or inactive." nil))))
+                     (temp-password-view users username (i18n/tr :error/user-not-found) nil))))
     (redirect "/")))
 
 (defn process-password
   [{:keys [params session] :as request}]
-  (let [title (i18n/tr request :auth/login)
+  (let [title (i18n/tr :auth/login)
         user-id (:user_id session)
         username (:email params)
         password (:password params)
         row (first (get-user username))
         return-path "/home/login"
-        back-msg (i18n/tr request :common/back)
-        error-general (i18n/tr request :error/general)
+        back-msg (i18n/tr :common/back)
+        error-general (i18n/tr :error/general)
         content-error-general [:p error-general [:a {:href return-path} back-msg]]]
     (if (nil? user-id)
       (redirect "/home/login")
@@ -154,11 +154,11 @@
           (cond
             (or (st/blank? password) (st/blank? confirm-password))
             (application request title (get-session-id request) nil
-                         [:p "Password and confirmation are required."])
+                         [:p (i18n/tr :validation/password-required)])
 
             (not= password confirm-password)
             (application request title (get-session-id request) nil
-                         [:p "Passwords do not match. Please try again."])
+                         [:p (i18n/tr :validation/password-confirmation)])
 
             :else
             (let [result (or (update-password username (hashers/derive password)) 0)]

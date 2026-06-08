@@ -10,6 +10,7 @@
    [cgen.routes.fk-api :refer [fk-api-routes]]
    [cgen.engine.router :as engine]
    [cgen.config.loader :as cfg]
+   [cgen.i18n.core :as i18n]
    [clojure.string :as str]
    [clojure.java.io :as io]
    [clojure.data.json :as json]
@@ -106,17 +107,18 @@
                 kind (when sql? (classify-sql rc msg))
                 dd (when (= kind :unique) (dup-details msg))
                 ;; Decide status and friendly message (with localization support)
+                locale (or (:locale (:session request)) :es)
                 [status plain] (cond
-                                 csrf? [403 (cfg/get-error-message :security :csrf :es)]
+                                 csrf? [403 (cfg/get-error-message :security :csrf locale)]
                                  (= kind :unique) [409 (if-let [f (:field dd)]
-                                                         (str (cfg/get-error-message :database :unique :es) " " f)
-                                                         (cfg/get-error-message :database :unique :es))]
-                                 (= kind :fk)     [409 (cfg/get-error-message :database :foreign-key :es)]
-                                 (= kind :not-null) [422 (cfg/get-error-message :database :not-null :es)]
-                                 (= kind :check)  [422 (cfg/get-error-message :database :check :es)]
-                                 (= kind :too-long) [422 (cfg/get-error-message :database :too-long :es)]
-                                 sql? [400 (cfg/get-error-message :database :general :es)]
-                                 :else [400 (cfg/get-error-message :database :general :es)])
+                                                         (str (cfg/get-error-message :database :unique locale) " " f)
+                                                         (cfg/get-error-message :database :unique locale))]
+                                 (= kind :fk)     [409 (cfg/get-error-message :database :foreign-key locale)]
+                                 (= kind :not-null) [422 (cfg/get-error-message :database :not-null locale)]
+                                 (= kind :check)  [422 (cfg/get-error-message :database :check locale)]
+                                 (= kind :too-long) [422 (cfg/get-error-message :database :too-long locale)]
+                                 sql? [400 (cfg/get-error-message :database :general locale)]
+                                 :else [400 (cfg/get-error-message :database :general locale)])
                 body-json (let [base {:ok false :error plain}
                                 base (if dd (merge base dd) base)]
                             (json/write-str base))]
@@ -185,6 +187,7 @@
   (-> (app-routes)
       (wrap-streamable-body)
       (wrap-multipart-params)
+      (i18n/wrap-locale)
       (wrap-defaults (-> site-defaults
                          (assoc-in [:security :anti-forgery] true)
                          (assoc-in [:session :store] (cookie-store {:key KEY}))

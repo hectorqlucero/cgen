@@ -55,7 +55,7 @@
           (pagination-link "&raquo;" (page-url base-url base {:page total-pages})
                            false (= page total-pages))]
          [:div.text-center.text-muted.small.mt-1
-          (str "Page " page " of " total-pages " (" total " records)")]]))))
+          (i18n/tr :grid/page-of {:page page :total-pages total-pages :total total})]]))))
 
 ;; =============================================================================
 ;; Sortable column header
@@ -100,16 +100,16 @@
         [:input {:type "hidden" :name (name k) :value (str v)}]))
      [:div.col-auto
       [:input.form-control.form-control-sm
-       {:type "search" :name "search" :placeholder (i18n/tr request :common/search)
+       {:type "search" :name "search" :placeholder (i18n/tr :common/search)
         :value search
-        :aria-label "Search"}]]
+        :aria-label (i18n/tr :common/search)}]]
      [:div.col-auto
       [:button.btn.btn-sm.btn-outline-primary {:type "submit"}
-       [:i.bi.bi-search.me-1] (i18n/tr request :common/search)]]
+       [:i.bi.bi-search.me-1] (i18n/tr :common/search)]]
      (when (and search (not (st/blank? search)))
        [:div.col-auto
         [:a.btn.btn-sm.btn-outline-secondary {:href base-url}
-         [:i.bi.bi-x-lg.me-1] (i18n/tr request :common/clear)]])]))
+         [:i.bi.bi-x-lg.me-1] (i18n/tr :common/clear)]])]))
 
 ;; =============================================================================
 ;; Table head (with optional sortable headers)
@@ -136,7 +136,7 @@
          [:a.btn.btn-success.btn-sm.fw-semibold.shadow-sm
           {:href (str href "/add-form") :role "button"}
           [:i.bi.bi-plus-lg.me-1]
-          (i18n/tr request :common/new)])]]]))
+          (i18n/tr :common/new)])]]]))
 
 ;; =============================================================================
 ;; Table body
@@ -152,7 +152,7 @@
        [:tr
         [:td.text-center.text-muted.py-4
          {:colspan (+ (count fields) 1)}
-         [:em (i18n/tr request :grid/no-records)]]]
+         [:em (i18n/tr :grid/no-records)]]]
        (for [row rows]
          [:tr
           (for [field fields]
@@ -165,17 +165,17 @@
               [:a.btn.btn-warning.btn-sm.fw-semibold.shadow-sm.rounded-pill
                {:href (str href "/edit-form/" (:id row)) :role "button"}
                [:i.bi.bi-pencil.me-1]
-               (i18n/tr request :common/edit)])
+               (i18n/tr :common/edit)])
             (when delete
               [:form {:method "POST"
                       :action (str href "/delete/" (:id row))
                       :style "display:inline"
-                      :onsubmit "return confirm('Are you sure?')"}
+                      :onsubmit (str "return confirm('" (i18n/tr :confirm/delete) "')")}
                (csrf-field)
                [:button.btn.btn-danger.btn-sm.fw-semibold.shadow-sm.rounded-pill
                 {:type "submit"}
                 [:i.bi.bi-trash.me-1]
-                (i18n/tr request :common/delete)]])]]]))]))
+                (i18n/tr :common/delete)]])]]]))]))
 
 ;; =============================================================================
 ;; Full grid (card + table + pagination + search)
@@ -232,7 +232,7 @@
          [:tr
           [:td.text-center.text-muted.py-4
            {:colspan (count fields)}
-           [:em (i18n/tr request :grid/no-records)]]]
+           [:em (i18n/tr :grid/no-records)]]]
          (for [row rows]
            [:tr
             (for [field fields]
@@ -324,11 +324,11 @@
            [:h4.mb-0.fw-bold title]
            [:div#export-toolbar.d-flex.gap-1
             [:a.btn.btn-sm.btn-light {:href (str export-base (if qs "&" "?") "export=csv") :role "button"}
-             [:i.bi.bi-file-earmark-spreadsheet.me-1] "Excel"]
+             [:i.bi.bi-file-earmark-spreadsheet.me-1] (i18n/tr :common/export)]
             [:a.btn.btn-sm.btn-light {:href (str export-base (if qs "&" "?") "export=pdf") :role "button"}
              [:i.bi.bi-file-earmark-pdf.me-1] "PDF"]
             [:button.btn.btn-sm.btn-light {:type "button" :onclick "window.print()"}
-             [:i.bi.bi-printer.me-1] "Print"]]]
+             [:i.bi.bi-printer.me-1] (i18n/tr :common/print)]]]
           [:div.p-3.bg-white.rounded-bottom
            [:div.search-form (search-form request base-url cp)]
            [:div.table-responsive
@@ -345,7 +345,7 @@
                 [:tr
                  [:td.text-center.text-muted.py-4
                   {:colspan (count fields)}
-                  [:em (i18n/tr request :grid/no-records)]]]
+                  [:em (i18n/tr :grid/no-records)]]]
                 (for [row rows]
                   [:tr
                    (for [field fields]
@@ -380,7 +380,7 @@
               [:a.btn.btn-success.btn-sm.fw-semibold.shadow-sm
                {:href custom-new-url :role "button"}
                [:i.bi.bi-plus-lg.me-1]
-               (i18n/tr request :common/new)])]]]]
+               (i18n/tr :common/new)])]]]]
         (build-grid-body request rows href fields args)]]]]))
 
 (comment

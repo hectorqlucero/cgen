@@ -69,14 +69,14 @@
     (when (:new actions)
       [:a.ws-new-btn
        {:href (str "/admin/" entity-name "/add-form")
-        :title (str (i18n/tr request :common/new) " " title)}
+        :title (str (i18n/tr :common/new) " " title)}
        [:i.bi.bi-plus-lg]])]
    [:div.ws-nav-search
     [:div.ws-search-wrap
      [:i.bi.bi-search.ws-search-icon]
      [:input.ws-search-input
       {:type "search" :disabled "disabled"
-       :placeholder (str (i18n/tr request :common/search) "...")}]]]
+       :placeholder (str (i18n/tr :common/search) "...")}]]]
    [:ul.ws-record-list
     {:id (str entity-name "-record-list")}
     (for [row    all-rows
@@ -99,7 +99,7 @@
 (defn- confirm-js
   "JS confirm() string for delete onsubmit."
   [request]
-  (str "return confirm('" (i18n/tr request :confirm/delete) "')"))
+  (str "return confirm('" (i18n/tr :confirm/delete) "')"))
 
 (defn- field-display-value
   "Resolved display value — runs compute-fn for computed fields."
@@ -124,7 +124,7 @@
 (defn- render-record-header
   [request entity-name title fields row actions]
   (if-not row
-    [:div.ws-empty-state [:i.bi.bi-inbox] [:p (i18n/tr request :grid/no-records)]]
+    [:div.ws-empty-state [:i.bi.bi-inbox] [:p (i18n/tr :grid/no-records)]]
     (let [label (parent-display-label fields row nil)
           rid   (get-record-id entity-name row)]
       [:div.ws-record-header
@@ -137,7 +137,7 @@
          (when (:edit actions)
            [:a.btn.btn-sm.btn-primary
             {:href (str "/admin/" entity-name "/edit-form/" rid)}
-            [:i.bi.bi-pencil.me-1] (i18n/tr request :common/edit)])
+            [:i.bi.bi-pencil.me-1] (i18n/tr :common/edit)])
          (when (:delete actions)
            [:form.d-inline
             {:method "POST"
@@ -145,7 +145,7 @@
              :onsubmit (confirm-js request)}
             (csrf-field)
             [:button.btn.btn-sm.btn-outline-danger {:type "submit"}
-             [:i.bi.bi-trash.me-1] (i18n/tr request :common/delete)]])]]
+             [:i.bi.bi-trash.me-1] (i18n/tr :common/delete)]])]]
        [:div.ws-fields-grid
         (for [[field-id field-label] fields]
           (render-field-pair entity-name field-id field-label row))]])))
@@ -168,22 +168,22 @@
       [:div.d-flex.align-items-center.gap-2
        (if record
          [:span.ws-o2o-status-linked
-          [:i.bi.bi-check-circle-fill.me-1] (i18n/tr request :subgrid/linked)]
+          [:i.bi.bi-check-circle-fill.me-1] (i18n/tr :subgrid/linked)]
          [:span.ws-o2o-status-unlinked
-          [:i.bi.bi-dash-circle.me-1] (i18n/tr request :subgrid/not-set)])
+          [:i.bi.bi-dash-circle.me-1] (i18n/tr :subgrid/not-set)])
        (if record
          (when (:edit actions)
            [:a.btn.btn-sm.btn-outline-primary
             {:href (str "/admin/" sg-name "/edit-form/" (:id record)
                         "?return_url=" return-url "&active_tab=" pane-id "&edited_id=" (:id record))}
-            [:i.bi.bi-pencil.me-1] (i18n/tr request :common/edit)])
+            [:i.bi.bi-pencil.me-1] (i18n/tr :common/edit)])
          [:a.btn.btn-sm.btn-outline-primary
           {:href (str "/admin/" sg-name "/add-form"
                       "?parent_id=" parent-id
                       "&parent_entity=" parent-entity-name
                       "&active_tab=" pane-id)}
           [:i.bi.bi-plus-circle.me-1]
-          (i18n/tr request :subgrid/create {:title (:title subgrid)})])]]
+          (i18n/tr :subgrid/create {:title (:title subgrid)})])]]
      (if record
        [:div.ws-o2o-body
         (for [[fid flabel] fields
@@ -194,7 +194,7 @@
            [:span.ws-o2o-field-value (render-field-value v)]])]
        [:div.ws-o2o-empty
         [:i.bi.bi-dash-circle.me-2]
-        (i18n/tr request :subgrid/no-linked-yet {:title (:title subgrid)})])]))
+        (i18n/tr :subgrid/no-linked-yet {:title (:title subgrid)})])]))
 
 ;;; -- 1:M pane --------------------------------------------------------
 
@@ -212,7 +212,7 @@
               [:tr
                (for [[_ label] fields] [:th.subgrid-sortable label [:i.bi.bi-chevron-expand.ms-1]])
                (when (or show-edit? show-delete?)
-                 [:th {:style "width:120px"} (i18n/tr request :common/actions)])]]]
+                 [:th {:style "width:120px"} (i18n/tr :common/actions)])]]]
             [(into [:tbody]
                    (for [row records]
                      (into [:tr {:data-row-id (:id row)}]
@@ -237,11 +237,11 @@
                                     [:input {:type "hidden" :name "active_tab" :value pane-id}]
                                     [:button.btn.btn-sm.btn-outline-danger
                                      {:type "submit"
-                                      :onclick (str "return confirm('" (i18n/tr request :confirm/delete) "')")}
+                                      :onclick (str "return confirm('" (i18n/tr :confirm/delete) "')")}
                                      [:i.bi.bi-trash]]])]]])))))])
       [:div.text-center.p-4.text-muted
        [:i.bi.bi-inbox {:style "font-size:1.5rem"}]
-       [:p.mt-2 (i18n/tr request :grid/no-records)]])))
+       [:p.mt-2 (i18n/tr :grid/no-records)]])))
 
 (defn- render-otm-pane
   [request entity-name subgrid selected-parent-id]
@@ -261,13 +261,13 @@
                    "?parent_id=" selected-parent-id
                    "&parent_entity=" entity-name
                    "&active_tab=" entity-name "-" sg-name "-pane")}
-       [:i.bi.bi-plus-circle.me-1] (i18n/tr request :common/new)]]
+       [:i.bi.bi-plus-circle.me-1] (i18n/tr :common/new)]]
      (when (seq records)
        [:div.subgrid-search-wrap
         [:input.subgrid-search.form-control.form-control-sm
-         {:type "search" :placeholder (str (i18n/tr request :common/search) "...")}]
+         {:type "search" :placeholder (str (i18n/tr :common/search) "...")}]
         [:span.badge.rounded-pill.bg-light.text-secondary.border.subgrid-clear
-         [:i.bi.bi-x] (str " " (i18n/tr request :common/clear))]])
+         [:i.bi.bi-x] (str " " (i18n/tr :common/clear))]])
      (render-subgrid-table request entity-name selected-parent-id
                            sg-name fields records actions)]))
 
@@ -291,7 +291,7 @@
                       "&related_id=" related-id
                       "&active_tab=" pane-id
                       "&return_url=" return-url)
-           :title (i18n/tr request :pivot/edit-attributes)}
+           :title (i18n/tr :pivot/edit-attributes)}
           [:i.bi.bi-sliders]])
        [:form.d-inline
         {:method "POST" :action "/tabgrid/dissociate"}
@@ -304,8 +304,8 @@
         [:input {:type "hidden" :name "active_tab" :value pane-id}]
         [:button.btn.btn-sm.btn-outline-danger
          {:type "submit"
-          :title (i18n/tr request :subgrid/unlink)
-          :onclick (str "return confirm('" (i18n/tr request :confirm/unlink) "')")}
+          :title (i18n/tr :subgrid/unlink)
+          :onclick (str "return confirm('" (i18n/tr :confirm/unlink) "')")}
          [:i.bi.bi-x-circle-fill]]]]]]))
 
 (defn render-m2m-pane
@@ -340,13 +340,13 @@
        [:span.badge.bg-secondary.ms-2 (or (:count subgrid) 0)]]
       [:a.btn.btn-sm.btn-success
        {:href link-url}
-       [:i.bi.bi-plus-circle.me-1] (i18n/tr request :subgrid/link)]]
+       [:i.bi.bi-plus-circle.me-1] (i18n/tr :subgrid/link)]]
      (when (seq records)
        [:div.subgrid-search-wrap
         [:input.subgrid-search.form-control.form-control-sm
-         {:type "search" :placeholder (str (i18n/tr request :common/search) "...")}]
+         {:type "search" :placeholder (str (i18n/tr :common/search) "...")}]
         [:span.badge.rounded-pill.bg-light.text-secondary.border.subgrid-clear
-         [:i.bi.bi-x] (str " " (i18n/tr request :common/clear))]])
+         [:i.bi.bi-x] (str " " (i18n/tr :common/clear))]])
      (if (seq records)
        (into [:table.table.table-hover.table-sm.table-bordered.mb-0.subgrid-table
               {:id (str entity-name "-" sg-name "-table")}
@@ -354,7 +354,7 @@
                [:tr
                 (for [[_ label] fields] [:th.subgrid-sortable label [:i.bi.bi-chevron-expand.ms-1]])
                 [:th {:style "width:100px"}
-                 (i18n/tr request :common/actions)]]]]
+                 (i18n/tr :common/actions)]]]]
              [(into [:tbody]
                     (map (partial render-m2m-row
                                   request fields has-pivot? through
@@ -362,7 +362,7 @@
                          records))])
        [:div.text-center.p-4.text-muted
         [:i.bi.bi-link {:style "font-size:2rem"}]
-        [:p.mt-2 (i18n/tr request :subgrid/no-associations)]])]))
+        [:p.mt-2 (i18n/tr :subgrid/no-associations)]])]))
 
 ;;; -- Tab strip + panes -----------------------------------------------
 
@@ -381,9 +381,9 @@
                  pane-id (str entity-name "-" sg-name "-pane")
                  rel-type (:relationship-type sg)
                  rel-label (case rel-type
-                             :one-to-one (i18n/tr request :subgrid/rel-11)
-                             :one-to-many (i18n/tr request :subgrid/rel-1n)
-                             :many-to-many (i18n/tr request :subgrid/rel-nm))
+                             :one-to-one (i18n/tr :subgrid/rel-11)
+                             :one-to-many (i18n/tr :subgrid/rel-1n)
+                             :many-to-many (i18n/tr :subgrid/rel-nm))
                  cnt (:count sg)]
              [:button
               {:class (tab-cls rel-type idx)
@@ -529,7 +529,7 @@
     [:div.modal-content
      [:div.modal-header.bg-primary.text-white
       [:h5.modal-title
-       [:i.bi.bi-search.me-2] (i18n/tr request :common/select) " " title]
+       [:i.bi.bi-search.me-2] (i18n/tr :common/select) " " title]
       [:button.btn-close.btn-close-white
        {:type "button" :data-bs-dismiss "modal"}]]
      [:div.modal-body
@@ -537,7 +537,7 @@
        {:id (str entity-name "-select-table")}
        [:thead
         [:tr
-         [:th (i18n/tr request :common/select)]
+         [:th (i18n/tr :common/select)]
          (for [[_ label] fields] [:th label])]]
        [:tbody
         (for [row all-rows]
@@ -545,12 +545,12 @@
            [:td
             [:a.btn.btn-sm.btn-success
              {:href (str "/admin/" entity-name "/" (get-record-id entity-name row))}
-             [:i.bi.bi-check-circle.me-1] (i18n/tr request :common/select)]]
+             [:i.bi.bi-check-circle.me-1] (i18n/tr :common/select)]]
            (for [[field-id _] fields]
              [:td (render-field-value (get row field-id))])])]]]
      [:div.modal-footer
       [:button.btn.btn-secondary {:type "button" :data-bs-dismiss "modal"}
-       (i18n/tr request :common/close)]]]]])
+       (i18n/tr :common/close)]]]]])
 
 (defn render-tabgrid
   "Entry point: full Entity Workspace."

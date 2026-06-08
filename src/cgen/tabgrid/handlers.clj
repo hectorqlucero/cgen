@@ -136,7 +136,7 @@
         active-tab  (:active_tab params)
         return-url  (:return_url params)
         junction    (keyword through-str)
-        title       (i18n/tr request :pivot/edit-title
+        title       (i18n/tr :pivot/edit-title
                              {:title (try (:title (config/get-entity-config junction))
                                           (catch Exception _ through-str))})
         fields      (pivot-visible-fields junction parent-fk related-fk)
@@ -189,10 +189,10 @@
                                           (:label opt)]])]]
                           :textarea [:textarea.form-control {:name (name fid) :rows 3} (str value)]
                           [:input.form-control {:type "text" :name (name fid) :value (str value)}])])
-                     [:p.text-muted (i18n/tr request :pivot/no-attributes)])
+                     [:p.text-muted (i18n/tr :pivot/no-attributes)])
                    [:div.d-flex.gap-2.mt-3
                     [:button.btn.btn-primary {:type "submit"}
-                     [:i.bi.bi-check.me-1] (i18n/tr request :common/save)]
+                     [:i.bi.bi-check.me-1] (i18n/tr :common/save)]
                     [:a.btn.btn-secondary
                      {:href (if return-url
                               (if active-tab
@@ -201,7 +201,7 @@
                                      "active_tab=" active-tab)
                                 return-url)
                               "javascript:history.back()")}
-                     (i18n/tr request :common/cancel)]]]])))
+                     (i18n/tr :common/cancel)]]]])))
 
 (defn handle-save-pivot
   "POST /tabgrid/save-pivot — updates pivot attributes on a junction table row."
@@ -250,7 +250,7 @@
         junction        (keyword through-str)
         junction-cfg    (try (config/get-entity-config junction) (catch Exception _ nil))
         title           (or (:title junction-cfg) (name junction))
-        heading         (i18n/tr request :subgrid/link-form-title {:title title})
+        heading         (i18n/tr :subgrid/link-form-title {:title title})
         m2m-data        (data/fetch-many-to-many-records junction related-entity
                                                          (Long/parseLong parent-id)
                                                          parent-fk related-fk)
@@ -272,7 +272,7 @@
                      [:input {:type "hidden" :name "active_tab" :value active-tab}])
                    (if (seq available)
                      [:div
-                      [:p.text-muted (i18n/tr request :subgrid/select-records)]
+                      [:p.text-muted (i18n/tr :subgrid/select-records)]
                       [:table.table.table-hover.table-sm
                        [:thead
                         [:tr
@@ -289,7 +289,7 @@
                                   [:td.small (get row fid)])]))]
                       [:div.d-flex.gap-2.mt-3
                        [:button.btn.btn-primary {:type "submit"}
-                        [:i.bi.bi-check.me-1] (i18n/tr request :common/save)]
+                        [:i.bi.bi-check.me-1] (i18n/tr :common/save)]
                        [:a.btn.btn-secondary
                         {:href (if return-url
                                  (if active-tab
@@ -298,10 +298,10 @@
                                         "active_tab=" active-tab)
                                    return-url)
                                  "javascript:history.back()")}
-                        (i18n/tr request :common/cancel)]]]
+                        (i18n/tr :common/cancel)]]]
                      [:div.text-center.p-4.text-muted
                       [:i.bi.bi-check-circle {:style "font-size:2rem"}]
-                      [:p.mt-2 (i18n/tr request :subgrid/no-available-records)]
+                      [:p.mt-2 (i18n/tr :subgrid/no-available-records)]
                       [:a.btn.btn-secondary
                        {:href (if return-url
                                 (if active-tab
@@ -310,7 +310,7 @@
                                        "active_tab=" active-tab)
                                   return-url)
                                 "javascript:history.back()")}
-                       (i18n/tr request :common/back)]])
+                       (i18n/tr :common/back)]])
                    [:script
                     "document.getElementById('m2m-select-all').addEventListener('change',function(){var c=document.querySelectorAll('input[name=\"selected_ids\"]');for(var i=0;i<c.length;i++)c[i].checked=this.checked;})"]]])))
 (defn handle-link-save

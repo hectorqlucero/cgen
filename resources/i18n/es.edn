@@ -1,9 +1,4 @@
-{;; ─────────────────────────────────────────────────────────────────────────
- ;; [GENERIC] keys son reutilizables en cualquier proyecto — consérvelas.
- ;; [DEMO]    keys son específicos del demo inmobiliario — reemplácelos.
- ;; ─────────────────────────────────────────────────────────────────────────
-
- ;; [GENERIC] Common UI Elements
+{;; [GENERIC] Common UI Elements
  :common/save "Guardar"
  :common/cancel "Cancelar"
  :common/submit "Enviar"
@@ -27,37 +22,25 @@
  :common/confirm "Confirmar"
  :common/select "Seleccionar"
  :common/required "Requerido"
+ :common/clear "Limpiar"
+ :common/print "Imprimir"
 
- ;; [DEMO] Menu Categories — reemplazar con la estructura de navegación propia
- :menu/clients "Clientes"
- :menu/properties "Propiedades"
- :menu/transactions "Transacciones"
- :menu/financial "Finanzas"
- :menu/documents "Documentos"
- :menu/system "Sistema"
- :menu/admin "Administración"
- :menu/logout "Cerrar Sesión"
- :menu/profile "Perfil"
- :menu/settings "Configuración"
-
- ;; [DEMO] Entities — reemplazar con los nombres de entidades del proyecto
- :entity/alquileres "Alquileres"
- :entity/ventas "Ventas"
- :entity/propiedades "Propiedades"
- :entity/clientes "Clientes"
- :entity/agentes "Agentes"
- :entity/avaluos "Avalúos"
- :entity/comisiones "Comisiones"
- :entity/contratos "Contratos"
- :entity/documentos "Documentos"
- :entity/fiadores "Fiadores"
- :entity/pagos_renta "Pagos de Renta"
- :entity/pagos_ventas "Pagos de Ventas"
- :entity/tramites "Trámites"
- :entity/bitacora "Bitácora"
+ ;; [GENERIC] Entity Names
+ :entity/employees "Empleados"
+ :entity/departments "Departamentos"
+ :entity/organizations "Organizaciones"
+ :entity/projects "Proyectos"
+ :entity/skills "Habilidades"
  :entity/users "Usuarios"
+ :entity/contactos "Contactos"
+ :entity/cars "Autos"
+ :entity/siblings "Hermanos"
+ :entity/employee_profiles "Perfiles de Empleado"
+ :entity/employee_projects "Proyectos de Empleado"
+ :entity/employee_skills "Habilidades de Empleado"
+ :entity/audit_log "Bitácora"
 
- ;; [GENERIC] Form Labels
+ ;; [GENERIC] Field Labels
  :form/email "Correo Electrónico"
  :form/password "Contraseña"
  :form/username "Usuario"
@@ -70,17 +53,24 @@
  :form/status "Estado"
  :form/notes "Notas"
  :form/file "Archivo"
+ :form/confirm-password "Confirmar Contraseña"
+ :form/upload-image "Subir Imagen"
+ :form/submit "Enviar"
+ :form/cancel "Cancelar"
 
  ;; [GENERIC] Validation Messages
  :validation/required "{field} es requerido"
  :validation/invalid-email "Correo electrónico inválido"
  :validation/invalid-date "Fecha inválida"
+ :validation/invalid-data "{field} es inválido"
  :validation/min-length "{field} debe tener al menos {min} caracteres"
  :validation/max-length "{field} no puede exceder {max} caracteres"
  :validation/positive "{field} debe ser un número positivo"
  :validation/negative "{field} no puede ser negativo"
  :validation/date-range "La fecha final debe ser posterior a la fecha inicial"
  :validation/unique "{field} ya existe"
+ :validation/password-confirmation "Las contraseñas no coinciden. Intente nuevamente."
+ :validation/password-required "Se requiere contraseña y confirmación."
 
  ;; [GENERIC] Error Messages
  :error/general "Ocurrió un error. Por favor intente nuevamente"
@@ -93,6 +83,26 @@
  :error/invalid-data "Datos inválidos"
  :error/database "Error de base de datos"
  :error/file-upload "Error al subir archivo"
+ :error/email-not-configured "Correo no enviado porque SMTP no está configurado."
+ :error/no-email-address "Correo no enviado porque el usuario no tiene dirección de correo."
+ :error/password-update "No se pudo actualizar la contraseña."
+ :error/user-not-found "Usuario seleccionado no encontrado o inactivo."
+
+ ;; [GENERIC] Database Error Messages
+ :db/database-unique "Valor duplicado para el campo"
+ :db/database-foreign-key "Violación de restricción de clave foránea"
+ :db/database-not-null "Campo requerido está ausente"
+ :db/database-check "El valor viola una restricción de verificación"
+ :db/database-too-long "Valor demasiado largo"
+ :db/database-general "Datos inválidos"
+ :db/general "Datos inválidos"
+ :db/security-csrf "Token CSRF inválido o faltante"
+ :db/security-unauthorized "Acceso denegado"
+ :db/security-session-expired "La sesión ha expirado"
+ :db/validation-required "Este campo es requerido"
+ :db/validation-invalid-email "Dirección de correo inválida"
+ :db/validation-invalid-number "Número inválido"
+ :db/validation-invalid-date "Formato de fecha inválido"
 
  ;; [GENERIC] Success Messages
  :success/saved "Guardado exitosamente"
@@ -101,18 +111,22 @@
  :success/updated "Actualizado exitosamente"
  :success/uploaded "Archivo subido exitosamente"
  :success/sent "Enviado exitosamente"
+ :success/temp-password "Contraseña temporal creada"
 
  ;; [GENERIC] Confirmation Messages
  :confirm/delete "¿Está seguro que desea eliminar este registro?"
  :confirm/cancel "¿Está seguro que desea cancelar?"
  :confirm/discard "¿Descartar los cambios?"
+ :confirm/unlink "¿Desvincular?"
 
  ;; [GENERIC] Grid/Table
  :grid/no-data "No hay datos para mostrar"
+ :grid/no-records "No se encontraron registros"
  :grid/showing "Mostrando {from} a {to} de {total} registros"
  :grid/per-page "Por página"
  :grid/page "Página"
  :grid/of "de"
+ :grid/page-of "Página {page} de {total-pages} ({total} registros)"
 
  ;; [GENERIC] Authentication
  :auth/login "Iniciar Sesión"
@@ -139,6 +153,11 @@
  :file/max-size "Tamaño máximo: {size}"
  :file/allowed-types "Tipos permitidos: {types}"
 
+ ;; [GENERIC] menu
+ :nav/home "Inicio"
+ :nav/tp "Asignar contraseña temporaria"
+ :menu/admin "Administración"
+
  ;; [GENERIC] Subgrids
  :subgrid/title "Registros relacionados"
  :subgrid/loading "Cargando registros..."
@@ -156,24 +175,33 @@
  :subgrid/link-form-title "Vincular {title}"
  :subgrid/no-available-records "No hay registros disponibles para vincular"
  :subgrid/select-records "Seleccione registros para vincular"
- :grid/no-records "No se encontraron registros"
- :confirm/unlink "¿Desvincular?"
+ :subgrid/rel-11 "1:1"
+ :subgrid/rel-1n "1:N"
+ :subgrid/rel-nm "N:M"
+
+ ;; [GENERIC] Pivot Attributes
  :pivot/edit-attributes "Editar atributos"
  :pivot/no-attributes "No hay atributos pivote para editar."
  :pivot/edit-title "Editar {title}"
-
- ;; [DEMO] Business Logic (Alquileres example) — reemplazar con la lógica de negocio propia
- :alquiler/duration "Duración"
- :alquiler/initial-total "Total Inicial"
- :alquiler/monthly-payment "Pago Mensual"
- :alquiler/deposit "Depósito"
- :alquiler/active "Activo"
- :alquiler/expired "Vencido"
- :alquiler/canceled "Cancelado"
 
  ;; [GENERIC] Language Selector
  :lang/select "Seleccionar idioma"
  :lang/spanish "Español"
  :lang/english "English"
- :common/clear "Limpiar"
-}
+
+ ;; [GENERIC] Layout
+ :layout/theme "Tema"
+ :layout/home "Inicio"
+ :layout/copyright "Copyright © {year} {company} - Todos los derechos reservados"
+ :layout/error-404 "Error 404"
+ :layout/go-back "Regresar"
+ :layout/toggle-nav "Alternar navegación"
+
+ ;; [GENERIC] Temp Password
+ :temp-password/title "Crear Contraseña Temporal"
+ :temp-password/select-user "Seleccionar usuario"
+ :temp-password/placeholder-user "-- Seleccionar usuario --"
+ :temp-password/created "Contraseña temporal creada"
+ :temp-password/copy-warning "Copie esta contraseña ahora; no se mostrará nuevamente."
+ :temp-password/email-sent "Correo enviado a {email}."
+ :temp-password/email-failed "Correo falló: {error}"}

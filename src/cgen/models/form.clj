@@ -24,41 +24,41 @@
        (csrf-field)
        [:div.mb-3
         [:label.form-label.fw-semibold {:for "email"}
-         [:i.bi.bi-envelope.me-2] (i18n/tr nil :form/email)]
+         [:i.bi.bi-envelope.me-2] (i18n/tr :form/email)]
         [:input.form-control.form-control-lg
          (merge
           {:id "email"
            :name "email"
            :type "email"
-           :placeholder (i18n/tr nil :form/email)
+           :placeholder (i18n/tr :form/email)
            :required true
            :autocomplete "username"}
           (when user-email {:value user-email})
           (when email-readonly? {:readonly true}))]]
        [:div.mb-4
         [:label.form-label.fw-semibold {:for "password"}
-         [:i.bi.bi-lock.me-2] (i18n/tr nil :form/password)]
+         [:i.bi.bi-lock.me-2] (i18n/tr :form/password)]
         [:input.form-control.form-control-lg
          {:id "password"
           :name "password"
           :type "password"
-          :placeholder (i18n/tr nil :form/password)
+          :placeholder (i18n/tr :form/password)
           :required true
           :autocomplete "new-password"}]]
        [:div.mb-4
         [:label.form-label.fw-semibold {:for "confirm-password"}
-         [:i.bi.bi-lock.me-2] "Confirm password"]
+         [:i.bi.bi-lock.me-2] (i18n/tr :form/confirm-password)]
         [:input.form-control.form-control-lg
          {:id "confirm-password"
           :name "confirm-password"
           :type "password"
-          :placeholder "Confirm password"
+          :placeholder (i18n/tr :form/confirm-password)
           :required true
           :autocomplete "new-password"}]]
        [:div.d-flex.gap-2.justify-content-end.mt-4
         [:button.btn.btn-success.btn-lg.fw-semibold
          {:type "submit"}
-         [:i.bi.bi-key.me-2] (i18n/tr nil :auth/change-password)]]]]]]))
+         [:i.bi.bi-key.me-2] (i18n/tr :auth/change-password)]]]]]]))
 
 (defn login-form
   "Renders a professional login form with Bootstrap 5 styling"
@@ -78,41 +78,41 @@
        (csrf-field)
        [:div.mb-3
         [:label.form-label.fw-semibold {:for "username"}
-         [:i.bi.bi-person.me-2] (i18n/tr nil :form/email)]
+         [:i.bi.bi-person.me-2] (i18n/tr :form/email)]
         [:input.form-control.form-control-lg
          {:id "username"
           :name "username"
           :type "email"
           :required true
           :class "mandatory"
-          :oninvalid "this.setCustomValidity('Email is required...')"
+          :oninvalid (str "this.setCustomValidity('" (i18n/tr :validation/required {:field (i18n/tr :form/email)}) "')")
           :oninput "this.setCustomValidity('')"
-          :placeholder (i18n/tr nil :form/email)
+          :placeholder (i18n/tr :form/email)
           :autocomplete "username"}]]
        [:div.mb-4
         [:label.form-label.fw-semibold {:for "password"}
-         [:i.bi.bi-lock.me-2] (i18n/tr nil :form/password)]
+         [:i.bi.bi-lock.me-2] (i18n/tr :form/password)]
         [:input.form-control.form-control-lg
          {:id "password"
           :name "password"
           :required true
           :class "mandatory"
-          :oninvalid "this.setCustomValidity('Password is required...')"
+          :oninvalid (str "this.setCustomValidity('" (i18n/tr :validation/required {:field (i18n/tr :form/password)}) "')")
           :oninput "this.setCustomValidity('')"
-          :placeholder (i18n/tr nil :form/password)
+          :placeholder (i18n/tr :form/password)
           :type "password"
           :autocomplete "current-password"}]]
        [:div.d-flex.gap-2.justify-content-end.mt-4
         [:button.btn.btn-success.btn-lg.fw-semibold
          {:type "submit"}
-         [:i.bi.bi-box-arrow-in-right.me-2] (i18n/tr nil :auth/login)]]]]]]))
+         [:i.bi.bi-box-arrow-in-right.me-2] (i18n/tr :auth/login)]]]]]]))
 
 (defn build-image-field
   "Renders an image upload field with preview functionality"
   [row]
   (list
    [:div.mb-3
-    [:label.form-label.fw-semibold [:i.bi.bi-image.me-2] "Upload Image"]
+    [:label.form-label.fw-semibold [:i.bi.bi-image.me-2] (i18n/tr :form/upload-image)]
     [:input.form-control.form-control-lg
      {:id "file"
       :name "file"
@@ -380,15 +380,15 @@
   [args]
   [:input.btn.btn-primary.btn-lg.fw-semibold.shadow-sm.rounded
    {:type (:type args)
-    :value (or (:value args) "Submit")}])
+    :value (or (:value args) (i18n/tr :form/submit))}])
 
 (defn build-secondary-input-button
   "Creates a secondary styled input button
-   Args: {:type string :value string}"
+    Args: {:type string :value string}"
   [args]
   [:input.btn.btn-outline-secondary.btn-lg.fw-semibold.shadow-sm.rounded
    {:type (:type args)
-    :value (or (:value args) "Cancel")}])
+    :value (or (:value args) (i18n/tr :form/cancel))}])
 
 (defn build-primary-anchor-button
   "Creates a primary styled anchor button
@@ -420,11 +420,11 @@
        [:button.btn.btn-primary.btn-lg.fw-semibold.shadow-sm.rounded
         {:type "submit"
          :onclick "if(this.form && !this.form.checkValidity()){this.form.reportValidity();return false;}"} ; HTML5 validation
-        "Submit"])
+        (i18n/tr :form/submit)])
      [:a.btn.btn-outline-secondary.btn-lg.fw-semibold.shadow-sm.rounded
       {:type "button"
        :href cancel-url}
-      "Cancel"])))
+      (i18n/tr :form/cancel)])))
 
 (defn form
   "Creates a professional form container with Bootstrap 5 styling and themed colors.

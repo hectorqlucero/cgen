@@ -7,6 +7,18 @@
    [cgen.i18n.core :as i18n]
    [clojure.string :as str]))
 
+(defn resolve-label
+  "Resolves a label: if it's a keyword, translates via i18n; if string, returns as-is."
+  [label]
+  (if (keyword? label)
+    (i18n/tr label)
+    label))
+
+(defn resolve-title
+  "Resolves an entity title: if keyword, translates; if string, returns as-is."
+  [title]
+  (resolve-label title))
+
 (defn- load-fk-options
   "Enhanced FK options with sorting, filtering, and parameter binding.
    Completely replaces entity query system for FK fields."
@@ -47,14 +59,14 @@
                           (map #(str (get row % "")))
                           (str/join separator)))]
 
-      (cons {:value "" :label (str "-- " (i18n/tr nil :common/select) " --")}
+      (cons {:value "" :label (str "-- " (i18n/tr :common/select) " --")}
             (map (fn [row]
                    {:value (str (:id row))
                     :label (label-fn row)})
                  rows)))
     (catch Exception e
       (println "[WARN] Could not load enhanced FK options for" fk-entity ":" (.getMessage e))
-      [{:value "" :label (str "-- " (i18n/tr nil :common/select) " --")}])))
+      [{:value "" :label (str "-- " (i18n/tr :common/select) " --")}])))
 
 (defn- populate-fk-options
   "Enhanced population with optional sort/filter parameters.
@@ -111,7 +123,8 @@
   [field row]
   (let [fk-field? (= :fk (:type field))
         populated-field (if fk-field? (populate-fk-options field) field)
-        {:keys [id label type required? placeholder options value]} populated-field
+        {:keys [id type required? placeholder options value]} populated-field
+        label (resolve-label (:label populated-field))
         field-value (or (get row id) value "")
         resolved-options (if fk-field? options (resolve-options options))]
     (case type
@@ -347,7 +360,7 @@
   (let [display-fields (config/get-display-fields entity)]
     (apply array-map
            (mapcat (fn [field]
-                     [(:id field) (:label field)])
+                     [(:id field) (resolve-label (:label field))])
                    display-fields))))
 
 (defn render-grid
@@ -358,7 +371,7 @@
   ([request entity rows page-info current-params]
    (let [config (config/get-entity-config entity)
          entity-name (name entity)
-         title (:title config)
+         title (resolve-title (:title config))
          table-id (str entity-name "_table")
          fields (build-fields-map entity)
          href (str "/admin/" entity-name)
@@ -375,6 +388,7 @@
         entity-name (name entity)
         table-id (str entity-name "_dashboard")
         fields (build-fields-map entity)
+        title (resolve-title title)
         custom-dashboard-fn (get-in config [:ui :dashboard-fn])]
     (if custom-dashboard-fn
       (custom-dashboard-fn entity rows)
@@ -386,7 +400,8 @@
   (let [config (config/get-entity-config entity)
         entity-name (name entity)
         table-id (str entity-name "_report")
-        fields (build-fields-map entity)]
+        fields (build-fields-map entity)
+        title (resolve-title title)]
     (grid/build-report request title rows table-id fields)))
 
 (defn render-subgrid
@@ -394,7 +409,7 @@
   [request entity parent-id rows]
   (let [config (config/get-entity-config entity)
         entity-name (name entity)
-        title (:title config)
+        title (resolve-title (:title config))
         table-id (str entity-name "_subgrid")
         fields (build-fields-map entity)
         href (str "/admin/" entity-name)
@@ -422,6 +437,5 @@
   (let [config (config/get-entity-config entity)
         required-rights (:rights config)]
     (render-error
-     (str "Not authorized to access " (:title config)
-          "! Required level(s): " (clojure.string/join ", " required-rights)
-          ". Your level: " user-level))))
+     (str (i18n/tr :error/unauthorized) ": "
+          (resolve-title (:title config))))))

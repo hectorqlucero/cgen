@@ -16,7 +16,8 @@
       (str/replace #"^$" "home")))
 
 (defn build-link [request href label & [icon]]
-  (let [uri (:uri request)
+  (let [label (if (keyword? label) (i18n/tr label) label)
+        uri (:uri request)
         data-id (generate-data-id href)
         is-active (= uri href)]
     [:li.nav-item
@@ -30,7 +31,8 @@
       label]]))
 
 (defn build-dropdown-link [request href label & [icon]]
-  (let [uri (:uri request)
+  (let [label (if (keyword? label) (i18n/tr label) label)
+        uri (:uri request)
         is-active (= uri href)]
     [:li
      [:a.dropdown-item.fw-semibold
@@ -65,7 +67,7 @@
 
 (defn build-dropdown [request dropdown-id data-id label items & [icon]]
   (let [display-label (if (keyword? label)
-                        (i18n/tr request label)
+                        (i18n/tr label)
                         label)]
     (when (some #{(user-level request)} ["A" "S" "U"])
       [:li.nav-item.dropdown
@@ -115,14 +117,14 @@
      [:a.dropdown-item.fw-semibold
       {:href "/change/password"}
       [:i.bi.bi-key.me-2]
-      (i18n/tr request :auth/change-password)]]
+      (i18n/tr :auth/change-password)]]
     [:li [:hr.dropdown-divider]]
     [:li
      [:a.dropdown-item.fw-semibold.text-danger
       {:href "/home/logoff"
        :onclick "localStorage.removeItem('active-link')"}
       [:i.bi.bi-box-arrow-right.me-2]
-      (i18n/tr request :auth/logout)]]]])
+      (i18n/tr :auth/logout)]]]])
 
 ;; THEME SWITCHER
 (def theme-options
@@ -163,8 +165,7 @@
        :role "button"
        :data-bs-toggle "dropdown"
        :aria-expanded "false"}
-      [:span.me-2 current-flag]
-      (i18n/get-locale-name current-locale)]
+      [:span.me-2 current-flag]]
      [:ul.dropdown-menu.dropdown-menu-end.shadow.border-0
       {:aria-labelledby "languageDropdown"}
       (doall
@@ -173,8 +174,7 @@
           [:a.dropdown-item.d-flex.align-items-center.gap-2
            {:href (str "/set-language/" (name locale))
             :class (when (= locale current-locale) "active")}
-           [:span (:flag info)]
-           (:name info)]]))]]))
+           [:span (:flag info)]]]))]]))
 
 (defn theme-switcher []
   [:li.nav-item.dropdown.ms-2
@@ -186,7 +186,7 @@
      :data-bs-toggle "dropdown"
      :aria-expanded "false"}
     [:i.bi.bi-palette-fill.me-1]
-    [:span#currentThemeLabel "Theme"]]
+    [:span#currentThemeLabel (i18n/tr :layout/theme)]]
    [:ul.dropdown-menu.dropdown-menu-end.shadow-lg.border-0.rounded.mt-2
     {:aria-labelledby "themeSwitcher"}
     (for [[value label] theme-options]
@@ -207,7 +207,7 @@
         :data-bs-target "#mainNavbar"
         :aria-controls "mainNavbar"
         :aria-expanded "false"
-        :aria-label "Toggle navigation"}
+        :aria-label (i18n/tr :layout/toggle-nav)}
        [:span.navbar-toggler-icon]]
       [:div#mainNavbar.collapse.navbar-collapse
        [:ul.navbar-nav.ms-auto.align-items-lg-center.gap-2
@@ -232,13 +232,13 @@
      [:span.navbar-toggler-icon]]
     [:div#mainNavbar.collapse.navbar-collapse
      [:ul.navbar-nav.ms-auto.align-items-lg-center.gap-2
-      (build-link {} "/" "Home")
+      (build-link {} "/" (i18n/tr :layout/home))
       (theme-switcher)
       [:li.nav-item.ms-3
        [:a.btn.btn-primary.btn-sm.px-3.rounded-pill.fw-semibold
         {:href "/home/login"}
         [:i.bi.bi-box-arrow-in-right.me-1 {:style "font-size: 0.9rem;"}]
-        (i18n/tr nil :auth/login)]]]]]])
+        (i18n/tr :auth/login)]]]]]])
 
 (defn menus-none []
   [:nav.navbar.navbar-expand-lg.navbar-light.bg-white.shadow.fixed-top
@@ -269,7 +269,7 @@
 .logout-btn:hover { background-color: var(--bs-primary, #0d6efd) !important; color: #fff !important; }
 .theme-quartz .logout-btn, .theme-superhero .logout-btn, .theme-darkly .logout-btn { background-color: #23272b !important; color: #f8f9fa !important; border-color: #f8f9fa !important; }
 .theme-cyborg .logout-btn { background-color: #222 !important; color: #f6f6f6 !important; border-color: #f6f6f6 !important; }
-.theme-quartz .logout-btn:hover, .theme-superhero .logout-btn:hover, .theme-darkly .logout-btn:hover, .theme-cyborg .logout-btn:hover { background-color: var(--bs-primary, #0d6efd) !important; color: #fff !important; border-color: var(--bs-primary, #0d6efd) !important; }"]))
+  .theme-quartz .logout-btn:hover, .theme-superhero .logout-btn:hover, .theme-darkly .logout-btn:hover, .theme-cyborg .logout-btn:hover { background-color: var(--bs-primary, #0d6efd) !important; color: #fff !important; border-color: var(--bs-primary, #0d6efd) !important; }"]))
 
 (defn theme-js
   "Inline theme.js: ~50 lines of vanilla JS for theme switching, nav highlight, and responsive tables."
@@ -372,8 +372,7 @@
           (app-scripts)
           js
           [:footer.bg-light.text-center.fixed-bottom.py-2.shadow-sm
-           [:span "Copyright © "
-            (t/year (t/now)) " " (:company-name config) " - All Rights Reserved"]]])))))
+           [:span (i18n/tr :layout/copyright {:year (t/year (t/now)) :company (:company-name config)})]]])))))
 
 (defn error-404
   ([msg] (error-404 msg nil))
@@ -381,7 +380,7 @@
    {:status 404
     :headers {"Content-Type" "text/html; charset=utf-8"}
     :body (html5 [:div
-                  [:h1 "Error 404"]
+                  [:h1 (i18n/tr :layout/error-404)]
                   [:p msg]
                   (when redirect-url
-                    [:a {:href redirect-url} "Go back"])])}))
+                    [:a {:href redirect-url} (i18n/tr :layout/go-back)])])}))

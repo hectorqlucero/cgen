@@ -20,7 +20,7 @@
 ;;   ["/settings"  "SETTINGS" "bi bi-gear" "U" 30]
 (def custom-nav-links
   "Custom navigation links (non-dropdown, not entity-based)"
-  [["/" "HOME" "bi bi-house" nil 0]
+  [["/" :nav/home "bi bi-house" nil 0]
    ["/dashboard" "DASHBOARD" "bi bi-speedometer2" "U" 10]])
 
 ;; Custom dropdown menus (not entity-based).
@@ -59,7 +59,7 @@
    Maps a category keyword to items in [href label rights order icon] format.
    Example:
    {:Users [[\"/users/report\" \"User Report\" \"A\" 30 \"bi bi-file-text\"]]}"
-  {:Users [["/home/temp-password" "Temp Password" "A" 10 "bi bi-file-text"]]})
+  {:Users [["/home/temp-password" :nav/tp "A" 10 "bi bi-file-text"]]})
 
 (defn ^:private parse-custom-menu-item
   "Parses a custom nav link or dropdown item vector.
