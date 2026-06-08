@@ -7,6 +7,7 @@
    [cgen.engine.config :as config]
    [cgen.models.crud :as crud]
    [cheshire.core :as json]
+   [clojure.string :as str]
    [cgen.web.csrf :refer [csrf-field]]
    [cgen.layout :refer [application]]
    [cgen.models.util :refer [get-session-id]]
@@ -78,9 +79,13 @@
         active-tab    (:active_tab params)
         referer       (get-in request [:headers "referer"] "/")
         location      (if active-tab
-                        (str referer
-                             (if (.contains ^String referer "?") "&" "?")
-                             "active_tab=" active-tab)
+                        (let [base (str/replace referer #"active_tab=[^&]*"
+                                                (str "active_tab=" active-tab))]
+                          (if (= base referer)
+                            (str referer
+                                 (if (.contains ^String referer "?") "&" "?")
+                                 "active_tab=" active-tab)
+                            base))
                         referer)]
     (try
       (let [where [(str (name parent-fk) " = ? AND " (name related-fk) " = ?")
@@ -190,7 +195,11 @@
                      [:i.bi.bi-check.me-1] (i18n/tr request :common/save)]
                     [:a.btn.btn-secondary
                      {:href (if return-url
-                              (str return-url (when active-tab (str "?active_tab=" active-tab)))
+                              (if active-tab
+                                (str return-url
+                                     (if (.contains ^String return-url "?") "&" "?")
+                                     "active_tab=" active-tab)
+                                return-url)
                               "javascript:history.back()")}
                      (i18n/tr request :common/cancel)]]]])))
 
@@ -215,7 +224,9 @@
                          parent-id related-id]
         location        (if return-url
                           (if active-tab
-                            (str return-url "?active_tab=" active-tab)
+                            (str return-url
+                                 (if (.contains ^String return-url "?") "&" "?")
+                                 "active_tab=" active-tab)
                             return-url)
                           (get-in request [:headers "referer"] "/"))]
     (try
@@ -281,7 +292,11 @@
                         [:i.bi.bi-check.me-1] (i18n/tr request :common/save)]
                        [:a.btn.btn-secondary
                         {:href (if return-url
-                                 (str return-url (when active-tab (str "?active_tab=" active-tab)))
+                                 (if active-tab
+                                   (str return-url
+                                        (if (.contains ^String return-url "?") "&" "?")
+                                        "active_tab=" active-tab)
+                                   return-url)
                                  "javascript:history.back()")}
                         (i18n/tr request :common/cancel)]]]
                      [:div.text-center.p-4.text-muted
@@ -289,7 +304,11 @@
                       [:p.mt-2 (i18n/tr request :subgrid/no-available-records)]
                       [:a.btn.btn-secondary
                        {:href (if return-url
-                                (str return-url (when active-tab (str "?active_tab=" active-tab)))
+                                (if active-tab
+                                  (str return-url
+                                       (if (.contains ^String return-url "?") "&" "?")
+                                       "active_tab=" active-tab)
+                                  return-url)
                                 "javascript:history.back()")}
                        (i18n/tr request :common/back)]])
                    [:script
@@ -308,7 +327,9 @@
         ids           (if (sequential? selected-ids) selected-ids [selected-ids])
         location      (if return-url
                         (if active-tab
-                          (str return-url "?active_tab=" active-tab)
+                          (str return-url
+                               (if (.contains ^String return-url "?") "&" "?")
+                               "active_tab=" active-tab)
                           return-url)
                         "/")]
     (try

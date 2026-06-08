@@ -224,7 +224,9 @@
                   edited-id (or (get params :edited_id) (get params "edited_id")
                                 (when (and return-url selected-id) (str selected-id)))
                   url (or (let [base (if (and return-url active-tab)
-                                       (str return-url "?active_tab=" active-tab)
+                                       (str return-url
+                                            (if (.contains ^String return-url "?") "&" "?")
+                                            "active_tab=" active-tab)
                                        return-url)]
                             (cond-> base
                               (and base edited-id)
@@ -271,7 +273,9 @@
 
           (if (:success result)
             (let [redirect-url (if (and return-url active-tab)
-                                 (str return-url "?active_tab=" active-tab)
+                                 (str return-url
+                                      (if (.contains ^String return-url "?") "&" "?")
+                                      "active_tab=" active-tab)
                                  (or return-url (str "/admin/" entity-name)))]
               {:status 302
                :headers {"Location" redirect-url}})
