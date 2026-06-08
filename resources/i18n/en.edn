@@ -204,4 +204,15 @@
  :temp-password/created "Temporary password created"
  :temp-password/copy-warning "Copy this password now; it will not be shown again."
  :temp-password/email-sent "Email sent to {email}."
- :temp-password/email-failed "Email failed: {error}"}
+ :temp-password/email-failed "Email failed: {error}"
+
+;; [ENTITY] users
+ :users/lastname "Lastname"
+ :users/firstname "Firstname"
+ :users/username "Username"
+ :users/dob "Date of Birth"
+ :users/cell "Cell Phone"
+ :users/fax "Fax"
+ :users/email "Email"
+ :users/level "User Level"
+ :users/active "Active"}

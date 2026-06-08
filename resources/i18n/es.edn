@@ -204,4 +204,16 @@
  :temp-password/created "Contraseña temporal creada"
  :temp-password/copy-warning "Copie esta contraseña ahora; no se mostrará nuevamente."
  :temp-password/email-sent "Correo enviado a {email}."
- :temp-password/email-failed "Correo falló: {error}"}
+ :temp-password/email-failed "Correo falló: {error}"
+
+;; [ENTITY] users
+ :users/lastname "Apellido"
+ :users/firstname "Nombre"
+ :users/username "Usuario"
+ :users/dob "Fecha de Nacimiento"
+ :users/cell "Celular"
+ :users/phone "Telefono"
+ :users/fax "Fax"
+ :users/email "Email"
+ :users/level "Nivel"
+ :users/active "Activo"}

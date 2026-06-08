@@ -10,21 +10,21 @@
 
  ;; Fields auto-detected from database schema
  :fields [{:id :id :label "ID" :type :hidden}
-          {:id :lastname :label "Lastname" :type :text :placeholder "Lastname..."}
-          {:id :firstname :label "Firstname" :type :text :placeholder "Firstname..."}
-          {:id :username :label "Username" :type :text :placeholder "Username..."}
+          {:id :lastname :label :users/lastname :type :text :placeholder "Lastname..."}
+          {:id :firstname :label :users/firstname :type :text :placeholder "Firstname..."}
+          {:id :username :label :users/username :type :text :placeholder "Username..."}
           ; {:id :password :label "Password" :type :password}
-          {:id :dob :label "Dob" :type :date :placeholder "Dob..."}
-          {:id :cell :label "Cell" :type :text :placeholder "Cell..."}
-          {:id :phone :label "Phone" :type :text :placeholder "Phone..."}
-          {:id :fax :label "Fax" :type :text :placeholder "Fax..."}
-          {:id :email :label "Email" :type :email :placeholder "user@example.com"}
-          {:id :level :label "Level" :type :select :options [{:value "" :label "Select Level"}
-                                                             {:value "U" :label "User"}
-                                                             {:value "A" :label "Adminitstrator"}
-                                                             {:value "S" :label "System"}]}
-          {:id :active :label "Active" :type :radio :value "T" :options [{:id "activeT" :value "T" :label "Active"}
-                                                                         {:id "activeF" :value "F" :label "Inactive"}]}
+          {:id :dob :label :users/dob :type :date :placeholder "Dob..."}
+          {:id :cell :label :users/cell :type :text :placeholder "Cell..."}
+          {:id :phone :label :users/phone :type :text :placeholder "Phone..."}
+          {:id :fax :label :users/fax :type :text :placeholder "Fax..."}
+          {:id :email :label :users/email :type :email :placeholder "user@example.com"}
+          {:id :level :label :users/level :type :select :options [{:value "" :label "Select Level"}
+                                                                  {:value "U" :label "User"}
+                                                                  {:value "A" :label "Adminitstrator"}
+                                                                  {:value "S" :label "System"}]}
+          {:id :active :label :users/active :type :radio :value "T" :options [{:id "activeT" :value "T" :label "Active"}
+                                                                              {:id "activeF" :value "F" :label "Inactive"}]}
           ; {:id :imagen :label "Imagen" :type :file}
           ; {:id :last_login :label "Last Login" :type :textarea :placeholder "Last Login..."}
           ]
@@ -42,14 +42,14 @@
 
  ;; Lifecycle hooks for business logic
  ;; Senior developer: Implement these in src/cgen/hooks/users.clj
- :hooks {:before-save :cgen.hooks.users/before-save}
+ :hooks {:before-save :pizza.hooks.users/before-save}
  ;; Uncomment and implement as needed:
- ;; :hooks {:before-load :cgen.hooks.users/before-load
- ;;         :after-load :cgen.hooks.users/after-load
- ;;         :before-save :cgen.hooks.users/before-save
- ;;         :after-save :cgen.hooks.users/after-save
- ;;         :before-delete :cgen.hooks.users/before-delete
- ;;         :after-delete :cgen.hooks.users/after-delete}
+ ;; :hooks {:before-load :pizza.hooks.users/before-load
+ ;;         :after-load :pizza.hooks.users/after-load
+ ;;         :before-save :pizza.hooks.users/before-save
+ ;;         :after-save :pizza.hooks.users/after-save
+ ;;         :before-delete :pizza.hooks.users/before-delete
+ ;;         :after-delete :pizza.hooks.users/after-delete}
 
  ;; Subgrids (parent-child relationships)
  ;; Uncomment if this entity has child records:
