@@ -7,6 +7,7 @@
  :menu-category :Contactos
  :menu-icon "bi bi-person-arms-up"
  :dropdown-icon "bi bi-people"
+ :menu-order 20
 
  ;; Fields auto-detected from database schema
  :fields [{:id :id :label "ID" :type :hidden}

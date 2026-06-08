@@ -156,7 +156,7 @@
        (for [row rows]
          [:tr
           (for [field fields]
-            [:td.text-truncate.align-middle
+            [:td.text-break.align-middle
              ((key field) row)])
           [:td.text-center.align-middle
            {:style "width:1%; white-space:nowrap; padding-left:0.25rem; padding-right:0.25rem;"}
@@ -319,7 +319,7 @@
         {:type :html
          :content
          [:div.card.shadow.mb-4
-          [:style "@media print{nav.navbar,footer,#export-toolbar,.search-form{display:none!important}.card{box-shadow:none!important;border:1px solid #dee2e6}.bg-gradient{background:#0d6efd!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}"]
+          [:style "@media print{nav.navbar,footer,#export-toolbar,.search-form{display:none!important}body{overflow:visible!important}.container-fluid.pt-3{overflow:visible!important}.card{box-shadow:none!important;border:1px solid #dee2e6}.bg-gradient{background:#0d6efd!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.table-responsive{overflow:visible!important}.report-content{max-height:none!important;overflow:visible!important}}"]
           [:div.card-body.bg-gradient.bg-primary.text-white.rounded-top.d-flex.justify-content-between.align-items-center
            [:h4.mb-0.fw-bold title]
            [:div#export-toolbar.d-flex.gap-1
@@ -349,7 +349,7 @@
                 (for [row rows]
                   [:tr
                    (for [field fields]
-                     [:td.text-truncate.align-middle
+                     [:td.text-break.align-middle
                       ((key field) row)])]))]]]]]}))))
 
 ;; =============================================================================

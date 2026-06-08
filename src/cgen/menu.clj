@@ -39,7 +39,20 @@
 ;; Notice the order in items... It orders the dropdown items
 (def custom-dropdowns
   "Custom dropdown menus (not entity-based)"
-  {})
+  {:Reports
+   {:id "navdrop-reports"
+    :data-id "Reports"
+    :label "Reportes"
+    :order 30
+    :icon "bi bi-printer"
+    :items [["/reports/contactos" "Contactos" "U" 10 "bi bi-people"]
+            ["/reports/audit-log" "Auditoría" "U" 20 "bi bi-journal-text"]
+            ["/reports/organizations" "Organizaciones" "U" 30 "bi bi-building"]
+            ["/reports/departments" "Departamentos" "U" 40 "bi bi-diagram-2"]
+            ["/reports/employees" "Empleados" "U" 50 "bi bi-person-badge"]
+            ["/reports/projects" "Proyectos" "U" 60 "bi bi-kanban"]
+            ["/reports/skills" "Habilidades" "U" 70 "bi bi-star"]
+            ["/reports/users" "Usuarios" "A" 80 "bi bi-people"]]}})
 
 (def custom-dropdown-items
   "Extra items to append to existing dropdowns (auto-generated or custom).
