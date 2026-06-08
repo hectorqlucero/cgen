@@ -77,9 +77,6 @@
              ;;   lein i18n-lint
              ;;   lein i18n-lint src        ; scan a specific directory
             "i18n-lint" ["run" "-m" "cgen.i18n.lint"]
-             ;; Setup new project
-             ;; lein setup my-project - creates project on same folder - lein setup contactos
-             ;; lein setup /my-path/my-project - creates project on specified path - lein /tmp/contactos
             "setup" ["run" "-m" "cgen.tools.setup" "--"]}
   :profiles {:uberjar {:aot :all
                        :main cgen.core
