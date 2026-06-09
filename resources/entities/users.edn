@@ -12,7 +12,7 @@
  :fields [{:id :id :label "ID" :type :hidden}
           {:id :lastname :label :users/lastname :type :text :placeholder "Lastname..."}
           {:id :firstname :label :users/firstname :type :text :placeholder "Firstname..."}
-          {:id :username :label :users/username :type :text :placeholder "Username..."}
+          {:id :username :label :users/username :type :text :placeholder "user@example.com..."}
           ; {:id :password :label "Password" :type :password}
           {:id :dob :label :users/dob :type :date :placeholder "Dob..."}
           {:id :cell :label :users/cell :type :text :placeholder "Cell..."}
