@@ -100,7 +100,10 @@
 (defn- resolve-options
   [options]
   (cond
-    (vector? options) options
+    (vector? options)
+    (mapv (fn [opt]
+            (update opt :label #(if (keyword? %) (i18n/tr %) %)))
+          options)
     (nil? options) []
     (keyword? options)
     (let [ns-str (namespace options)
@@ -125,6 +128,7 @@
         populated-field (if fk-field? (populate-fk-options field) field)
         {:keys [id type required? placeholder options value]} populated-field
         label (resolve-label (:label populated-field))
+        placeholder (if (keyword? placeholder) (i18n/tr placeholder) placeholder)
         field-value (or (get row id) value "")
         resolved-options (if fk-field? options (resolve-options options))]
     (case type
