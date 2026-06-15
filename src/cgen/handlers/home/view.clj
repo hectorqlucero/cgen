@@ -53,6 +53,37 @@
           [:p.mb-1 (i18n/tr :temp-password/copy-warning)]
           [:pre.p-3.bg-light.rounded [:code temp-password]]])]]]]])
 
+(defn forgot-password-view
+  [email message]
+  [:div.container.d-flex.justify-content-center.align-items-center
+   {:style "min-height: 80vh;"}
+   [:div.card.shadow-lg.w-100
+    {:style "max-width: 420px;"}
+    [:div.card-header.bg-primary.text-white.text-center
+     [:h4.mb-0.fw-bold (i18n/tr :auth/reset-password)]]
+    [:div.card-body.p-4
+     (when message
+       [:div.alert.alert-info message])
+     [:form {:method "POST" :action "/home/forgot-password"}
+      (csrf-field)
+      [:div.mb-3
+       [:label.form-label.fw-semibold {:for "email"}
+        [:i.bi.bi-envelope.me-2] (i18n/tr :form/email)]
+       [:input.form-control.form-control-lg
+        {:id "email"
+         :name "email"
+         :type "email"
+         :required true
+         :placeholder (i18n/tr :form/email)
+         :autocomplete "email"}]]
+      [:div.d-flex.gap-2.justify-content-end.mt-4
+       [:button.btn.btn-success.btn-lg.fw-semibold
+        {:type "submit"}
+        [:i.bi.bi-send.me-2] (i18n/tr :auth/reset-password)]]]
+     [:div.text-center.mt-3
+      [:a.small.text-decoration-none {:href "/home/login"}
+       (i18n/tr :common/back) " " (i18n/tr :auth/login)]]]]])
+
 (defn change-password-view
   [request title]
   (let [level (user-level request)

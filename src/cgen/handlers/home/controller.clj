@@ -5,7 +5,7 @@
    [cgen.config.loader :as cfg]
    [cgen.i18n.core :as i18n]
    [cgen.handlers.home.model :refer [get-user get-users update-password]]
-   [cgen.handlers.home.view :refer [change-password-view home-view main-view
+   [cgen.handlers.home.view :refer [change-password-view forgot-password-view home-view main-view
                                     temp-password-view]]
    [cgen.layout :refer [application]]
    [cgen.models.email :as email]
@@ -82,6 +82,44 @@
             (assoc :session (assoc session :user_id (:id row))))
         (application params title 0 nil content-error-general))
       (application params title 0 nil content-error-forbidden))))
+
+(defn forgot-password
+  [request]
+  (let [title (i18n/tr :auth/reset-password)
+        ok (get-session-id request)
+        js nil
+        content (forgot-password-view nil nil)]
+    (application request title ok js content)))
+
+(defn process-forgot-password
+  [{:keys [params] :as request}]
+  (let [title (i18n/tr :auth/reset-password)
+        ok (get-session-id request)
+        email (:email params)
+        row (when (not (st/blank? email)) (first (get-user email)))]
+    (if row
+      (let [temp-pass (generate-temp-password)
+            result (update-password (:username row) (hashers/derive temp-pass))]
+        (if (> result 0)
+          (let [email-address (:email row)
+                email-message (cond
+                                (not (valid-email-config?))
+                                (i18n/tr :auth/reset-password-contact-admin)
+
+                                (st/blank? email-address)
+                                (i18n/tr :auth/reset-password-contact-admin)
+
+                                :else
+                                (let [send-result (send-temp-password-email email-address temp-pass)]
+                                  (if (:ok send-result)
+                                    (i18n/tr :auth/reset-password-sent)
+                                    (i18n/tr :auth/reset-password-contact-admin))))]
+            (application request title ok nil
+                         (forgot-password-view email email-message)))
+          (application request title ok nil
+                       (forgot-password-view email (i18n/tr :auth/reset-password-contact-admin)))))
+      (application request title ok nil
+                   (forgot-password-view email (i18n/tr :auth/email-not-found))))))
 
 (defn change-password
   [request]

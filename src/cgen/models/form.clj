@@ -102,6 +102,9 @@
           :placeholder (i18n/tr :form/password)
           :type "password"
           :autocomplete "current-password"}]]
+       [:div.text-center.mb-3
+        [:a.small.text-decoration-none {:href "/home/forgot-password"}
+         (i18n/tr :auth/forgot-password)]]
        [:div.d-flex.gap-2.justify-content-end.mt-4
         [:button.btn.btn-success.btn-lg.fw-semibold
          {:type "submit"}
