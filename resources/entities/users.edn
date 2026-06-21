@@ -9,19 +9,19 @@
  :menu-category :Users
 
  :fields [{:id :id :label "ID" :type :hidden}
-          {:id :lastname :label "Apellidos" :type :text :placeholder "Lastname..."}
-          {:id :firstname :label "Nombre" :type :text :placeholder "Firstname..."}
-          {:id :username :label "Usuario" :type :text :placeholder "Username..."}
-          {:id :dob :label "Fecha de Nacimiento" :type :date :placeholder "Dob..."}
-          {:id :cell :label "Celular" :type :text :placeholder "Cell..."}
-          {:id :phone :label "Telefono" :type :text :placeholder "Phone..."}
-          {:id :fax :label "Fax" :type :text :placeholder "Fax..."}
-          {:id :email :label "Email" :type :email :placeholder "user@example.com"}
-          {:id :level :label "Nivel" :type :radio :options [{:value "U" :label "Usuario"}
-                                                            {:value "A" :label "Administrador"}
-                                                            {:value "S" :label "Sistema"}]}
-          {:id :active :label "Status" :type :radio :value "T" :options [{:id "activeT" :value "T" :label "Activo"}
-                                                                         {:id "activeF" :value "F" :label "Inactivo"}]}
+          {:id :lastname :label :users/lastname :type :text}
+          {:id :firstname :label :users/firstname :type :text}
+          {:id :username :label :users/username :type :text}
+          {:id :dob :label :users/dob :type :date}
+          {:id :cell :label :users/cell :type :text}
+          {:id :phone :label :users/phone :type :text}
+          {:id :fax :label :users/fax :type :text}
+          {:id :email :label :users/email :type :email}
+          {:id :level :label :users/level :type :radio :value "U" :options [{:value "U" :label "Usuario"}
+                                                                            {:value "A" :label "Administrador"}
+                                                                            {:value "S" :label "Sistema"}]}
+          {:id :active :label :users/active :type :radio :value "T" :options [{:id "activeT" :value "T" :label "Activo"}
+                                                                              {:id "activeF" :value "F" :label "Inactivo"}]}
           ;; {:id :imagen :label "Imagen" :type :file}
           ;; {:id :last_login :label "Last Login" :type :textarea :placeholder "Last Login..."}
           ]
