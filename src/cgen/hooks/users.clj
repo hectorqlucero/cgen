@@ -1,21 +1,13 @@
-(ns cgen.hooks.users
-  (:require [cgen.models.util :refer [image-link]]))
+(ns cgen.hooks.users)
 
 (defn before-load [params]
   params)
 
 (defn after-load [rows _params]
-  (map #(-> %
-            (assoc :imagen (image-link (:imagen %)))) rows))
+  rows)
 
 (defn before-save [params]
-  (if-let [file-data (:imagen params)]
-    (if (and (map? file-data) (:tempfile file-data))
-      (-> params
-          (assoc :file file-data :file-column :imagen)
-          (dissoc :imagen))
-      params)
-    params))
+  params)
 
 (defn after-save [_entity-id _params]
   {:success true})

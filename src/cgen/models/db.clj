@@ -27,11 +27,6 @@
     (symbol? x)  (name x)
     :else        (str x)))
 
-(defn- safe-call [f & args]
-  (try
-    (apply f args)
-    (catch Exception _ nil)))
-
 ;; ---------- Quoting / query options per vendor ----------
 (defn q-opts [db-spec]
   (cond
@@ -89,16 +84,4 @@
     (mysql? db-spec)  (mysql/last-insert-id t-con)
     :else nil))
 
-(defn cascade-delete-child-images!
-  "Best-effort removal of child table images referencing a deleted parent row.
-  - query-fn: executes SQL (string or [sql & params]) against db-spec.
-  - delete-fn: function of one arg (image filename) that performs deletion.
-  - row: the parent row map about to be deleted."
-  [db-spec table row query-fn delete-fn]
-  (safe-call
-   (fn []
-     (cond
-       (sqlite? db-spec)   (sqlite/cascade-delete-child-images! table row query-fn delete-fn)
-       (postgres? db-spec) (pg/cascade-delete-child-images! table row query-fn delete-fn)
-       (mysql? db-spec)    (mysql/cascade-delete-child-images! table row query-fn delete-fn)
-       :else nil))))
+

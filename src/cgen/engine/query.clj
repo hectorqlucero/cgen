@@ -141,18 +141,29 @@
 
     result))
 
+(defn- file-fields-for-entity
+  "Returns the list of file field keywords for an entity config."
+  [entity]
+  (let [cfg (config/get-entity-config entity)
+        file-types #{:file :pdf :document}]
+    (map :id (filter #(file-types (:type %)) (:fields cfg)))))
+
 (defn list-with-hooks
   "Lists records with before-load and after-load hooks."
   [entity & [opts]]
   (let [config (config/get-entity-config entity)
         hooks (:hooks config)
         before-load (:before-load hooks)
-        after-load (:after-load hooks)]
-    (execute-with-hooks entity
-                        (merge {:query-key :list
-                                :before-hook before-load
-                                :after-hook after-load}
-                               opts))))
+        after-load (:after-load hooks)
+        file-fields (file-fields-for-entity entity)
+        result (execute-with-hooks entity
+                                   (merge {:query-key :list
+                                           :before-hook before-load
+                                           :after-hook after-load}
+                                          opts))]
+    (if (seq file-fields)
+      (crud/apply-file-links result file-fields)
+      result)))
 
 (defn count-records
   "Counts total records for an entity, with optional search filter.
@@ -218,7 +229,11 @@
             ;; Full SQL
             sql (str "SELECT * FROM " table where-sql order-str limit-str)
             params (concat where-params [per-page offset])
-            records (Query (into [sql] params) :conn conn)
+            raw-records (Query (into [sql] params) :conn conn)
+            file-fields (file-fields-for-entity entity)
+            records (if (seq file-fields)
+                      (crud/apply-file-links raw-records file-fields)
+                      raw-records)
             ;; Count total (with same search filter)
             [count-sql count-params] (if (and search (not (str/blank? search)) (seq search-fields))
                                        (let [likes (map #(str (name %) " LIKE ?") search-fields)]
@@ -249,14 +264,18 @@
         hooks (:hooks config)
         before-load (:before-load hooks)
         after-load (:after-load hooks)
+        file-fields (file-fields-for-entity entity)
         params (parse-composite-id id (:primary-key config))
         result (execute-with-hooks entity
                                    (merge {:query-key :get
                                            :params params
                                            :before-hook before-load
                                            :after-hook after-load}
-                                          opts))]
-    (first result)))
+                                          opts))
+        first-row (first result)]
+    (if (and (seq file-fields) first-row)
+      (first (crud/apply-file-links [first-row] file-fields))
+      first-row)))
 
 (comment
   ;; Usage examples

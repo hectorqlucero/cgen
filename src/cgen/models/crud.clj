@@ -5,7 +5,8 @@
    [clojure.string :as st]
    [clojure.edn :as edn]
    [cgen.models.db :as db]
-   [cgen.config.loader :as cfg]))
+   [cgen.config.loader :as cfg]
+   [cgen.engine.config :as entcfg]))
 
 ;; Reusable regex patterns (private constants)
 (def ^:private true-re  #"(?i)^(true|on|1)$")
@@ -211,7 +212,7 @@
           (let [exists? (row-exists? t-con db* table where q-opts)]
             (if exists?
               true
-              (let [ins-result (insert-with-id t-con table row q-opts)
+                (let [ins-result (insert-with-id t-con table row q-opts)
                     fallback-id (db/last-insert-id t-con db*)]
                 (or (when (map? ins-result) ins-result)
                     (when fallback-id {:id fallback-id})
@@ -673,37 +674,80 @@
                 (try (println "[ERROR] Save failed for" table "sqlstate" sqlstate "message" (.getMessage ^Throwable cause)) (catch Throwable _))
                 (throw e)))))))))
 
-(defn crud-upload-image [table file id path]
-  (let [cfg-exts (set (map st/lower-case (or (:allowed-image-exts config) ["jpg" "jpeg" "png" "gif" "bmp" "webp"])))
-        valid-exts cfg-exts
-        max-mb (safe-long (or (:max-file-size-mb config) (:max-upload-mb config) 0))
-        tempfile   (:tempfile file)
-        size       (:size file)
-        orig-name  (:filename file)
-        ext-from-name (when orig-name
-                        (-> orig-name (st/split #"\.") last st/lower-case))]
-    (when (and tempfile (pos? (or size 0)))
-      (when (and (pos? max-mb) (> size (* max-mb 1024 1024)))
-        (throw (ex-info (str "File too large (max " max-mb "MB)") {:type :upload-too-large :maxMB max-mb})))
-      (let [ext (if (and ext-from-name (valid-exts ext-from-name))
-                  (if (= ext-from-name "jpeg") "jpg" ext-from-name)
-                  "jpg")
-            image-name (str table "_" id "." ext)
-            target-file (io/file (str path image-name))]
-        (io/make-parents target-file)
-        (io/copy tempfile target-file)
-        image-name))))
+(defn crud-upload-file
+  ([table file id column path]
+   (crud-upload-file table file id column path :file))
+  ([table file id column path file-type]
+   (let [type-exts (get (:allowed-upload-exts config)
+                        file-type
+                        (get (:allowed-image-exts config) (:allowed-image-exts config)))
+         _ (when (keyword? type-exts)
+             (println "[WARN] No allowed extensions configured for" file-type ", falling back to defaults"))
+         cfg-exts (set (map st/lower-case
+                            (if (sequential? type-exts)
+                              type-exts
+                              ["jpg" "jpeg" "png" "gif" "bmp" "webp"])))
+         valid-exts cfg-exts
+         max-mb (safe-long (or (:max-file-size-mb config) (:max-upload-mb config) 0))
+         tempfile   (:tempfile file)
+         size       (:size file)
+         orig-name  (:filename file)
+         ext-from-name (when orig-name
+                         (let [parts (st/split orig-name #"\.")]
+                           (when (> (count parts) 1)
+                             (st/lower-case (last parts)))))]
+     (when (and tempfile (pos? (or size 0)))
+       (when (and (pos? max-mb) (> size (* max-mb 1024 1024)))
+         (throw (ex-info (str "File too large (max " max-mb "MB)") {:type :upload-too-large :maxMB max-mb})))
+       (when (st/blank? ext-from-name)
+         (throw (ex-info "File must have an extension" {:file orig-name :type :no-extension})))
+       (when-not (valid-exts ext-from-name)
+         (throw (ex-info (str "Extension '" ext-from-name "' not allowed for " (name file-type) " files")
+                         {:file orig-name :extension ext-from-name :file-type file-type :type :extension-not-allowed})))
+       (let [ext (if (and (= file-type :file) (= ext-from-name "jpeg"))
+                   "jpg"
+                   ext-from-name)
+             file-name (str table "_" id "_" (name column) "." ext)
+             target-file (io/file (str path file-name))]
+         (io/make-parents target-file)
+         (io/copy tempfile target-file)
+         file-name)))))
+
+;; Backward-compat alias
+(defn crud-upload-image
+  ([table file id column path]
+   (crud-upload-file table file id column path :file)))
 
 ;; --- uploads housekeeping ---
-(defn- safe-delete-upload! [^String imagen]
-  (when (and (string? imagen)
-             (not (st/blank? imagen))
-             (not (re-find #"[\\/]" imagen)))
-    (let [f (io/file (str (:uploads config) imagen))]
+(defn safe-delete-upload! [^String path]
+  (when (and (string? path)
+             (not (st/blank? path))
+             (not (re-find #"[\\/]" path)))
+    (let [f (io/file (str (:uploads config) path))]
       (when (.exists f)
         (try
           (.delete f)
           (catch Exception _))))))
+
+(defn- resolve-file-link
+  "Resolves and calls file-link from util.clj at runtime to avoid circular require."
+  [file-name]
+  (when file-name
+    (if-let [v (requiring-resolve 'cgen.models.util/file-link)]
+      (v file-name)
+      file-name)))
+
+(defn apply-file-links
+  "Transforms file field values in rows to HTML via file-link (img for images, download links for docs)."
+  [rows file-field-names]
+  (map (fn [row]
+         (reduce (fn [r fname]
+                   (if-let [val (get r fname)]
+                     (assoc r fname (resolve-file-link val))
+                     r))
+                 row
+                 file-field-names))
+       rows))
 
 (defn get-id [pk-values-or-id postvars table & {:keys [conn]}]
   (let [pk-fields (get-table-primary-keys table :conn conn)
@@ -746,13 +790,17 @@
       :else pk-values-or-id)))
 
 (defn process-upload-form [params table _folder & {:keys [conn]}]
-  (let [file-column (or (:file-column params) :imagen)
-        image-col (name file-column)
-        image-key (keyword image-col)]
+  (let [file-column (:file-column params)
+        file-col (name file-column)
+        file-key (keyword file-col)
+        file-type (or (:file-type params) :file)]
     (letfn [(insert-then-upload-and-update! [db* table pk-name postvars file]
               (let [q-opts (db/q-opts db*)]
                 (j/with-db-transaction [t-con db*]
-                  (let [ins (j/insert! t-con (keyword table) postvars (assoc q-opts :return-keys true))
+                  (let [postvars (if (not (contains? postvars file-key))
+                                   (assoc postvars file-key "")
+                                   postvars)
+                        ins (j/insert! t-con (keyword table) postvars (assoc q-opts :return-keys true))
                         norm (normalize-insert-result ins)
                         ins-id (or (:generated_key norm)
                                    (:generated-key norm)
@@ -763,21 +811,21 @@
                     (when-not ins-id (throw (ex-info "Could not retrieve inserted ID" {:table table})))
                     (let [the-id (str ins-id)
                           path (str (:uploads config))
-                          image-name (when (and the-id (not (st/blank? the-id)))
-                                       (crud-upload-image table file the-id path))]
-                      (when image-name
-                        (j/update! t-con (keyword table) {image-key image-name}
-                                   [(str (name pk-name) " = ?") (try (Long/parseLong the-id) (catch Exception _ the-id))]
-                                   q-opts))
-                      ins-id)))))
-            (existing-or-composite-upload! [db* table pk-fields pk-map postvars is-new? file conn]
-              (let [single-pk? (= 1 (count pk-fields))
-                    the-id (if single-pk?
-                             (str (or ((keyword (first pk-fields)) pk-map) ""))
-                             (str (or (some identity (vals pk-map)) "")))
-                    path (str (:uploads config))
-                    image-name (when (and the-id (not (st/blank? the-id)))
-                                 (crud-upload-image table file the-id path))
+                          file-name (when (and the-id (not (st/blank? the-id)))
+                                      (crud-upload-file table file the-id file-key path file-type))]
+                       (when file-name
+                         (j/update! t-con (keyword table) {file-key file-name}
+                                    [(str (name pk-name) " = ?") (try (Long/parseLong the-id) (catch Exception _ the-id))]
+                                    q-opts))
+                       ins-id)))))
+             (existing-or-composite-upload! [db* table pk-fields pk-map postvars is-new? file conn]
+               (let [single-pk? (= 1 (count pk-fields))
+                     the-id (if single-pk?
+                              (str (or ((keyword (first pk-fields)) pk-map) ""))
+                              (str (or (some identity (vals pk-map)) "")))
+                     path (str (:uploads config))
+                     file-name (when (and the-id (not (st/blank? the-id)))
+                                 (crud-upload-file table file the-id file-key path file-type))
                     effective-pk-map (if (and (not is-new?) single-pk?)
                                        {(keyword (first pk-fields)) (if (re-matches int-re the-id)
                                                                       (Long/parseLong the-id)
@@ -785,14 +833,14 @@
                                        pk-map)
                     prev-row (when (and (not is-new?) (seq effective-pk-map))
                                (build-form-row table effective-pk-map :conn conn))
-                    postvars (cond-> postvars image-name (assoc image-key image-name))
+                    postvars (cond-> postvars file-name (assoc file-key file-name))
                     [clause values] (build-pk-where-clause effective-pk-map)
                     where-clause (into [clause] values)
                     postvars* (apply dissoc postvars (map keyword pk-fields))
                     result (Save db* (keyword table) postvars* where-clause)]
-                (when (and result image-name prev-row)
-                  (let [old (image-key prev-row)]
-                    (when (and (string? old) (not= old image-name))
+                (when (and result file-name prev-row)
+                  (let [old (file-key prev-row)]
+                    (when (and (string? old) (not= old file-name))
                       (safe-delete-upload! old))))
                 (if result
                   (or (when (map? result)
@@ -806,7 +854,7 @@
       (let [pk-fields (get-table-primary-keys table :conn conn)
             pk-map (get-primary-key-map table params :conn conn)
             file (:file params)
-            postvars (dissoc (build-postvars table params :conn conn) :file :file-column image-key)
+            postvars (dissoc (build-postvars table params :conn conn) :file :file-column file-key)
             is-new? (or (empty? pk-map)
                         (every? (fn [[_ v]]
                                   (or (nil? v)
@@ -827,38 +875,112 @@
                 result (Delete db* (keyword table) (into [clause] values))]
             (boolean result)))))))
 
+(defn- process-multi-upload-form [params table upload-entries & {:keys [conn]}]
+  (let [file-keywords (set (map :column upload-entries))
+        pk-fields (get-table-primary-keys table :conn conn)
+        pk-map (get-primary-key-map table params :conn conn)
+        postvars (apply dissoc (build-postvars table params :conn conn)
+                        (concat [:file :file-column "file" "file-column"] file-keywords))
+        is-new? (or (empty? pk-map)
+                    (every? (fn [[_ v]]
+                              (or (nil? v)
+                                  (and (string? v) (st/blank? v))
+                                  (and (number? v) (= v 0))
+                                  (= (str v) "0"))) pk-map))
+        postvars (-> (if is-new?
+                       (apply dissoc postvars (map keyword pk-fields))
+                       postvars)
+                     blank->nil)
+        db* (resolve-db conn)
+        has-data? (and (map? postvars) (seq postvars))
+        has-files? (boolean (seq upload-entries))]
+    (if (or has-data? has-files?)
+      (let [single-pk? (= 1 (count pk-fields))]
+        (if (and is-new? single-pk?)
+          (let [q-opts (db/q-opts db*)]
+            (j/with-db-transaction [t-con db*]
+              (let [ins (j/insert! t-con (keyword table) postvars (assoc q-opts :return-keys true))
+                    norm (normalize-insert-result ins)
+                    ins-id (or (:generated_key norm)
+                               (:generated-key norm)
+                               (:id norm)
+                               (:last_insert_rowid norm)
+                               (:scope_identity norm)
+                               (db/last-insert-id t-con db*))]
+                (when-not ins-id
+                  (throw (ex-info "Could not retrieve inserted ID" {:table table})))
+                (let [the-id (str ins-id)
+                      path (str (:uploads config))]
+                  (doseq [{:keys [file column type]} upload-entries
+                          :when (and (map? file) (pos? (or (:size file) 0)))]
+                    (when-let [file-name (crud-upload-file table file the-id column path (or type :file))]
+                      (j/update! t-con (keyword table) {column file-name}
+                                 [(str (name (first pk-fields)) " = ?")
+                                  (try (Long/parseLong the-id) (catch Exception _ the-id))]
+                                 q-opts)))
+                  ins-id))))
+          (let [the-id (if single-pk?
+                         (str (or ((keyword (first pk-fields)) pk-map) ""))
+                         (str (or (some identity (vals pk-map)) "")))
+                effective-pk-map (if single-pk?
+                                   {(keyword (first pk-fields)) (if (re-matches int-re the-id)
+                                                                  (Long/parseLong the-id) the-id)}
+                                   pk-map)
+                prev-row (when has-files?
+                           (build-form-row table effective-pk-map :conn conn))
+                path (str (:uploads config))
+                [clause values] (build-pk-where-clause effective-pk-map)
+                where-clause (into [clause] values)]
+            (when has-data?
+              (Save db* (keyword table) postvars where-clause))
+            (doseq [{:keys [file column type]} upload-entries
+                    :when (and (map? file) (pos? (or (:size file) 0)))]
+              (let [file-name (crud-upload-file table file the-id column path (or type :file))]
+                (when file-name
+                  (j/update! db* (keyword table) {column file-name} where-clause)
+                  (when prev-row
+                    (let [old (get prev-row column)]
+                      (when (and (string? old) (not= old file-name))
+                        (safe-delete-upload! old)))))))
+            (boolean (or has-data? has-files?)))))
+      (let [[clause values] (build-pk-where-clause pk-map)]
+        (boolean (Delete db* (keyword table) (into [clause] values)))))))
+
+;; Strip entries whose value is a file-upload map (map with :tempfile).
+;; These must never reach process-regular-form because build-postvars
+;; stringifies them via process-field and writes garbage to the DB.
+(defn- strip-file-params [params]
+  (into {} (remove (fn [[_ v]] (and (map? v) (:tempfile v))) params)))
+
 ;; --- public API ---
 (defn build-form-save
   ([params table] (build-form-save params table :conn nil))
   ([params table & {:keys [conn]}]
-   (let [upload-entry (first (filter (fn [[k v]]
-                                       (and (not (#{:file "file" :file-column "file-column"} k))
-                                            (map? v)
-                                            (:tempfile v)))
-                                     params))
-         upload-key (first upload-entry)
-         upload-file (second upload-entry)
-         file* (or (:file params) (get params "file") upload-file)
-         inferred-file-column
-         (or (some (fn [[k v]]
-                     (when (and (not (#{:file "file" :file-column "file-column"} k))
-                                (or (and (map? v) (:tempfile v))
-                                    (string? v)))
-                       (if (keyword? k) k (keyword (str k)))))
-                   params)
-             upload-key)
-         file-column (cond
-                       (:file-column params) (:file-column params)
-                       (get params "file-column") (keyword (get params "file-column"))
-                       (keyword? inferred-file-column) inferred-file-column
-                       (string? inferred-file-column) (keyword inferred-file-column)
-                       :else :imagen)
-         non-empty-file? (and (map? file*) (pos? (or (:size file*) 0)))]
+   (let [all-uploads (filter (fn [[k v]]
+                                  (and (not (#{:file "file" :file-column "file-column"} k))
+                                       (map? v)
+                                       (:tempfile v)))
+                               params)
+         entity-cfg (try (entcfg/get-entity-config (keyword table)) (catch Exception _ nil))
+         field-map (when entity-cfg
+                     (into {} (map (juxt :id :type) (:fields entity-cfg))))
+         upload-entries (mapv (fn [[k v]]
+                                  (let [col (if (keyword? k) k (keyword (str k)))
+                                        ft (or (get field-map col) :file)]
+                                    {:key k :file v :column col :type ft}))
+                                all-uploads)]
+     (cond
+        (empty? upload-entries)
+        (process-regular-form (strip-file-params params) table :conn conn)
 
-     (if non-empty-file?
-       ;; normalize to keyword key to keep downstream logic consistent
-       (process-upload-form (assoc params :file file* :file-column file-column) table table :conn conn)
-       (process-regular-form params table :conn conn)))))
+        (= 1 (count upload-entries))
+        (let [{:keys [file column type]} (first upload-entries)]
+          (if (and (map? file) (pos? (or (:size file) 0)))
+            (process-upload-form (assoc params :file file :file-column column :file-type type) table table :conn conn)
+            (process-regular-form (strip-file-params params) table :conn conn)))
+
+        :else
+        (process-multi-upload-form params table upload-entries :conn conn)))))
 
 (defn- select-row [db* table id-or-pk pk-fields]
   (if (= 1 (count pk-fields))
@@ -873,17 +995,17 @@
                      (Query db* sql)
                      (Query db* sql)))]
     (try
-      (db/cascade-delete-child-images! db* table row query-fn safe-delete-upload!)
       (when-let [childs (get (:cascade-image-delete config) (keyword table))]
         (doseq [{:keys [table fk image-col]} childs]
           (let [fkcol (or fk "id")
-                icol  (or image-col "imagen")
+                icol  (or image-col "")
                 pval  ((keyword (or (first (get-table-primary-keys table)) "id")) row)
                 sql   (str "SELECT " icol " FROM " table " WHERE " fkcol " = ?")
                 rows  (Query db* [sql pval])]
-            (doseq [r rows]
-              (when-let [im ((keyword icol) r)]
-                (safe-delete-upload! im))))))
+            (when (not (st/blank? icol))
+              (doseq [r rows]
+                (when-let [im ((keyword icol) r)]
+                  (safe-delete-upload! im)))))))
       (catch Exception _ nil))))
 
 (defn- perform-delete [db* table id-or-pk pk-fields]
@@ -896,24 +1018,26 @@
         (Delete db* (keyword table) (into [clause] values)))
       nil)))
 
-(defn- build-form-delete* [db* table id-or-pk pk-fields]
+(defn- build-form-delete* [db* table id-or-pk pk-fields & [file-fields]]
   (let [row (select-row db* table id-or-pk pk-fields)
         delete-result (when row
                         (cascade-delete-images! db* table row)
                         (perform-delete db* table id-or-pk pk-fields))
         deleted? (pos? (update-count' delete-result))]
     (when (and deleted? row)
-      (when-let [img (:imagen row)] (safe-delete-upload! img)))
+      (doseq [ff (or file-fields [])]
+        (when-let [img (get row ff)]
+          (safe-delete-upload! img))))
     deleted?))
 
 (defn build-form-delete
   ([table id-or-pk]
    (let [pk-fields (get-table-primary-keys table)]
      (build-form-delete* db table id-or-pk pk-fields)))
-  ([table id-or-pk & {:keys [conn]}]
+  ([table id-or-pk & {:keys [conn file-fields]}]
    (let [pk-fields (get-table-primary-keys table :conn conn)
          db* (resolve-db conn)]
-     (build-form-delete* db* table id-or-pk pk-fields))))
+     (build-form-delete* db* table id-or-pk pk-fields file-fields))))
 
 ;; --- small helpers for composite keys ---
 (defn has-composite-primary-key?

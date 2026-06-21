@@ -7,7 +7,7 @@
 
 (s/def ::id keyword?)
 (s/def ::label (s/or :string string? :keyword keyword?))
-(s/def ::type #{:text :email :password :date :datetime :number :decimal :select :radio :checkbox :textarea :file :hidden :computed})
+(s/def ::type #{:text :email :password :date :datetime :number :decimal :select :radio :checkbox :textarea :file :pdf :document :hidden :computed})
 (s/def ::required? boolean?)
 (s/def ::placeholder string?)
 (s/def ::validation (s/or :fn fn? :keyword keyword?))
@@ -230,6 +230,8 @@
    :checkbox {:type :checkbox :required? false}
    :textarea {:type :textarea :required? false}
    :file {:type :file :required? false}
+   :pdf {:type :pdf :required? false}
+   :document {:type :document :required? false}
    :hidden {:type :hidden}})
 
 (def default-actions

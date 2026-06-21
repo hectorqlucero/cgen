@@ -2,19 +2,20 @@
  :title "Audit Log"
  :table "audit_log"
  :connection :default
- :rights ["A" "S"]
+ :rights ["U" "A" "S"]
  :mode :parameter-driven
- :menu-category :system
- :menu-hidden? true
+ :menu-order 999
+ :menu-icon "bi bi-journal-text"
+ :menu-category :Users
 
- :fields [{:id :id        :label "ID"        :type :hidden}
-          {:id :entity    :label "Entity"    :type :text}
-          {:id :operation :label "Operation" :type :text}
-          {:id :user_id   :label "User"      :type :text}
-          {:id :timestamp :label "Timestamp" :type :text}
-          {:id :data      :label "Data"      :type :textarea}]
+ :fields [{:id :id :label "ID" :type :hidden}
+          {:id :entity :label "Entity" :type :textarea :required? true :placeholder "Entity..."}
+          {:id :operation :label "Operation" :type :textarea :required? true :placeholder "Operation..."}
+          {:id :data :label "Data" :type :textarea :placeholder "Data..."}
+          {:id :user_id :label "User Id" :type :number}
+          {:id :timestamp :label "Timestamp" :type :textarea :placeholder "Timestamp..."}]
 
  :queries {:list "SELECT * FROM audit_log ORDER BY id DESC"
-           :get  "SELECT * FROM audit_log WHERE id = ?"}
+           :get "SELECT * FROM audit_log WHERE id = ?"}
 
- :actions {:new false :edit false :delete false}}
+ :actions {:new true :edit true :delete true}}

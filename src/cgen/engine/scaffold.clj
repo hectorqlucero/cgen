@@ -85,7 +85,6 @@
       (re-find #"password|passwd|pwd" column-name) :password
       (re-find #"phone|tel|mobile|cell" column-name) :text
       (re-find #"url|website|link|uri" column-name) :text
-      (re-find #"image|photo|picture|img|avatar|logo|thumbnail|thumb|banner|cover" column-name) :file
       (re-find #"description|comment|note|memo|text" column-name) :textarea
       (and (re-find #"VARCHAR|CHAR" sql-type) (> size 255)) :textarea
 
@@ -593,11 +592,6 @@
                              base-fields)
 
         table-title (or title (humanize-label table-name))
-        file-fields (filter #(= :file (:type %)) fields-with-display)
-        hook-ns-segment (hook-namespace-segment table-name)
-        auto-hooks (when (seq file-fields)
-                     {:after-load (symbol (str (get-base-ns) ".hooks." hook-ns-segment "/after-load"))
-                      :before-save (symbol (str (get-base-ns) ".hooks." hook-ns-segment "/before-save"))})
         subgrids (generate-subgrids table-name conn)
         has-parent? (seq fks)
         has-children? (seq subgrids)
@@ -622,45 +616,21 @@
       ;; Hide leaf child entities from top-level menu.
       menu-hidden? (assoc :menu-hidden true)
 
-      ;; Auto-enable required hooks for file/image fields.
-      (seq file-fields) (assoc :hooks auto-hooks)
-
       ;; Add subgrids if any tables reference this one
       (seq subgrids) (assoc :subgrids subgrids))))
 
 (defn generate-hook-stub
   "Generates a minimal hook stub file for an entity."
-  [entity-name & [fields]]
-  (let [file-fields (filter #(= :file (:type %)) fields)
-        has-file-fields? (seq file-fields)
-        file-field-names (map :id file-fields)
-        base-ns (get-base-ns)
+  [entity-name & [_fields]]
+  (let [base-ns (get-base-ns)
         hook-ns-segment (hook-namespace-segment entity-name)]
-    (str "(ns " base-ns ".hooks." hook-ns-segment
-         (when has-file-fields?
-           (str "\n  (:require [" base-ns ".models.util :refer [image-link]])"))
-         ")\n\n"
+    (str "(ns " base-ns ".hooks." hook-ns-segment ")\n\n"
          "(defn before-load [params]\n"
          "  params)\n\n"
          "(defn after-load [rows _params]\n"
-         (if has-file-fields?
-           (str "  (map #(-> %\n"
-                (apply str (map (fn [field-id]
-                                  (str "            (assoc :" (name field-id) " (image-link (:" (name field-id) " %)))\n"))
-                                file-field-names))
-                "        ) rows))\n\n")
-           "  rows)\n\n")
+         "  rows)\n\n"
          "(defn before-save [params]\n"
-         (if has-file-fields?
-           (let [first-file-field (first file-field-names)]
-             (str "  (if-let [file-data (:" (name first-file-field) " params)]\n"
-                  "    (if (and (map? file-data) (:tempfile file-data))\n"
-                  "      (-> params\n"
-                  "          (assoc :file file-data :file-column :" (name first-file-field) ")\n"
-                  "          (dissoc :" (name first-file-field) "))\n"
-                  "      params)\n"
-                  "    params))\n\n"))
-           "  params)\n\n")
+         "  params)\n\n"
          "(defn after-save [_entity-id _params]\n"
          "  {:success true})\n\n"
          "(defn before-delete [_entity-id]\n"
@@ -892,10 +862,7 @@
         (write-hook-stub (name table-name) (:fields config) :force? force?))
 
       (println)
-      (println (str "Done: " filename " -> /admin/" (name table-name)
-                    (if (:hooks config)
-                      " (hooks auto-enabled for file/image fields)"
-                      " (add :hooks if needed)")))
+      (println (str "Done: " filename " -> /admin/" (name table-name)))
       (println))
 
     (catch Exception e
@@ -949,9 +916,9 @@
   (println "  --exclude a,b,c     Tables to exclude (with --all)")
   (println)
   (println "Examples:")
-  (println "  lein scaffold employees")
-  (println "  lein scaffold employees --rights [A S] --title \"Employees\"")
-  (println "  lein scaffold employee_profiles --no-hooks")
+  (println "  lein scaffold libros")
+  (println "  lein scaffold libros --rights [A S] --title \"Books\"")
+  (println "  lein scaffold categorias --no-hooks")
   (println "  lein scaffold --all --exclude sessions,schema_migrations")
   (println)
   (println "What gets generated:")

@@ -247,46 +247,68 @@
                          :checked-value (or value "T")
                          :value field-value})
 
-      :file
-      ;; File input with preview
+      (:file :pdf :document)
+      ;; File input with preview (type-appropriate accept and preview)
       (let [filename (cond
-                       ;; Hiccup img vector case: extract src
-                       (and (vector? field-value)
-                            (keyword? (first field-value))
-                            (= (first field-value) :img))
-                       (when-let [attrs (second field-value)]
-                         (when-let [src (:src attrs)]
-                           (-> src
-                               (clojure.string/split #"\?")
-                               first
-                               (clojure.string/replace (:path crud/config) ""))))
+                        ;; Hiccup img vector case: extract src
+                        (and (vector? field-value)
+                             (keyword? (first field-value))
+                             (= (first field-value) :img))
+                        (when-let [attrs (second field-value)]
+                          (when-let [src (:src attrs)]
+                            (-> src
+                                (clojure.string/split #"\?")
+                                first
+                                (clojure.string/replace (:path crud/config) ""))))
 
-                       ;; Old HTML string case: parse src from img tag
-                       (and (string? field-value) (re-find #"^<img" field-value))
-                       (when-let [match (re-find #"src='([^']+)'" field-value)]
-                         (-> (second match)
-                             (clojure.string/split #"\?")
-                             first
-                             (clojure.string/replace (:path crud/config) "")))
+                        ;; Old HTML string case: parse src from img tag
+                        (and (string? field-value) (re-find #"^<img" field-value))
+                        (when-let [match (re-find #"src='([^']+)'" field-value)]
+                          (-> (second match)
+                              (clojure.string/split #"\?")
+                              first
+                              (clojure.string/replace (:path crud/config) "")))
 
-                       ;; Plain filename string
-                       :else field-value)]
+                        ;; Plain filename string
+                        :else field-value)
+            is-image? (= type :file)
+            accept-str (case type
+                         :file "image/*"
+                         :pdf ".pdf"
+                         :document ".doc,.docx,.txt,.odt"
+                         "image/*")]
         [:div.mb-3
          [:label.form-label.fw-semibold {:for (name id)} label
           (when required? [:span.text-danger.ms-1 "*"])]
          (when (and filename (not (map? filename)) (seq filename))
-           [:div.mb-2
-            [:img {:src (str (:path crud/config) filename "?" (random-uuid))
-                   :alt filename
-                   :style "width: 100%; max-width: 100%; height: auto; border: 1px solid #dee2e6; border-radius: 4px; padding: 4px; cursor: pointer;"
-                   :onclick "window.open(this.src, '_blank')"}]
-            [:div.text-muted.small.mt-1 filename]])
-         [:input {:type "file"
-                  :class "form-control form-control-lg"
-                  :id (name id)
-                  :name (name id)
-                  :required required?
-                  :accept "image/*"}]])
+           (if is-image?
+             [:div.mb-2
+              [:img {:src (str (:path crud/config) filename "?" (random-uuid))
+                     :alt filename
+                     :style "width: 100%; max-width: 100%; height: auto; border: 1px solid #dee2e6; border-radius: 4px; padding: 4px; cursor: pointer;"
+                     :onclick "window.open(this.src, '_blank')"}]
+              [:div.text-muted.small.mt-1 filename]]
+             [:div.mb-2
+              [:a {:href (str (:path crud/config) filename "?" (random-uuid))
+                   :target "_blank"
+                   :class "btn btn-outline-primary btn-sm"}
+               [:i.bi {:class (case (second (re-find #"\.(\w+)$" (str filename)))
+                                "pdf" "bi-file-earmark-pdf"
+                                "doc" "bi-file-earmark-word"
+                                "docx" "bi-file-earmark-word"
+                                "txt" "bi-file-earmark-text"
+                                "odt" "bi-file-earmark-text"
+                                "bi-file-earmark")}]
+               " " filename]]))
+          [:input {:type "file"
+                   :class "form-control form-control-lg"
+                   :id (name id)
+                   :name (name id)
+                   :required (and required?
+                                  (or (nil? field-value)
+                                      (and (string? field-value) (empty? field-value))
+                                      (and (map? field-value) (not (:tempfile field-value)))))
+                   :accept accept-str}]])
       :computed
       ;; computed fields are displayed but not editable
       [:div.mb-3

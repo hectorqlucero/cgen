@@ -1,0 +1,23 @@
+{:entity :autores
+ :title "Autores"
+ :table "autores"
+ :connection :default
+ :rights ["U" "A" "S"]
+ :mode :parameter-driven
+ :menu-order 110
+ :menu-icon "bi bi-pencil"
+ :menu-category :Biblioteca
+
+ :fields [{:id :id :label "ID" :type :hidden}
+          {:id :nombre :label "Nombre" :type :text :required? true :placeholder "Nombre..."}
+          {:id :apellidos :label "Apellidos" :type :text :required? true :placeholder "Apellidos..."}
+          {:id :biografia :label "Biografía" :type :textarea :placeholder "Biografía del autor..."}
+          {:id :activo :label "Activo" :type :radio :value "T"
+           :options [{:id "autores-activo" :value "T" :label "Sí"}
+                     {:id "autores-inactivo" :value "F" :label "No"}]}]
+
+ :queries {:list "SELECT * FROM autores ORDER BY apellidos, nombre"
+           :get "SELECT * FROM autores WHERE id = ?"}
+
+ :actions {:new true :edit true :delete true}
+}

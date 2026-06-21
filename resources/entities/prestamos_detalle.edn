@@ -1,0 +1,27 @@
+{:entity :prestamos_detalle
+ :title "Detalle del Préstamo"
+ :table "prestamos_detalle"
+ :connection :default
+ :rights ["U" "A" "S"]
+ :mode :parameter-driven
+ :menu-order 999
+ :menu-hidden true
+ :menu-icon "bi bi-list-ul"
+
+ :fields [{:id :id :label "ID" :type :hidden}
+          {:id :libro_id
+           :label "Libro"
+           :type :fk
+           :fk :libros
+           :fk-field [:titulo :isbn]
+           :fk-separator " — "}
+          {:id :libro_titulo :label "Libro" :grid-only? true}
+          {:id :cantidad :label "Cantidad" :type :number :value 1 :placeholder "1"}
+          {:id :notas :label "Notas" :type :textarea :placeholder "Notas del detalle..."}
+          {:id :prestamo_id :label "Préstamo ID" :type :hidden}]
+
+ :queries {:list "SELECT pd.*, lib.titulo as libro_titulo FROM prestamos_detalle pd LEFT JOIN libros lib ON pd.libro_id = lib.id ORDER BY pd.id DESC"
+           :get "SELECT pd.*, lib.titulo as libro_titulo FROM prestamos_detalle pd LEFT JOIN libros lib ON pd.libro_id = lib.id WHERE pd.id = ?"}
+
+ :actions {:new true :edit true :delete true}
+}

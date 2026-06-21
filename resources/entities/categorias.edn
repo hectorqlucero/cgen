@@ -1,0 +1,19 @@
+{:entity :categorias
+ :title "Categorías"
+ :table "categorias"
+ :connection :default
+ :rights ["U" "A" "S"]
+ :mode :parameter-driven
+ :menu-order 120
+ :menu-icon "bi bi-tags"
+ :menu-category :Biblioteca
+
+ :fields [{:id :id :label "ID" :type :hidden}
+          {:id :nombre :label "Nombre" :type :text :required? true :placeholder "Nombre..."}
+          {:id :descripcion :label "Descripción" :type :textarea :placeholder "Descripción de la categoría..."}]
+
+ :queries {:list "SELECT * FROM categorias ORDER BY nombre"
+           :get "SELECT * FROM categorias WHERE id = ?"}
+
+ :actions {:new true :edit true :delete true}
+}

@@ -49,45 +49,4 @@
           ks (db/primary-keys sqlite-spec "people" desc (fn [_] []))]
       (is (= [] ks)))))
 
-(deftest cascade-delete-child-images-sqlite-test
-  (testing "deletes child images for sqlite vendor"
-    (let [calls (atom [])
-          delete-fn (fn [imagen] (swap! calls conj imagen))
-          ;; Stub query-fn that reacts to specific SQL strings
-          qfn (fn [sql]
-                (cond
-                  ;; tables list
-                  (and (vector? sql)
-                       (= (first sql) "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> ?"))
-                  [{:name "child1"} {:name "child2"}]
 
-                  ;; foreign keys of child1 -> references parent_table(id)
-                  (and (string? sql)
-                       (= sql "PRAGMA foreign_key_list(child1)"))
-                  [{:id 0 :seq 0 :table "parent_table" :from "parent_id" :to "id"}]
-
-                  ;; foreign keys of child2 -> references other table
-                  (and (string? sql)
-                       (= sql "PRAGMA foreign_key_list(child2)"))
-                  [{:id 0 :seq 0 :table "other_table" :from "other_id" :to "id"}]
-
-                  ;; table_info for child1 includes imagen
-                  (and (string? sql)
-                       (= sql "PRAGMA table_info(child1)"))
-                  [{:name "id"} {:name "imagen"}]
-
-                  ;; table_info for child2
-                  (and (string? sql)
-                       (= sql "PRAGMA table_info(child2)"))
-                  [{:name "id"}]
-
-                  ;; select images from child1 by fk value 42
-                  (and (vector? sql)
-                       (let [[s v] sql]
-                         (and (= s "SELECT imagen FROM child1 WHERE parent_id = ?") (= v 42))))
-                  [{:imagen "c1a.jpg"} {:imagen "c1b.png"}]
-
-                  :else []))
-          parent-row {:id 42}
-          _ (db/cascade-delete-child-images! sqlite-spec "parent_table" parent-row qfn delete-fn)]
-      (is (= ["c1a.jpg" "c1b.png"] @calls)))))

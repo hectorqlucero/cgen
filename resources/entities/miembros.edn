@@ -1,0 +1,29 @@
+{:entity :miembros
+ :title "Miembros"
+ :table "miembros"
+ :connection :default
+ :rights ["U" "A" "S"]
+ :mode :parameter-driven
+ :menu-order 140
+ :menu-icon "bi bi-people"
+ :menu-category :Biblioteca
+
+ :fields [{:id :id :label "ID" :type :hidden}
+          {:id :nombre :label "Nombre Completo" :type :text :required? true :placeholder "Nombre del miembro..."}
+          {:id :email :label "Correo Electrónico" :type :email :placeholder "miembro@ejemplo.com"}
+          {:id :telefono :label "Teléfono" :type :text :placeholder "+52 555 123 4567"}
+          {:id :foto :label "Foto" :type :file}
+          {:id :fecha_registro :label "Fecha de Registro" :type :date}
+          {:id :activo :label "Activo" :type :checkbox :value "T"}]
+
+ :queries {:list "SELECT * FROM miembros ORDER BY nombre"
+           :get "SELECT * FROM miembros WHERE id = ?"}
+
+ :actions {:new true :edit true :delete true}
+
+ :subgrids [{:entity :prestamos
+             :title "Préstamos"
+             :foreign-key :miembro_id
+             :icon "bi bi-journal-text"
+             :label "Préstamos"
+             :relationship-type :one-to-many}]}

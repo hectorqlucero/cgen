@@ -21,7 +21,8 @@
 (def custom-nav-links
   "Custom navigation links (non-dropdown, not entity-based)"
   [["/" :nav/home "bi bi-house" nil 0]
-   ["/dashboard" "DASHBOARD" "bi bi-speedometer2" "U" 10]])
+   ["/dashboard" "DASHBOARD" "bi bi-speedometer2" "U" 10]
+   ["/prestamos" "Escritorio Préstamos" "bi bi-journal-text" "U" 15]])
 
 ;; Custom dropdown menus (not entity-based).
 ;; Use :order on the dropdown itself to control its position among other dropdowns.
@@ -45,14 +46,11 @@
     :label "Reportes"
     :order 30
     :icon "bi bi-printer"
-    :items [["/reports/contactos" "Contactos" "U" 10 "bi bi-people"]
-            ["/reports/audit-log" "Auditoría" "U" 20 "bi bi-journal-text"]
-            ["/reports/organizations" "Organizaciones" "U" 30 "bi bi-building"]
-            ["/reports/departments" "Departamentos" "U" 40 "bi bi-diagram-2"]
-            ["/reports/employees" "Empleados" "U" 50 "bi bi-person-badge"]
-            ["/reports/projects" "Proyectos" "U" 60 "bi bi-kanban"]
-            ["/reports/skills" "Habilidades" "U" 70 "bi bi-star"]
-            ["/reports/users" "Usuarios" "A" 80 "bi bi-people"]]}})
+    :items [["/reportes/libros" "Libros" "U" 10 "bi bi-book"]
+            ["/reportes/miembros" "Miembros" "U" 20 "bi bi-people"]
+            ["/reportes/prestamos" "Préstamos" "U" 30 "bi bi-journal-text"]
+            ["/reports/audit-log" "Auditoría" "U" 40 "bi bi-journal-text"]
+            ["/reports/users" "Usuarios" "A" 50 "bi bi-people"]]}})
 
 (def custom-dropdown-items
   "Extra items to append to existing dropdowns (auto-generated or custom).

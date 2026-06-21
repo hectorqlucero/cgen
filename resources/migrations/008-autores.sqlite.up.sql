@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS autores (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nombre TEXT NOT NULL,
+  apellidos TEXT NOT NULL,
+  biografia TEXT,
+  activo TEXT DEFAULT 'T'
+);

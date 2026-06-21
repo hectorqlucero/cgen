@@ -26,19 +26,16 @@
  :common/print "Print"
 
  ;; [GENERIC] Entity Names
- :entity/employees "Employees"
- :entity/departments "Departments"
- :entity/organizations "Organizations"
- :entity/projects "Projects"
- :entity/skills "Skills"
  :entity/users "Users"
- :entity/contactos "Contacts"
- :entity/cars "Cars"
- :entity/siblings "Siblings"
- :entity/employee_profiles "Employee Profiles"
- :entity/employee_projects "Employee Projects"
- :entity/employee_skills "Employee Skills"
- :entity/audit_log "Audit Log"
+  :entity/audit_log "Audit Log"
+  :entity/autores "Authors"
+  :entity/categorias "Categories"
+  :entity/libros "Books"
+  :entity/libros_imagenes "Image Gallery"
+  :entity/libros_autores "Book Authors"
+  :entity/miembros "Members"
+  :entity/prestamos "Loans"
+  :entity/prestamos_detalle "Loan Details"
 
  ;; [GENERIC] Field Labels
  :form/email "Email"
@@ -218,4 +215,57 @@
  :users/fax "Fax"
  :users/email "Email"
  :users/level "User Level"
- :users/active "Active"}
+ :users/active "Active"
+
+ ;; [ENTITY] autores
+ :autores/nombre "First Name"
+ :autores/apellidos "Last Name"
+ :autores/biografia "Biography"
+ :autores/activo "Active"
+
+ ;; [ENTITY] categorias
+ :categorias/nombre "Name"
+ :categorias/descripcion "Description"
+
+ ;; [ENTITY] libros
+ :libros/titulo "Title"
+ :libros/isbn "ISBN"
+ :libros/categoria_id "Category"
+ :libros/categoria_nombre "Category"
+ :libros/portada "Cover Image"
+ :libros/pdf "Digital Book (PDF)"
+ :libros/documento "Attached Document"
+ :libros/anio_publicacion "Publication Year"
+ :libros/paginas "Pages"
+ :libros/sinopsis "Synopsis"
+ :libros/status "Status"
+
+ ;; [ENTITY] miembros
+ :miembros/nombre "Full Name"
+ :miembros/email "Email"
+ :miembros/telefono "Phone"
+ :miembros/foto "Photo"
+ :miembros/fecha_registro "Registration Date"
+ :miembros/activo "Active"
+
+ ;; [ENTITY] prestamos
+ :prestamos/miembro_id "Member"
+ :prestamos/miembro_nombre "Member"
+ :prestamos/fecha_prestamo "Loan Date"
+ :prestamos/fecha_vencimiento "Due Date"
+ :prestamos/fecha_devolucion "Return Date"
+ :prestamos/status "Status"
+ :prestamos/notas "Notes"
+
+ ;; [ENTITY] prestamos_detalle
+ :prestamos_detalle/libro_id "Book"
+ :prestamos_detalle/libro_titulo "Book"
+ :prestamos_detalle/cantidad "Quantity"
+ :prestamos_detalle/notas "Notes"
+
+ ;; [ENTITY] libros_imagenes
+ :libros_imagenes/imagen "Image"
+ :libros_imagenes/descripcion "Description"
+
+ ;; [ENTITY] libros_autores
+ :libros_autores/autor_nombre "Author"}

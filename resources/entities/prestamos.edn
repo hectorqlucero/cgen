@@ -1,0 +1,38 @@
+{:entity :prestamos
+ :title "Préstamos"
+ :table "prestamos"
+ :connection :default
+ :rights ["U" "A" "S"]
+ :mode :parameter-driven
+ :menu-order 150
+ :menu-icon "bi bi-journal-text"
+ :menu-category :Biblioteca
+
+ :fields [{:id :id :label "ID" :type :hidden}
+          {:id :miembro_id
+           :label "Miembro"
+           :type :fk
+           :fk :miembros
+           :fk-field [:nombre]
+           :fk-can-create? true}
+          {:id :miembro_nombre :label "Miembro" :grid-only? true}
+          {:id :fecha_prestamo :label "Fecha de Préstamo" :type :date :required? true}
+          {:id :fecha_vencimiento :label "Fecha de Vencimiento" :type :date}
+          {:id :fecha_devolucion :label "Fecha de Devolución" :type :date}
+          {:id :status :label "Estado" :type :radio :value "activo"
+           :options [{:id "prestamos-activo" :value "activo" :label "Activo"}
+                     {:id "prestamos-vencido" :value "vencido" :label "Vencido"}
+                     {:id "prestamos-devuelto" :value "devuelto" :label "Devuelto"}]}
+          {:id :notas :label "Notas" :type :textarea :placeholder "Notas adicionales..."}]
+
+ :queries {:list "SELECT p.*, m.nombre as miembro_nombre FROM prestamos p LEFT JOIN miembros m ON p.miembro_id = m.id ORDER BY p.id DESC"
+           :get "SELECT p.*, m.nombre as miembro_nombre FROM prestamos p LEFT JOIN miembros m ON p.miembro_id = m.id WHERE p.id = ?"}
+
+ :actions {:new true :edit true :delete true}
+
+ :subgrids [{:entity :prestamos_detalle
+             :title "Detalle del Préstamo"
+             :foreign-key :prestamo_id
+             :icon "bi bi-list-ul"
+             :label "Libros Prestados"
+             :relationship-type :one-to-many}]}

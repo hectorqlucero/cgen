@@ -18,6 +18,8 @@
   [entity data]
   (let [config (config/get-entity-config entity)
         fields (:fields config)
+        file-types #{:file :pdf :document}
+        is-update? (boolean (:id data))
         errors (atom [])]
 
     ;; Check required fields
@@ -25,7 +27,9 @@
       (when (:required? field)
         (let [field-id (:id field)
               value (get data field-id)]
-          (when (or (nil? value) (and (string? value) (empty? value)))
+          (when (and (or (nil? value) (and (string? value) (empty? value)))
+                     ;; File fields: skip required check on updates — existing value preserved in DB
+                     (not (and is-update? (file-types (:type field)))))
             (swap! errors conj
                    {:field field-id
                     :message (i18n/tr :validation/required {:field (if (keyword? (:label field))
@@ -178,18 +182,43 @@
   (let [config (config/get-entity-config entity)
         hooks (:hooks config)
         connection (or (:conn opts) (:connection config) :default)
-        table (:table config)]
+        table (:table config)
+        file-types #{:file :pdf :document}
+        file-fields (map :id (filter #(file-types (:type %)) (:fields config)))]
     (when (and (not (:skip-hooks? opts))
                (:before-delete hooks))
       (execute-hook (:before-delete hooks) {:id id}))
 
     (let [result (try
-                   (crud/build-form-delete table id :conn connection)
+                   (crud/build-form-delete table id :conn connection
+                                           :file-fields (vec file-fields))
                    (catch Exception e
                      (println "[ERROR] delete-record failed:" (.getMessage e))
-                     {:success false :error (.getMessage e)}))]
+                     {:success false :error (.getMessage e)}))
+          success? (or (= true result) (:success result))]
 
-      (when (and (or (= true result) (:success result))
+      (when success?
+        ;; Clean up child entity orphaned files (replaces vendor introspection cascade)
+        (try
+          (doseq [subgrid (:subgrids config)]
+            (let [child-entity (:entity subgrid)
+                  child-fk (:foreign-key subgrid)
+                  child-cfg (try (config/get-entity-config child-entity)
+                                 (catch Exception _ nil))
+                  child-file-fields (when child-cfg
+                                      (map :id (filter #(file-types (:type %)) (:fields child-cfg))))]
+              (when (seq child-file-fields)
+                (doseq [ff child-file-fields]
+                  (let [rows (crud/Query [(str "SELECT " (name ff) " FROM " (:table child-cfg)
+                                                " WHERE " (name child-fk) " = ?") id]
+                                         :conn connection)]
+                    (doseq [row rows]
+                      (when-let [fname (get row ff)]
+                        (crud/safe-delete-upload! fname))))))))
+          (catch Exception e
+            (println "[WARN] Error cleaning up child entity files:" (.getMessage e)))))
+
+      (when (and success?
                  (not (:skip-hooks? opts))
                  (:after-delete hooks))
         (execute-hook (:after-delete hooks) {:id id} result))

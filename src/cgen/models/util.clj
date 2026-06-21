@@ -97,15 +97,33 @@
       (some? from-top) from-top
       :else default)))
 
-(defn image-link
-  [image-name]
-  (let [path (str (:path config) image-name "?" (random-uuid))
-        ;; Read thumbnail dimensions from app-config.edn (fall back to defaults)
-        width (or (cfg/app-config [:ui :assets :thumbnail-width]) 42)
-        height (or (cfg/app-config [:ui :assets :thumbnail-height]) 32)
-        style (str "margin-right:" width "px;cursor:pointer;")
-        img-link (str "<img src='" path "' alt='" image-name "' width=" width " height=" height " style='" style "'>")]
-    img-link))
+(defn- file-extension
+  "Extracts the lowercase extension from a filename string."
+  [filename]
+  (when filename
+    (let [parts (st/split filename #"\.")]
+      (when (> (count parts) 1)
+        (st/lower-case (last parts))))))
+
+(defn file-link
+  "Generates HTML for a file: <img> for images, download link with Bootstrap icon for others."
+  [file-name]
+  (let [path (str (:path config) file-name "?" (random-uuid))
+        ext (file-extension file-name)
+        image-exts #{"jpg" "jpeg" "png" "gif" "bmp" "webp"}]
+    (if (contains? image-exts ext)
+      (let [width (or (cfg/app-config [:ui :assets :thumbnail-width]) 42)
+            height (or (cfg/app-config [:ui :assets :thumbnail-height]) 32)
+            style (str "margin-right:" width "px;cursor:pointer;")]
+        (str "<img src='" path "' alt='" file-name "' width=" width " height=" height " style='" style "'>"))
+      (let [icon (cond
+                   (#{"pdf"} ext) "bi-file-earmark-pdf"
+                   (#{"doc" "docx"} ext) "bi-file-earmark-word"
+                   (#{"txt"} ext) "bi-file-earmark-text"
+                   (#{"odt"} ext) "bi-file-earmark-text"
+                   :else "bi-file-earmark")
+            display-name (or file-name "")]
+        (str "<a href='" path "' target='_blank' download><i class='bi " icon "'></i> " display-name "</a>")))))
 
 (defn year-options
   [table date-field]
@@ -350,8 +368,10 @@
   ;; Time formatting
   (seconds->string 90061)
 
-  ;; Image link
-  (image-link "avatar.png")
+  ;; File link
+  (file-link "avatar.png")
+  (file-link "document.pdf")
+  (file-link "notes.txt")
 
   ;; Year/month options
   (year-options "billing" "bill_date")
@@ -364,7 +384,7 @@
   (get-options "users" "id" "firstname")
   (get-options "users" "id" ["firstname" "lastname"] :sort-by ["lastname" "firstname"])
   (get-options "users" "id" ["firstname" "lastname"] :filter-field "status" :filter-value "active")
-  (get-options "employees" "id" "name" :filter-field "department" :filter-value "IT" :sort-by "name")
+  (get-options "libros" "id" "titulo" :filter-field "categoria_id" :filter-value "1" :sort-by "titulo")
 
   ;; String and parsing helpers
   (not-empty-str "hello")

@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS prestamos_detalle (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  prestamo_id INTEGER NOT NULL,
+  libro_id INTEGER NOT NULL,
+  cantidad INTEGER DEFAULT 1,
+  notas TEXT,
+  FOREIGN KEY (prestamo_id) REFERENCES prestamos(id) ON DELETE CASCADE,
+  FOREIGN KEY (libro_id) REFERENCES libros(id) ON DELETE RESTRICT
+);

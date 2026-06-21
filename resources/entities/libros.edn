@@ -1,0 +1,51 @@
+{:entity :libros
+ :title "Libros"
+ :table "libros"
+ :connection :default
+ :rights ["U" "A" "S"]
+ :mode :parameter-driven
+ :menu-order 130
+ :menu-icon "bi bi-book"
+ :menu-category :Biblioteca
+
+ :fields [{:id :id :label "ID" :type :hidden}
+          {:id :titulo :label "Título" :type :text :required? true :placeholder "Título del libro..."}
+          {:id :isbn :label "ISBN" :type :text :placeholder "978-3-16-148410-0"}
+          {:id :categoria_id
+           :label "Categoría"
+           :type :fk
+           :fk :categorias
+           :fk-field [:nombre]
+           :fk-can-create? true}
+          {:id :categoria_nombre :label "Categoría" :grid-only? true}
+          {:id :portada :label "Portada" :type :file}
+          {:id :pdf :label "Libro Digital (PDF)" :type :pdf}
+          {:id :documento :label "Documento Adjunto" :type :document}
+          {:id :anio_publicacion :label "Año Publicación" :type :number :placeholder "2024"}
+          {:id :paginas :label "Páginas" :type :number :placeholder "300"}
+          {:id :sinopsis :label "Sinopsis" :type :textarea :placeholder "Sinopsis del libro..."}
+          {:id :status :label "Estado" :type :radio :value "disponible"
+           :options [{:id "libros-disponible" :value "disponible" :label "Disponible"}
+                     {:id "libros-prestado" :value "prestado" :label "Prestado"}
+                     {:id "libros-extraviado" :value "extraviado" :label "Extraviado"}]}]
+
+ :queries {:list "SELECT lib.*, cat.nombre as categoria_nombre FROM libros lib LEFT JOIN categorias cat ON lib.categoria_id = cat.id ORDER BY lib.id DESC"
+           :get "SELECT lib.*, cat.nombre as categoria_nombre FROM libros lib LEFT JOIN categorias cat ON lib.categoria_id = cat.id WHERE lib.id = ?"}
+
+ :actions {:new true :edit true :delete true}
+
+ :subgrids [{:entity :libros_imagenes
+             :title "Galería de Imágenes"
+             :foreign-key :libro_id
+             :icon "bi bi-images"
+             :label "Imágenes"
+             :relationship-type :one-to-many}
+            {:entity :libros_autores
+             :title "Autores"
+             :foreign-key :libro_id
+             :icon "bi bi-people"
+             :label "Autores"
+             :relationship-type :many-to-many
+             :through-table :libros_autores
+             :related-entity :autores
+             :related-fk :autor_id}]}

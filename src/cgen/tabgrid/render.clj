@@ -74,9 +74,10 @@
    [:div.ws-nav-search
     [:div.ws-search-wrap
      [:i.bi.bi-search.ws-search-icon]
-     [:input.ws-search-input
-      {:type "search" :disabled "disabled"
-       :placeholder (str (i18n/tr :common/search) "...")}]]]
+      [:input.ws-search-input
+        {:id "ws-nav-search-input"
+         :type "search"
+         :placeholder (str (i18n/tr :common/search) "...")}]]]
    [:ul.ws-record-list
     {:id (str entity-name "-record-list")}
     (for [row    all-rows
@@ -200,14 +201,15 @@
 
 (defn- render-subgrid-table
   "Server-rendered 1:M subgrid table."
-  [request parent-entity parent-id sg-name fields records actions]
+  [request parent-entity parent-id sg-name sg-entity-name fields records actions]
   (let [pane-id (str parent-entity "-" sg-name "-pane")
         return-url (str "/admin/" parent-entity "/" parent-id)
         show-edit? (:edit actions)
         show-delete? (:delete actions)]
     (if (seq records)
-      (into [:table.table.table-hover.table-bordered.table-sm.subgrid-table
-             {:id (str parent-entity "-" sg-name "-table")}
+      [:div.table-responsive
+       (into [:table.table.table-hover.table-bordered.table-sm.subgrid-table
+              {:id (str parent-entity "-" sg-name "-table")}
              [:thead
               [:tr
                (for [[_ label] fields] [:th.subgrid-sortable label [:i.bi.bi-chevron-expand.ms-1]])
@@ -225,20 +227,21 @@
                                 [:div.d-flex.gap-1
                                  (when show-edit?
                                    [:a.btn.btn-sm.btn-outline-primary
-                                    {:href (str "/admin/" sg-name "/edit-form/" (:id row)
+                                    {:href (str "/admin/" sg-entity-name "/edit-form/" (:id row)
                                                 "?return_url=" return-url "&active_tab=" pane-id "&edited_id=" (:id row))}
                                     [:i.bi.bi-pencil]])
                                  (when show-delete?
                                    [:form.d-inline
                                     {:method "POST"
-                                     :action (str "/admin/" sg-name "/delete/" (:id row))}
+                                     :action (str "/admin/" sg-entity-name "/delete/" (:id row))}
                                     (csrf-field)
                                     [:input {:type "hidden" :name "return_url" :value return-url}]
                                     [:input {:type "hidden" :name "active_tab" :value pane-id}]
                                     [:button.btn.btn-sm.btn-outline-danger
                                      {:type "submit"
                                       :onclick (str "return confirm('" (i18n/tr :confirm/delete) "')")}
-                                     [:i.bi.bi-trash]]])]]])))))])
+                                      [:i.bi.bi-trash]]])]]])))))])]
+
       [:div.text-center.p-4.text-muted
        [:i.bi.bi-inbox {:style "font-size:1.5rem"}]
        [:p.mt-2 (i18n/tr :grid/no-records)]])))
@@ -269,7 +272,7 @@
         [:span.badge.rounded-pill.bg-light.text-secondary.border.subgrid-clear
          [:i.bi.bi-x] (str " " (i18n/tr :common/clear))]])
      (render-subgrid-table request entity-name selected-parent-id
-                           sg-name fields records actions)]))
+                           sg-name sg-entity-name fields records actions)]))
 
 (defn- render-m2m-row
   [request fields has-pivot? through fk related-fk parent-id entity-name pane-id row]
@@ -347,9 +350,10 @@
          {:type "search" :placeholder (str (i18n/tr :common/search) "...")}]
         [:span.badge.rounded-pill.bg-light.text-secondary.border.subgrid-clear
          [:i.bi.bi-x] (str " " (i18n/tr :common/clear))]])
-     (if (seq records)
-       (into [:table.table.table-hover.table-sm.table-bordered.mb-0.subgrid-table
-              {:id (str entity-name "-" sg-name "-table")}
+      (if (seq records)
+        [:div.table-responsive
+         (into [:table.table.table-hover.table-sm.table-bordered.mb-0.subgrid-table
+                {:id (str entity-name "-" sg-name "-table")}
               [:thead
                [:tr
                 (for [[_ label] fields] [:th.subgrid-sortable label [:i.bi.bi-chevron-expand.ms-1]])
@@ -359,8 +363,8 @@
                     (map (partial render-m2m-row
                                   request fields has-pivot? through
                                   fk related-fk selected-parent-id entity-name pane-id)
-                         records))])
-       [:div.text-center.p-4.text-muted
+                          records))])]
+        [:div.text-center.p-4.text-muted
         [:i.bi.bi-link {:style "font-size:2rem"}]
         [:p.mt-2 (i18n/tr :subgrid/no-associations)]])]))
 
@@ -460,31 +464,41 @@
            }else{setTimeout(eiPoll,50);}
          })();
        }
-       var si=document.querySelectorAll('.subgrid-search');
-       [].forEach.call(si,function(i){
-         var sk='sg_'+i.closest('.ws-pane-card').querySelector('.subgrid-table').id;
-         var sv=sessionStorage.getItem(sk);
-         if(sv){i.value=sv;}
-         i.addEventListener('input',function(){
-           var q=this.value.toLowerCase().trim(),t=this.closest('.ws-pane-card').querySelector('.subgrid-table');
-           if(!t)return;
-           sessionStorage.setItem(sk,q);
-           [].forEach.call(t.querySelectorAll('tbody tr'),function(r){
-             var f=0; [].forEach.call(r.cells,function(c){if(c.textContent.toLowerCase().indexOf(q)>-1)f=1;});
-             r.style.display=f?'':'none';
-           });
-         });
-         if(sv){i.dispatchEvent(new Event('input',{bubbles:true}));}
-         var ci=i.parentNode.querySelector('.subgrid-clear');
-         if(ci){
-           if(i.value)ci.style.display='inline';
-           i.addEventListener('input',function(){ci.style.display=this.value?'inline':'none';});
-           ci.addEventListener('click',function(){
-             i.value='';ci.style.display='none';sessionStorage.setItem(sk,'');
-             [].forEach.call(i.closest('.ws-pane-card').querySelector('.subgrid-table').querySelectorAll('tbody tr'),function(r){r.style.display='';});
-           });
-         }
-       });
+        var si=document.querySelectorAll('.subgrid-search');
+        [].forEach.call(si,function(i){
+          var sk='sg_'+i.closest('.ws-pane-card').querySelector('.subgrid-table').id;
+          var sv=sessionStorage.getItem(sk);
+          if(sv){i.value=sv;}
+          i.addEventListener('input',function(){
+            var q=this.value.toLowerCase().trim(),t=this.closest('.ws-pane-card').querySelector('.subgrid-table');
+            if(!t)return;
+            sessionStorage.setItem(sk,q);
+            [].forEach.call(t.querySelectorAll('tbody tr'),function(r){
+              var f=0; [].forEach.call(r.cells,function(c){if(c.textContent.toLowerCase().indexOf(q)>-1)f=1;});
+              r.style.display=f?'':'none';
+            });
+          });
+          if(sv){i.dispatchEvent(new Event('input',{bubbles:true}));}
+          var ci=i.parentNode.querySelector('.subgrid-clear');
+          if(ci){
+            if(i.value)ci.style.display='inline';
+            i.addEventListener('input',function(){ci.style.display=this.value?'inline':'none';});
+            ci.addEventListener('click',function(){
+              i.value='';ci.style.display='none';sessionStorage.setItem(sk,'');
+              [].forEach.call(i.closest('.ws-pane-card').querySelector('.subgrid-table').querySelectorAll('tbody tr'),function(r){r.style.display='';});
+            });
+          }
+        });
+        var ni=document.getElementById('ws-nav-search-input');
+        if(ni){
+          ni.addEventListener('input',function(){
+            var q=this.value.toLowerCase().trim(),ul=document.querySelector('.ws-record-list');
+            if(!ul)return;
+            [].forEach.call(ul.querySelectorAll('.ws-record-item'),function(li){
+              li.style.display=(!q||li.textContent.toLowerCase().indexOf(q)>-1)?'':'none';
+            });
+          });
+        }
        [].forEach.call(document.querySelectorAll('.subgrid-table'),function(t){
          var hs=t.querySelectorAll('th.subgrid-sortable');
          [].forEach.call(hs,function(h){h.addEventListener('click',function(){

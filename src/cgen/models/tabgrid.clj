@@ -157,8 +157,8 @@
 (defn- normalize-parent [parent-table parent-row spec]
   (let [p-id (parent-id parent-row)
         title (or (:title spec) (str/capitalize (name parent-table)))
-        dbfields (or (:dbfields spec) [:name :email :phone :imagen])
-        labels (or (:labels spec) ["Name" "Email" "Phone" "Imagen"])
+        dbfields (or (:dbfields spec) [:name :email :phone])
+        labels (or (:labels spec) ["Name" "Email" "Phone"])
         args (or (:args spec) {:new true :edit true :delete true})
         href (or (:href spec) (str "/admin/" parent-table))
         base (str (safe-id parent-table) "-" (safe-id (str p-id)) "-parent")

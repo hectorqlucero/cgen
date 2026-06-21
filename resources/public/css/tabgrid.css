@@ -990,3 +990,48 @@ th.subgrid-sortable:hover {
 .table td .btn-group .btn {
   margin-right: 0 !important;
 }
+
+/* ════ Sticky table headers ════════════════════════════════════════ */
+.ws-subgrid-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.ws-subgrid-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--ws-surface, #fff);
+  box-shadow: inset 0 -1px 0 var(--ws-border);
+}
+
+/* Classic grid / report / dashboard sticky headers */
+.table-responsive thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
+  box-shadow: inset 0 1px 0 #dee2e6, inset 0 -1px 0 #dee2e6;
+}
+
+/* ════ Row hover — reveal action buttons ══════════════════════════ */
+.ws-subgrid-table td:last-child .d-flex.gap-1 {
+  opacity: 0.35;
+  transition: opacity 0.15s ease;
+}
+.ws-subgrid-table tr:hover td:last-child .d-flex.gap-1 {
+  opacity: 1;
+}
+
+/* ════ Column text truncation ══════════════════════════════════════ */
+.ws-subgrid-table td {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-subgrid-table td:last-child {
+  max-width: none;
+  overflow: visible;
+  white-space: normal;
+}

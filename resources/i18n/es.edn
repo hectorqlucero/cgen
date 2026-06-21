@@ -26,19 +26,16 @@
  :common/print "Imprimir"
 
  ;; [GENERIC] Entity Names
- :entity/employees "Empleados"
- :entity/departments "Departamentos"
- :entity/organizations "Organizaciones"
- :entity/projects "Proyectos"
- :entity/skills "Habilidades"
  :entity/users "Usuarios"
- :entity/contactos "Contactos"
- :entity/cars "Autos"
- :entity/siblings "Hermanos"
- :entity/employee_profiles "Perfiles de Empleado"
- :entity/employee_projects "Proyectos de Empleado"
- :entity/employee_skills "Habilidades de Empleado"
- :entity/audit_log "Bitácora"
+  :entity/audit_log "Bitácora"
+  :entity/autores "Autores"
+  :entity/categorias "Categorías"
+  :entity/libros "Libros"
+  :entity/libros_imagenes "Galería de Imágenes"
+  :entity/libros_autores "Autores del Libro"
+  :entity/miembros "Miembros"
+  :entity/prestamos "Préstamos"
+  :entity/prestamos_detalle "Detalle de Préstamo"
 
  ;; [GENERIC] Field Labels
  :form/email "Correo Electrónico"
@@ -219,4 +216,57 @@
  :users/fax "Fax"
  :users/email "Email"
  :users/level "Nivel"
- :users/active "Activo"}
+ :users/active "Activo"
+
+ ;; [ENTITY] autores
+ :autores/nombre "Nombre"
+ :autores/apellidos "Apellidos"
+ :autores/biografia "Biografía"
+ :autores/activo "Activo"
+
+ ;; [ENTITY] categorias
+ :categorias/nombre "Nombre"
+ :categorias/descripcion "Descripción"
+
+ ;; [ENTITY] libros
+ :libros/titulo "Título"
+ :libros/isbn "ISBN"
+ :libros/categoria_id "Categoría"
+ :libros/categoria_nombre "Categoría"
+ :libros/portada "Portada"
+ :libros/pdf "Libro Digital (PDF)"
+ :libros/documento "Documento Adjunto"
+ :libros/anio_publicacion "Año de Publicación"
+ :libros/paginas "Páginas"
+ :libros/sinopsis "Sinopsis"
+ :libros/status "Estado"
+
+ ;; [ENTITY] miembros
+ :miembros/nombre "Nombre Completo"
+ :miembros/email "Correo Electrónico"
+ :miembros/telefono "Teléfono"
+ :miembros/foto "Foto"
+ :miembros/fecha_registro "Fecha de Registro"
+ :miembros/activo "Activo"
+
+ ;; [ENTITY] prestamos
+ :prestamos/miembro_id "Miembro"
+ :prestamos/miembro_nombre "Miembro"
+ :prestamos/fecha_prestamo "Fecha de Préstamo"
+ :prestamos/fecha_vencimiento "Fecha de Vencimiento"
+ :prestamos/fecha_devolucion "Fecha de Devolución"
+ :prestamos/status "Estado"
+ :prestamos/notas "Notas"
+
+ ;; [ENTITY] prestamos_detalle
+ :prestamos_detalle/libro_id "Libro"
+ :prestamos_detalle/libro_titulo "Libro"
+ :prestamos_detalle/cantidad "Cantidad"
+ :prestamos_detalle/notas "Notas"
+
+ ;; [ENTITY] libros_imagenes
+ :libros_imagenes/imagen "Imagen"
+ :libros_imagenes/descripcion "Descripción"
+
+ ;; [ENTITY] libros_autores
+ :libros_autores/autor_nombre "Autor"}

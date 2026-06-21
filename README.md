@@ -320,6 +320,8 @@ These are the most common `lein` commands you'll use:
 | `lein run` | Start the production server (no hot-reload) |
 | `lein test` | Run all unit tests |
 | `lein compile` | Check your code for errors and compile it |
+| `lein setup <name>` | Generate a new project from the framework template, run migrations, seed data |
+| `lein clean-demo` | Remove the library demo entities, handlers, hooks, and migrations from your project |
 | `lein uberjar` | Build a standalone `.jar` file for deployment |
 | `lein repl` | Start an interactive Clojure REPL (advanced) |
 
@@ -555,7 +557,7 @@ Each field supports:
 |---|---|---|---|
 | `:id` | yes | keyword | Field identifier (matches DB column) |
 | `:label` | yes | string | Display label |
-| `:type` | yes | keyword | One of: `:text`, `:email`, `:password`, `:date`, `:datetime`, `:number`, `:decimal`, `:select`, `:radio`, `:checkbox`, `:textarea`, `:file`, `:hidden`, `:computed`, `:fk` |
+| `:type` | yes | keyword | One of: `:text`, `:email`, `:password`, `:date`, `:datetime`, `:number`, `:decimal`, `:select`, `:radio`, `:checkbox`, `:textarea`, `:file`, `:pdf`, `:document`, `:hidden`, `:computed`, `:fk` |
 | `:required?` | no | boolean | Mark field as required |
 | `:placeholder` | no | string | Placeholder text |
 | `:value` | no | any | Default value |
@@ -685,35 +687,50 @@ These are defined by the migrations in `resources/migrations/` and pre-configure
 ### Users View (`002-users_view`)
 - Creates a database view (`users_view`) with formatted fields for reports.
 
-### Contactos (`003-contactos`, `resources/entities/contactos.edn`)
-- Columns: `id`, `name`, `email`, `phone`, `imagen`
-- File upload (`:type :file` for `:imagen`) with `before-save` / `after-load` hooks for image processing.
-- Two subgrids: Cars and Siblings (FK column `contacto_id`).
-
-### Siblings (`004-siblings`, `resources/entities/siblings.edn`)
-- Columns: `id`, `name`, `age`, `imagen`, `contacto_id` (FK → contactos)
-- Subgrid child of Contactos (`:menu-hidden true` — no main menu entry; visible only as a tab in the Contactos form).
-
-### Cars (`005-cars`, `resources/entities/cars.edn`)
-- Columns: `id`, `company`, `model`, `year`, `imagen`, `contacto_id` (FK → contactos)
-- Subgrid child of Contactos (`:menu-hidden true`).
-
 ### Audit Log (`006-audit_log`)
 - Tracks record changes when `:audit? true` is set on an entity config.
 
-### Relationship Examples (`007-relationship_examples`)
-Eight tables demonstrating real-world relational patterns — great to study if you're new to database relationships:
+### Library Demo System (`008-015` — Biblioteca)
 
-- **organizations** — Top-level table. Each organization has multiple departments (subgrid).
-- **departments** — Has a FK `organization_id` linking to organizations. Each department has multiple employees.
-- **employees** — Linked to a department. Also has a `manager_id` linking to another employee (your boss is also in the same table!). Has three subgrids: one-to-one profile, and two many-to-many relationships (projects and skills).
-- **employee_profiles** — One-to-one with employees (each employee has exactly one profile).
-- **projects** — Linked to employees through a junction table (many-to-many: an employee can work on many projects, a project can have many employees).
-- **employee_projects** — A **junction table** linking employees to projects. Also stores extra info: `role`, `hours_per_week`.
-- **skills** — Linked to employees through a junction table (many-to-many).
-- **employee_skills** — A junction table linking employees to skills, with a `proficiency` column.
+A complete library management system demonstrating every framework feature. Grouped under the **Biblioteca** menu category.
+
+| Migration | Entity | Description | Key Features |
+|---|---|---|---|
+| `008-autores` | `autores.edn` | Book authors | `:text`, `:textarea`, `:radio` fields |
+| `009-categorias` | `categorias.edn` | Book categories | `:text`, `:textarea` fields |
+| `010-libros` | **`libros.edn`** | Books — flagship entity | **`:file`**, **`:pdf`**, **`:document`** uploads, `:fk` to categorias, subgrids (imagenes, autores), custom hooks for file processing |
+| `011-libros_imagenes` | `libros_imagenes.edn` | Gallery images (subgrid of libros) | `:file` upload, `:menu-hidden true` |
+| `012-libros_autores` | `libros_autores.edn` | Many-to-many junction (libros ↔ autores) | `:many-to-many` subgrid with `:through-table`, `:menu-hidden true` |
+| `013-miembros` | `miembros.edn` | Library members | `:email`, `:file` (photo), `:date`, `:checkbox` fields |
+| `014-prestamos` | `prestamos.edn` | Loan headers with FK to miembros | `:date`, `:radio` (status), `:fk` to miembros, subgrid with prestamos_detalle |
+| `015-prestamos_detalle` | `prestamos_detalle.edn` | Loan line items (subgrid of prestamos) | `:fk` to libros with composite display `[:titulo :isbn]`, `:menu-hidden true` |
 
 All use `:mode :parameter-driven`, `:connection :default`, and `:rights ["U" "A" "S"]`.
+
+#### Custom Handlers (MVC)
+
+The library demo also includes two custom MVC handler sets (the 20% senior-written code):
+
+| Handler | Description |
+|---|---|
+| `handlers/prestamos/` | Loan desk — search members, check out books, manage returns with a tailored UI |
+| `handlers/reportes/` | Library reports — `build-report` views for libros, miembros, and prestamos with sort/search/export |
+
+#### Cleaning Up the Demo
+
+When you are ready to remove the library demo from your project:
+
+```bash
+lein clean-demo
+```
+
+This deletes migration files 008-015, the 8 entity EDN files, 2 hook files, 2 handler directories (`prestamos/`, `reportes/`), uploaded photos/PDFs, and edits routes, menu, and i18n files — but does **not** touch the database itself. After running `clean-demo`, drop and recreate your database, create your own migrations, and run:
+
+```bash
+lein migrate && lein database && lein seed-non-users localdb
+```
+
+The audit_log table and seed data are preserved so the audit trail system works out of the box.
 
 ---
 
@@ -2804,6 +2821,7 @@ and the Kanban dispatch board.
 
 | `lein setup <name>` | Generate new project from template |
 |---|---|
+| `lein clean-demo` | Remove library demo entities, hooks, handlers, migrations from project |
 | `lein with-profile dev run` | Start dev server (hot-reload on, 2s poll) |
 | `lein run` | Start production server |
 | `lein migrate` / `lein rollback` | Apply / undo last migration |
@@ -2846,6 +2864,8 @@ and the Kanban dispatch board.
 | `:radio` | radio button group | `:options` `:value` |
 | `:checkbox` | single checkbox | — |
 | `:file` | `<input type="file">` | — |
+| `:pdf` | `<input type="file" accept=".pdf">` | — |
+| `:document` | `<input type="file">` | — |
 | `:hidden` | `<input type="hidden">` | — |
 | `:computed` | read-only grid display | `:compute-fn` |
 

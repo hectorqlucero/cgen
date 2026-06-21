@@ -1,6 +1,5 @@
 (ns cgen.models.form
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [cgen.i18n.core :as i18n]
    [cgen.models.crud :refer [config]]
@@ -110,52 +109,7 @@
          {:type "submit"}
          [:i.bi.bi-box-arrow-in-right.me-2] (i18n/tr :auth/login)]]]]]]))
 
-(defn build-image-field
-  "Renders an image upload field with preview functionality"
-  [row]
-  (list
-   [:div.mb-3
-    [:label.form-label.fw-semibold [:i.bi.bi-image.me-2] (i18n/tr :form/upload-image)]
-    [:input.form-control.form-control-lg
-     {:id "file"
-      :name "file"
-      :type "file"
-      :accept "image/*"}]]
-   [:div.text-center.mb-3
-    [:div.image-preview-container.d-inline-block.position-relative
-     (let [imagen (:imagen row)
-           uploads (:uploads config)
-           mtime (when (and imagen (not (str/blank? imagen)))
-                   (try (.lastModified (io/file (str uploads imagen))) (catch Exception _ nil)))
-           qs (when (and mtime (pos? (long mtime))) (str "?v=" mtime))
-           src (str (:path config) (or imagen "") (or qs ""))]
-       [:img#image1.img-thumbnail.shadow-sm.rounded
-        {:width "95"
-         :height "71"
-         :src src
-         :onError "this.src='/images/placeholder_profile.png'"}])
-     [:div.position-absolute.top-0.end-0.translate-middle
-      [:span.badge.bg-primary.rounded-pill
-       [:i.bi.bi-search-plus]]]]]))
 
-(defn build-image-field-script
-  "JavaScript for image preview functionality with smooth animations"
-  []
-  [:script
-   "
-    $(document).ready(function() {
-      $('img').click(function() {
-        var img = $(this);
-        if(img.width() < 500) {
-          img.animate({width: '500', height: '500'}, 1000);
-          img.addClass('shadow-lg');
-        } else {
-          img.animate({width: img.attr('width'), height: img.attr('height')}, 1000);
-          img.removeClass('shadow-lg');
-        }
-      });
-    });
-    "])
 
 (defn build-field
   "Creates a professional form field with Bootstrap 5 styling and correct HTML5/Bootstrap5 field type rendering.

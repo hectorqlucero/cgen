@@ -1,155 +1,238 @@
 (ns cgen.tools.setup
-  (:require [clojure.string :as str]
-            [clojure.java.io :as io]
-            [clojure.java.shell :refer [sh]]))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str])
+  (:import [java.io File]))
 
-(def ^:private exclude-prefixes
-  #{".git/" "target/" "db/" ".lsp/" ".clj-kondo/"})
+(def ^:private source-dir
+  "Root of the cgen project (this project)."
+  (let [d (io/file ".")]
+    (.getCanonicalFile d)))
 
-(defn- excluded? [^String rel-path]
-  (or (= rel-path ".nrepl-port")
-      (= rel-path ".lein-repl-history")
-      (some #(.startsWith rel-path %) exclude-prefixes)))
+(def ^:private exclude-patterns
+  [#"\.git"
+   #"target"
+   #"uploads"
+   #"\.DS_Store"
+   #"\.#"
+   #"#.*#" ])
 
-(defn- copy-tree [^java.io.File root ^java.io.File target]
-  (.mkdirs target)
-  (doseq [^java.io.File f (file-seq root)
-          :when (.isFile f)]
-    (let [root-path (.getCanonicalPath root)
-          file-path (.getCanonicalPath f)
-          sep (System/getProperty "file.separator")
-          rel (subs file-path (inc (count root-path)))]
-      (when-not (excluded? rel)
-        (let [dest (io/file target rel)]
-          (io/make-parents dest)
-          (io/copy f dest))))))
+(defn- should-exclude? [^File f]
+  (let [path (.getPath f)]
+    (or (some #(re-find % path) exclude-patterns)
+        ;; Exclude the root-level db/ directory only (not src/.../db/)
+        (and (re-find #"(^|/)db(/|$)" path)
+             (not (re-find #"/src/" path))
+             (not (re-find #"/resources/" path))))))
 
-(defn- rename-contents [^java.io.File file new-ns]
-  (let [content (slurp file)
-        new-content (-> content
-                        (str/replace #"(?<=[\s\(\[\"\'\:])cgen\." (str new-ns "."))
-                        (str/replace #"cgen/" (str new-ns "/")))]
-    (when (not= content new-content)
-      (spit file new-content)
-      (println "  " (.getPath file)))))
+(defn- file-seq-filtered
+  "Recurse directory, skip excluded dirs/files."
+  [^File dir]
+  (filter (fn [^File f]
+            (and (not (should-exclude? f))
+                 (not (.isDirectory f))))
+          (file-seq dir)))
 
-(defn- rename-edn-contents [^java.io.File file new-ns]
-  (let [content (slurp file)]
-    (when (re-find #"\:cgen\.hooks" content)
-      (spit file (str/replace content #"\:cgen\.hooks" (str ":" new-ns ".hooks")))
-      (println "  " (.getPath file)))))
+(defn- copy-file! [^File src ^File dest-dir]
+  (let [rel (.getAbsolutePath src)
+        base (.getAbsolutePath source-dir)
+        relative-path (subs rel (inc (count base)))
+        dest (io/file dest-dir relative-path)]
+    (io/make-parents dest)
+    (io/copy src dest)
+    dest))
 
-(defn- walk-files [base-dir pattern f new-ns]
-  (let [dir (io/file base-dir)]
-    (when (.exists dir)
-      (doseq [^java.io.File file (file-seq dir)
-              :when (.isFile file)
-              :when (re-find pattern (.getName file))]
-        (f file new-ns)))))
+(defn- rename-ns-in-file!
+  "Replace 'cgen' with new-name in file contents, skipping binary files."
+  [^File f new-name]
+  (let [name (.getName f)]
+    (when (some #(str/ends-with? name %) [".clj" ".edn" ".md" ".json" ".css" ".js" ".html" ".sql" ".txt"])
+      (let [content (slurp f)
+            updated (str/replace content "cgen" new-name)]
+        (spit f updated)))))
 
-(defn- rename-dir [base-dir old-name new-name]
-  (let [old-file (io/file base-dir old-name)
-        new-file (io/file base-dir new-name)]
-    (when (.exists old-file)
-      (println "  " old-name " -> " new-name)
-      (.renameTo old-file new-file))))
+(defn- fs-name
+  "Replace dashes with underscores for filesystem compatibility."
+  [s]
+  (str/replace s "-" "_"))
 
-(defn- update-project-clj [base-dir project-name new-ns]
-  (let [project-file (io/file base-dir "project.clj")
-        content (slurp project-file)
-        new-content (-> content
-                        (str/replace #"(?<=\(defproject\s)cgen(?=\s)" project-name)
-                        (str/replace #"(?<=[\s\"])cgen\." (str new-ns ".")))]
-    (spit project-file new-content)
-    (println "  project.clj")))
+(defn- rename-file-names!
+  "Rename files and dirs that contain 'cgen' in their name.
+   Uses underscores in filenames for Clojure classpath compatibility."
+  [^File root new-name]
+  (let [fs-new (fs-name new-name)]
+    ;; Walk from leaves to root
+    (doseq [^File f (reverse (file-seq root))
+            :when (not (should-exclude? f))
+            :let [parent (.getParentFile f)
+                  old-name (.getName f)
+                  ;; Replace 'cgen' with fs-new in filenames
+                  new-file-name (str/replace old-name "cgen" fs-new)]
+            :when (not= old-name new-file-name)]
+      (let [dest (io/file parent new-file-name)]
+        (.renameTo f dest)
+        (println "  Renamed:" (.getPath dest))))))
 
-(defn- run-lein [base-dir & args]
-  (println "  lein" (str/join " " args) "...")
-  (let [{:keys [exit out err]}
-        (binding [clojure.java.shell/*sh-dir* base-dir]
-          (apply sh "lein" args))]
-    (println out)
-    (when (not= 0 exit)
-      (println "ERROR:" err)
-      (System/exit 1))))
+(defn- update-project-clj! [^File root new-name]
+  (let [f (io/file root "project.clj")]
+    (when (.exists f)
+      (let [content (slurp f)
+            updated (-> content
+                        (str/replace #"cgen" new-name)
+                        (str/replace #"\"cgen\"" (str "\"" new-name "\""))
+                        (str/replace #":description \"cgen\"" (str ":description \"" new-name "\""))
+                        (str/replace #":site-name\s+\"cgen\"" (str ":site-name \"" new-name "\""))
+                        (str/replace #":company-name\s+\"change_me\"" (str ":company-name \"" new-name "\""))
+                        ;; Update DB name
+                        (str/replace #"db/cgen\.sqlite" (str "db/" new-name ".sqlite"))
+                        ;; Update uploads path
+                        (str/replace #"\./uploads/cgen/" (str "./uploads/" new-name "/")))]
+        (spit f updated)
+        (println "  Updated: project.clj")))))
 
-(defn- rename-app-config [base-dir project-name]
-  (let [config-file (io/file base-dir "resources/config/app-config.edn")
-        content (slurp config-file)]
-    (spit config-file (str/replace content "cgen" project-name))
-    (println "  app-config.edn")))
+(defn- update-app-config! [^File root new-name]
+  (let [f (io/file root "resources/config/app-config.edn")]
+    (when (.exists f)
+      (let [content (slurp f)
+            updated (-> content
+                        (str/replace #":site-name\s+\"cgen\"" (str ":site-name \"" new-name "\""))
+                        (str/replace #":company-name\s+\"change_me\"" (str ":company-name \"" new-name "\""))
+                        (str/replace #"db/cgen\.sqlite" (str "db/" new-name ".sqlite"))
+                        (str/replace #"\./uploads/cgen/" (str "./uploads/" new-name "/"))
+                        (str/replace #":base-url\s+\"http://localhost:3000/\"" ":base-url \"http://localhost:3000/\"")
+                        (str/replace #":img-url\s+\"http://localhost:3000/uploads/\"" ":img-url \"http://localhost:3000/uploads/\"")
+                        ;; Update connection db-name for all vendors
+                        (str/replace #"db-name\s+\"([^\"]*)cgen([^\"]*)\"" (str "db-name \"$1" new-name "$2")))]
+        (spit f updated)
+        (println "  Updated: resources/config/app-config.edn")))))
 
-(defn- remove-setup-trace [base-dir new-ns]
-  (let [project-file (io/file base-dir "project.clj")
-        project-clj (slurp project-file)]
-    (spit project-file
-          (str/replace project-clj #"\n\s+\"setup\"[^}]*" "")))
-  (let [tools-dir (io/file base-dir "src" new-ns "tools")]
+(defn- remove-setup-from-child! [^File root new-name]
+  (let [fs-new (fs-name new-name)
+        tools-dir (io/file root "src" fs-new "tools")]
     (when (.exists tools-dir)
-      (doseq [f (reverse (file-seq tools-dir))]
-        (io/delete-file f true))
-      (println "  Removed" (.getPath tools-dir)))))
+      ;; Delete setup.clj but keep clean_demo.clj
+      (let [setup-file (io/file tools-dir "setup.clj")]
+        (when (.exists setup-file)
+          (.delete setup-file)
+          (println "  Removed: setup.clj from child project")))
+      ;; Remove tools dir if empty (no clean_demo.clj survived)
+      (let [remaining (.listFiles tools-dir)]
+        (when (or (nil? remaining) (empty? remaining))
+          (.delete tools-dir))))
+    ;; Remove the setup alias but keep the clean-demo alias
+    (let [pf (io/file root "project.clj")]
+      (when (.exists pf)
+        (let [content (slurp pf)
+              updated (str/replace content #"\s+\"setup\" \[\"run\" \"-m\" \".*?setup\" \"--\"\]" "")]
+          (spit pf updated)
+          (println "  Removed: setup alias from project.clj"))))))
 
-(defn -main [& args]
-  (let [[arg1 arg2] args
-        cgen-root (.getCanonicalFile (io/file "."))
-        [project-name target-parent]
-        (if (and arg1 (re-find #"[/\\]" arg1))
-          [(.getName (io/file arg1)) (.getParent (io/file arg1))]
-          [arg1 arg2])
-        parent-dir (if target-parent
-                     (io/file target-parent)
-                     (.getParentFile cgen-root))]
-    (when (or (nil? project-name) (str/blank? project-name))
-      (println "Usage: lein setup <project-name> [target-dir]")
-      (println "  e.g.  lein setup my-project              ; creates ../my-project/")
-      (println "  e.g.  lein setup my-project /path/to     ; creates /path/to/my-project/")
-      (println "  e.g.  lein setup /tmp/contactos          ; creates /tmp/contactos/")
+(defn- run-lein-commands! [root new-name]
+  (println)
+  (println "--- Running lein migrate ---")
+  (let [proc (.exec (Runtime/getRuntime)
+                    (into-array String ["lein" "migrate"])
+                    (into-array String [])
+                    (io/file root))
+        _ (.waitFor proc)
+        exit (.exitValue proc)]
+    (if (zero? exit)
+      (println "  ✓ Migration successful")
+      (println "  ⚠ Migration exited with code" exit)))
+  (println)
+  (println "--- Seeding database ---")
+  (let [proc (.exec (Runtime/getRuntime)
+                    (into-array String ["lein" "database"])
+                    (into-array String [])
+                    (io/file root))
+        _ (.waitFor proc)
+        exit (.exitValue proc)]
+    (if (zero? exit)
+      (println "  ✓ Database seeded")
+      (println "  ⚠ Seed exited with code" exit)))
+  (println)
+  (println "--- Seeding non-user tables ---")
+  (let [proc (.exec (Runtime/getRuntime)
+                    (into-array String ["lein" "seed-non-users" "localdb"])
+                    (into-array String [])
+                    (io/file root))
+        _ (.waitFor proc)
+        exit (.exitValue proc)]
+    (if (zero? exit)
+      (println "  ✓ Non-user tables seeded")
+      (println "  ⚠ Seed exited with code" exit))))
+
+(defn- print-success! [root-dir new-name]
+  (println)
+  (println "╔══════════════════════════════════════════════════╗")
+  (println "║           Project created successfully!          ║")
+  (println "╠══════════════════════════════════════════════════╣")
+  (println "║                                                 ║")
+  (println (str "  Project: " new-name))
+  (println (str "  Location: " (.getAbsolutePath root-dir)))
+  (println "║                                                 ║")
+  (println "  Next steps:")
+  (println)
+  (println (str "  cd " (.getAbsolutePath root-dir)))
+  (println "  lein with-profile dev run")
+  (println)
+  (println "  Open http://localhost:3000 in your browser.")
+  (println "  Login with: admin@example.com / admin")
+  (println "║                                                 ║")
+  (println "╚══════════════════════════════════════════════════╝"))
+
+(defn -main
+  "Main entry point for lein setup.
+
+  Usage:
+    lein setup my-project        — creates ./my-project
+    lein setup /tmp/my-project   — creates /tmp/my-project"
+  [& args]
+  (let [target-arg (first args)]
+    (when (str/blank? target-arg)
+      (println "Usage: lein setup <project-name>")
+      (println "       lein setup /path/to/project")
       (System/exit 1))
-
-    (let [target-dir (io/file parent-dir project-name)]
+    (let [;; Resolve target path
+          target-file (io/file target-arg)
+          target-dir (if (.isAbsolute target-file)
+                       target-file
+                       (io/file (.getParent source-dir) target-arg))
+          new-name (.getName target-dir)]
       (when (.exists target-dir)
-        (println "ERROR: Target already exists:" (.getCanonicalPath target-dir))
-        (println "  Remove it first or choose a different name.")
+        (println (str "Error: Directory already exists: " (.getAbsolutePath target-dir)))
         (System/exit 1))
-
-      (println "\n=== Copying project skeleton...")
-      (copy-tree cgen-root target-dir)
-
-      (let [new-ns project-name]
-        (println "\n=== Renaming source files...")
-        (walk-files (io/file target-dir "src") #"\.clj$" rename-contents new-ns)
-        (walk-files (io/file target-dir "dev") #"\.clj$" rename-contents new-ns)
-        (walk-files (io/file target-dir "resources/entities") #"\.edn$" rename-edn-contents new-ns)
-        (update-project-clj target-dir project-name new-ns)
-
-        (println "\n=== Renaming directories...")
-        (rename-dir target-dir "src/cgen" (str "src/" new-ns))
-        (rename-dir target-dir "dev/cgen" (str "dev/" new-ns))
-
-        (println "\n=== Updating config...")
-        (rename-app-config target-dir project-name)
-        (.mkdirs (io/file target-dir "db"))
-
-        (println "\n=== Creating database and seeding...")
-        (run-lein (.getCanonicalPath target-dir) "migrate")
-        (run-lein (.getCanonicalPath target-dir) "run" "-m" (str new-ns ".models.cdb/database") "localdb")
-        (run-lein (.getCanonicalPath target-dir) "run" "-m" (str new-ns ".models.cdb/seed-non-users") "localdb")
-
-        (println "\n=== Cleaning up...")
-        (remove-setup-trace target-dir new-ns)
-
-        (println "\n" (str "✓ Project " project-name " created successfully!"))
-        (println "  Location:" (.getCanonicalPath target-dir))
-        (println "  Users:")
-        (println "    user@example.com / user")
-        (println "    admin@example.com / admin")
-        (println "    system@example.com / system")
-        (println)
-        (println "  Next steps:")
-        (println "    1. cd" (.getCanonicalPath target-dir))
-        (println "    2. Delete example migrations, entities, hooks you don't need")
-        (println "    3. Write your own migrations, re-run lein scaffold --all")
-        (println "    4. Start the dev server: lein with-profile dev run")
-        (flush)
-        (System/exit 0)))))
+      (println (str "Creating project '" new-name "' at " (.getAbsolutePath target-dir)))
+      (println)
+      ;; Step 1: Copy all files
+      (println "Step 1: Copying files...")
+      (io/make-parents (io/file target-dir "src"))
+      (doseq [^File f (file-seq-filtered source-dir)]
+        (copy-file! f target-dir))
+      (println "  ✓ Files copied")
+      (println)
+      ;; Step 2: Rename namespace references in file contents
+      (println "Step 2: Updating namespace references...")
+      (doseq [^File f (file-seq-filtered target-dir)]
+        (rename-ns-in-file! f new-name))
+      (println "  ✓ Namespace references updated")
+      (println)
+      ;; Step 3: Rename files and directories
+      (println "Step 3: Renaming files and directories...")
+      (rename-file-names! target-dir new-name)
+      (println)
+      ;; Step 4: Update project.clj
+      (println "Step 4: Updating project configuration...")
+      (update-project-clj! target-dir new-name)
+      (update-app-config! target-dir new-name)
+      (println)
+      ;; Step 5: Remove setup tool from child project
+      (println "Step 5: Cleaning up...")
+      (remove-setup-from-child! target-dir new-name)
+      (println)
+      ;; Step 6: Run migrations and seed
+      (println "Step 6: Setting up database...")
+      (run-lein-commands! target-dir new-name)
+      (println)
+      ;; Step 7: Print success
+      (print-success! target-dir new-name))))

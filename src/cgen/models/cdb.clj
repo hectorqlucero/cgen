@@ -31,210 +31,109 @@
     :level "S"
     :active "T"}])
 
-(def organizations-rows
-  [{:id 1 :name "Acme Corp" :code "ACME" :active "T"}
-   {:id 2 :name "Globex" :code "GLOB" :active "T"}])
+(def autores-rows
+  [{:id 1 :nombre "Gabriel" :apellidos "García Márquez" :biografia "Escritor colombiano, premio Nobel de Literatura 1982." :activo "T"}
+   {:id 2 :nombre "Isabel" :apellidos "Allende" :biografia "Escritora chilena, autora de La casa de los espíritus." :activo "T"}
+   {:id 3 :nombre "Carlos" :apellidos "Fuentes" :biografia "Escritor mexicano, una de las figuras centrales del boom latinoamericano." :activo "T"}
+   {:id 4 :nombre "Jorge Luis" :apellidos "Borges" :biografia "Escritor argentino, maestro del cuento corto y la literatura fantástica." :activo "T"}
+   {:id 5 :nombre "Mario" :apellidos "Vargas Llosa" :biografia "Escritor peruano, premio Nobel de Literatura 2010." :activo "T"}
+   {:id 6 :nombre "Elena" :apellidos "Poniatowska" :biografia "Escritora y periodista mexicana de origen polaco." :activo "T"}])
 
-(def departments-rows
-  [{:id 1 :organization_id 1 :name "Engineering" :code "ENG"}
-   {:id 2 :organization_id 1 :name "Operations" :code "OPS"}
-   {:id 3 :organization_id 2 :name "Sales" :code "SAL"}])
+(def categorias-rows
+  [{:id 1 :nombre "Ficción" :descripcion "Novelas y cuentos de ficción literaria"}
+   {:id 2 :nombre "Ciencia" :descripcion "Libros de divulgación científica y tecnología"}
+   {:id 3 :nombre "Historia" :descripcion "Libros históricos y de no ficción"}
+   {:id 4 :nombre "Poesía" :descripcion "Poesía y literatura lírica"}
+   {:id 5 :nombre "Filosofía" :descripcion "Filosofía y ensayo"}])
 
-(def employees-rows
-  [{:id 1 :department_id 1 :manager_id nil :first_name "Alice" :last_name "Johnson" :email "alice@acme.test" :active "T"}
-   {:id 2 :department_id 1 :manager_id 1 :first_name "Bob" :last_name "Rivera" :email "bob@acme.test" :active "T"}
-   {:id 3 :department_id 2 :manager_id 1 :first_name "Carol" :last_name "Ng" :email "carol@acme.test" :active "T"}
-   {:id 4 :department_id 3 :manager_id nil :first_name "David" :last_name "Kim" :email "david@globex.test" :active "T"}])
+(def libros-rows
+  [{:id 1 :titulo "Cien Años de Soledad" :isbn "9788437604947" :categoria_id 1 :anio_publicacion 1967 :paginas 496 :sinopsis "La obra maestra de García Márquez que narra la historia de la familia Buendía en Macondo." :status "disponible"}
+   {:id 2 :titulo "El Aleph" :isbn "9788420633557" :categoria_id 1 :anio_publicacion 1949 :paginas 192 :sinopsis "Colección de cuentos de Borges que exploran el infinito, el tiempo y la identidad." :status "disponible"}
+   {:id 3 :titulo "La Casa de los Espíritus" :isbn "9788401320231" :categoria_id 1 :anio_publicacion 1982 :paginas 463 :sinopsis "La saga de la familia Trueba a través de cuatro generaciones." :status "prestado"}
+   {:id 4 :titulo "Breve Historia del Tiempo" :isbn "9788474235489" :categoria_id 2 :anio_publicacion 1988 :paginas 256 :sinopsis "Stephen Hawking explica los misterios del universo para el público general." :status "disponible"}
+   {:id 5 :titulo "La Guerra y la Paz" :isbn "9788420673843" :categoria_id 3 :anio_publicacion 1869 :paginas 1225 :sinopsis "La obra épica de Tolstói sobre la invasión napoleónica de Rusia." :status "disponible"}
+   {:id 6 :titulo "Ficciones" :isbn "9788420633564" :categoria_id 1 :anio_publicacion 1944 :paginas 240 :sinopsis "La colección más famosa de cuentos de Borges." :status "disponible"}
+   {:id 7 :titulo "El Principito" :isbn "9788478887191" :categoria_id 4 :anio_publicacion 1943 :paginas 96 :sinopsis "El clásico de Saint-Exupéry sobre un niño de otro planeta." :status "disponible"}
+   {:id 8 :titulo "Sapiens" :isbn "9788499926223" :categoria_id 3 :anio_publicacion 2014 :paginas 496 :sinopsis "Una breve historia de la humanidad por Yuval Noah Harari." :status "prestado"}
+   {:id 9 :titulo "La Ciudad y los Perros" :isbn "9788466353717" :categoria_id 1 :anio_publicacion 1963 :paginas 408 :sinopsis "La primera novela de Vargas Llosa ambientada en un colegio militar." :status "disponible"}
+   {:id 10 :titulo "Cosmos" :isbn "9788408052337" :categoria_id 2 :anio_publicacion 1980 :paginas 384 :sinopsis "Carl Sagan explora el universo y nuestro lugar en él." :status "disponible"}])
 
-(def projects-rows
-  [{:id 1 :project_code "PJT-100" :name "ERP Modernization" :starts_on "2024-01-15" :ends_on "2024-12-20"}
-   {:id 2 :project_code "PJT-200" :name "Customer Portal" :starts_on "2024-03-01" :ends_on "2024-11-30"}])
+(def libros-imagenes-rows
+  [{:id 1 :libro_id 1 :imagen "libros_1_portada.png" :descripcion "Portada de Cien Años de Soledad"}
+   {:id 2 :libro_id 1 :imagen "libros_1_contraportada.png" :descripcion "Contraportada"}
+   {:id 3 :libro_id 1 :imagen "libros_1_ilustracion.png" :descripcion "Ilustración interior"}
+   {:id 4 :libro_id 2 :imagen "libros_2_portada.png" :descripcion "Portada de El Aleph"}
+   {:id 5 :libro_id 2 :imagen "libros_2_notas.png" :descripcion "Notas del autor"}
+   {:id 6 :libro_id 3 :imagen "libros_3_portada.png" :descripcion "Portada de La Casa de los Espíritus"}
+   {:id 7 :libro_id 4 :imagen "libros_4_portada.png" :descripcion "Portada de Breve Historia del Tiempo"}
+   {:id 8 :libro_id 5 :imagen "libros_5_portada.png" :descripcion "Portada de La Guerra y la Paz"}
+   {:id 9 :libro_id 5 :imagen "libros_5_edicion.png" :descripcion "Edición especial"}
+   {:id 10 :libro_id 7 :imagen "libros_7_portada.png" :descripcion "Portada de El Principito"}
+   {:id 11 :libro_id 7 :imagen "libros_7_dibujo.png" :descripcion "Dibujo del Principito"}
+   {:id 12 :libro_id 7 :imagen "libros_7_rosa.png" :descripcion "La rosa del Principito"}
+   {:id 13 :libro_id 10 :imagen "libros_10_portada.png" :descripcion "Portada de Cosmos"}
+   {:id 14 :libro_id 10 :imagen "libros_10_galaxia.png" :descripcion "Imagen de galaxia"}])
 
-(def skills-rows
-  [{:id 1 :name "Clojure" :category "Backend"}
-   {:id 2 :name "SQL" :category "Data"}
-   {:id 3 :name "Project Management" :category "Management"}])
+(def libros-autores-rows
+  [{:libro_id 1 :autor_id 1 :rol "Autor"}
+   {:libro_id 2 :autor_id 4 :rol "Autor"}
+   {:libro_id 3 :autor_id 2 :rol "Autor"}
+   {:libro_id 4 :autor_id 5 :rol "Traductor"}  ;; Nota: Hawking no es VL, es un ejemplo de rol
+   {:libro_id 5 :autor_id 5 :rol "Prólogo"}     ;; VL no escribió Guerra y Paz, ejemplo de rol
+   {:libro_id 6 :autor_id 4 :rol "Autor"}
+   {:libro_id 7 :autor_id 2 :rol "Traductor"}   ;; Allende no escribió El Principito, demo
+   {:libro_id 8 :autor_id 1 :rol "Prólogo"}     ;; Demo
+   {:libro_id 9 :autor_id 5 :rol "Autor"}
+   {:libro_id 10 :autor_id 6 :rol "Traductor"}]) ;; Demo
 
-(def employee-profiles-rows
-  [{:id 1 :employee_id 1 :bio "Engineering manager" :avatar "employee_profiles_1.png" :emergency_phone "555-1001"}
-   {:id 2 :employee_id 2 :bio "Senior developer" :avatar "employee_profiles_2.png" :emergency_phone "555-1002"}
-   {:id 3 :employee_id 3 :bio "Operations specialist" :avatar "employee_profiles_3.png" :emergency_phone "555-1003"}
-   {:id 4 :employee_id 4 :bio "Sales lead" :avatar "employee_profiles_4.png" :emergency_phone "555-1004"}])
+(def miembros-rows
+  [{:id 1 :nombre "Juan Pérez García" :email "juan@ejemplo.com" :telefono "555-1001" :activo "T" :fecha_registro "2024-01-15"}
+   {:id 2 :nombre "María López Hernández" :email "maria@ejemplo.com" :telefono "555-1002" :activo "T" :fecha_registro "2024-02-20"}
+   {:id 3 :nombre "Carlos Rodríguez Martínez" :email "carlos@ejemplo.com" :telefono "555-1003" :activo "T" :fecha_registro "2024-03-10"}
+   {:id 4 :nombre "Ana Sánchez Morales" :email "ana@ejemplo.com" :telefono "555-1004" :activo "T" :fecha_registro "2024-04-05"}
+   {:id 5 :nombre "Pedro Ramírez Torres" :email "pedro@ejemplo.com" :telefono "555-1005" :activo "F" :fecha_registro "2024-01-30"}
+   {:id 6 :nombre "Sofía Castillo Ortega" :email "sofia@ejemplo.com" :telefono "555-1006" :activo "T" :fecha_registro "2024-05-12"}])
 
-(def employee-projects-rows
-  [{:id 1 :employee_id 1 :project_id 1 :role "Lead" :hours_per_week 20 :assigned_on "2024-01-20"}
-   {:id 2 :employee_id 2 :project_id 1 :role "Developer" :hours_per_week 35 :assigned_on "2024-01-22"}
-   {:id 3 :employee_id 3 :project_id 2 :role "Coordinator" :hours_per_week 15 :assigned_on "2024-03-10"}
-   {:id 4 :employee_id 4 :project_id 2 :role "Analyst" :hours_per_week 25 :assigned_on "2024-03-12"}])
+(def prestamos-rows
+  [{:id 1 :miembro_id 1 :fecha_prestamo "2024-06-01" :fecha_vencimiento "2024-06-15" :status "devuelto" :fecha_devolucion "2024-06-14" :notas "Primer préstamo"}
+   {:id 2 :miembro_id 2 :fecha_prestamo "2024-06-10" :fecha_vencimiento "2024-06-24" :status "activo" :notas "Préstamo vigente"}
+   {:id 3 :miembro_id 3 :fecha_prestamo "2024-05-20" :fecha_vencimiento "2024-06-03" :status "vencido" :notas "Libro no devuelto"}
+   {:id 4 :miembro_id 4 :fecha_prestamo "2024-06-15" :fecha_vencimiento "2024-06-29" :status "activo" :notas nil}])
 
-(def employee-skills-rows
-  [{:employee_id 1 :skill_id 3 :proficiency 5}
-   {:employee_id 2 :skill_id 1 :proficiency 5}
-   {:employee_id 2 :skill_id 2 :proficiency 4}
-   {:employee_id 3 :skill_id 2 :proficiency 4}
-   {:employee_id 4 :skill_id 3 :proficiency 4}])
-
-(def ^:private first-names
-  ["Juan" "Maria" "Luis" "Ana" "Carlos" "Sofia" "Pedro" "Laura" "Diego" "Valentina"
-   "Andres" "Camila" "Jorge" "Isabella" "Miguel" "Gabriela" "Fernando" "Lucia"
-   "Alejandro" "Elena" "Pablo" "Mariana" "Sergio" "Daniela" "Ricardo" "Rosa"
-   "Alberto" "Carmen" "Rafael" "Patricia" "Hector" "Monica" "Enrique" "Teresa"
-   "Oscar" "Claudia" "Arturo" "Leticia" "Raul" "Veronica"])
-
-(def ^:private last-names
-  ["Garcia" "Rodriguez" "Martinez" "Hernandez" "Lopez" "Gonzalez" "Perez" "Sanchez"
-   "Ramirez" "Torres" "Flores" "Rivera" "Gomez" "Diaz" "Cruz" "Morales" "Ortiz"
-   "Reyes" "Vazquez" "Ramos" "Jimenez" "Moreno" "Romero" "Alvarez" "Castillo"
-   "Medina" "Acosta" "Delgado" "Chavez" "Santiago" "Cardenas" "Padilla" "Rios"
-   "Mendoza" "Guerrero" "Pena" "Aguilar" "Cano" "Vega" "Campos"])
-
-(def ^:private car-companies
-  ["Toyota" "Honda" "Ford" "Chevrolet" "Nissan" "Volkswagen" "Hyundai" "Kia"
-   "Mazda" "Subaru" "BMW" "Mercedes-Benz" "Audi" "Lexus" "Tesla"])
-
-(def ^:private car-models
-  {"Toyota" ["Corolla" "Camry" "RAV4" "Tacoma" "Highlander" "Prius"]
-   "Honda" ["Civic" "Accord" "CR-V" "Pilot" "Fit" "HR-V"]
-   "Ford" ["Mustang" "F-150" "Explorer" "Escape" "Focus" "Ranger"]
-   "Chevrolet" ["Silverado" "Equinox" "Malibu" "Tahoe" "Camaro" "Traverse"]
-   "Nissan" ["Altima" "Sentra" "Rogue" "Frontier" "Pathfinder" "Versa"]
-   "Volkswagen" ["Jetta" "Passat" "Tiguan" "Golf" "Atlas" "Beetle"]
-   "Hyundai" ["Elantra" "Sonata" "Tucson" "Santa Fe" "Kona" "Palisade"]
-   "Kia" ["Forte" "Sportage" "Sorento" "Telluride" "Soul" "Rio"]
-   "Mazda" ["Mazda3" "CX-5" "CX-9" "MX-5 Miata" "CX-30" "Mazda6" "CX-50" "MX-30" "CX-90"]
-   "Subaru" ["Outback" "Forester" "Crosstrek" "Legacy" "Impreza" "Ascent"]
-   "BMW" ["3 Series" "5 Series" "X3" "X5" "7 Series" "M4"]
-   "Mercedes-Benz" ["C-Class" "E-Class" "GLC" "GLE" "A-Class" "S-Class"]
-   "Audi" ["A3" "A4" "Q5" "Q7" "A6" "e-tron"]
-   "Lexus" ["RX" "ES" "NX" "IS" "GX" "UX"]
-   "Tesla" ["Model 3" "Model Y" "Model S" "Model X" "Cybertruck"]
-   "Mini" ["Cooper" "Countryman" "Clubman" "Convertible"]
-   "Jeep" ["Wrangler" "Grand Cherokee" "Cherokee" "Compass" "Renegade"]
-   "Volvo" ["XC40" "XC60" "XC90" "S60" "S90"]
-   "Ram" ["1500" "2500" "ProMaster"]})
-
-(defn- random-contactos
-  [n start-id]
-  (let [rng (java.util.Random. 42)]
-    (mapv (fn [i]
-            (let [first-name (nth first-names (mod i (count first-names)))
-                  last-name  (nth last-names (mod (* i 7) (count last-names)))]
-              {:id i
-               :name (str first-name " " last-name)
-               :email (str (st/lower-case first-name) "." (st/lower-case last-name) i "@example.com")
-               :phone (str "555-" (format "%04d" (+ 3000 i)))
-                 :imagen (str "contactos_" i ".png")}))
-          (range start-id (inc n)))))
-
-(defn- random-siblings
-  [contactos-rows]
-  (let [rng (java.util.Random. 123)
-        nombres-hijos ["Ana" "Jose" "Elena" "Carlos" "Sofia" "Miguel" "Laura"
-                       "Diego" "Camila" "Andres" "Valentina" "Fernando" "Lucia"
-                       "Gabriela" "Pablo" "Mariana" "Sergio" "Daniela" "Ricardo"
-                       "Rosa" "Hector" "Monica" "Alberto" "Pedro" "Rafael"
-                       "Teresa" "Oscar" "Claudia" "Arturo" "Leticia" "Raul"
-                       "Veronica" "Adrian" "Fabiola" "Gustavo" "Irene" "Leonardo"]]
-    (->> contactos-rows
-         (mapcat (fn [contacto]
-                   (let [n-sibs (+ 30 (mod (.nextInt rng) 11))] ;; 30-40 siblings
-                     (mapv (fn [j]
-                             (let [sib-name (str (nth nombres-hijos
-                                                      (mod (+ (* (:id contacto) 7) j)
-                                                           (count nombres-hijos)))
-                                                 " "
-                                                 (last (re-find #"^(\S+)\s+(\S+)" (:name contacto))))]
-                              {:name sib-name
-                                 :age (+ 1 (mod (.nextInt rng) 80))
-                                 :contacto_id (:id contacto)}))
-                            (range n-sibs)))))
-         (map-indexed (fn [idx m] (-> m
-                                       (assoc :id (inc idx))
-                                       (assoc :imagen (str "siblings_" (inc idx) ".png")))))
-         (vec))))
-
-(defn- random-cars
-  [contactos-rows]
-  (let [rng (java.util.Random. 456)]
-    (->> contactos-rows
-         (mapcat (fn [contacto]
-                   (let [n-cars (+ 30 (mod (.nextInt rng) 11))] ;; 30-40 cars
-                     (mapv (fn [j]
-                             (let [company (nth car-companies
-                                                (mod (+ (* (:id contacto) 13) j)
-                                                     (count car-companies)))
-                                   models (get car-models company (car-models "Toyota"))]
-                                {:company company
-                                 :model (nth models (mod (+ (* (:id contacto) 3) j) (count models)))
-                                 :year (+ 2005 (mod (.nextInt rng) 20))
-                                 :contacto_id (:id contacto)}))
-                            (range n-cars)))))
-         (map-indexed (fn [idx m] (-> m
-                                       (assoc :id (inc idx))
-                                       (assoc :imagen (str "cars_" (inc idx) ".png")))))
-         (vec))))
-
-(def contactos-rows (random-contactos 30 1))
-(def siblings-rows (random-siblings contactos-rows))
-(def cars-rows (random-cars contactos-rows))
-
-(defn- generate-placeholder-image!
-  [filepath & {:keys [red green blue]}]
-  (let [img (java.awt.image.BufferedImage. 100 60 java.awt.image.BufferedImage/TYPE_INT_RGB)
-        g   (.createGraphics img)
-        c   (java.awt.Color. (or red 200) (or green 200) (or blue 200))]
-    (.setColor g c)
-    (.fillRect g 0 0 100 60)
-    (.dispose g)
-    (javax.imageio.ImageIO/write img "png" (java.io.File. filepath))))
-
-(defn- seed-placeholder-images!
-  [rows table-name column-name]
-  (let [uploads-dir (:uploads crud/config)]
-    (doseq [row rows]
-      (when-let [filename (get row column-name)]
-        (let [filepath (str uploads-dir filename)
-              id       (:id row)
-              r        (mod (* id 73) 256)
-              g        (mod (* id 149) 256)
-              b        (mod (* id 97) 256)]
-          (io/make-parents filepath)
-          (generate-placeholder-image! filepath :red r :green g :blue b)
-          (println (format "[database]   Created placeholder: %s" filename)))))))
+(def prestamos-detalle-rows
+  [{:id 1 :prestamo_id 1 :libro_id 3 :cantidad 1 :notas nil}
+   {:id 2 :prestamo_id 2 :libro_id 1 :cantidad 1 :notas nil}
+   {:id 3 :prestamo_id 2 :libro_id 6 :cantidad 1 :notas "Edición de bolsillo"}
+   {:id 4 :prestamo_id 3 :libro_id 8 :cantidad 1 :notas "Préstamo vencido"}
+   {:id 5 :prestamo_id 4 :libro_id 4 :cantidad 1 :notas nil}
+   {:id 6 :prestamo_id 4 :libro_id 10 :cantidad 1 :notas nil}])
 
 (def audit-log-rows
-  [{:id 1 :entity "employees" :operation "seed" :data "initial dataset" :user_id 1 :timestamp "2024-01-01 10:00:00"}
-   {:id 2 :entity "projects" :operation "seed" :data "initial dataset" :user_id 1 :timestamp "2024-01-01 10:01:00"}
-   {:id 3 :entity "contactos" :operation "seed" :data "initial dataset" :user_id 1 :timestamp "2024-01-01 10:02:00"}])
+  [{:id 1 :entity "libros" :operation "seed" :data "initial dataset" :user_id 1 :timestamp "2024-01-01 10:00:00"}
+   {:id 2 :entity "miembros" :operation "seed" :data "initial dataset" :user_id 1 :timestamp "2024-01-01 10:01:00"}
+   {:id 3 :entity "prestamos" :operation "seed" :data "initial dataset" :user_id 1 :timestamp "2024-01-01 10:02:00"}])
 
 (def ^:private non-users-seed-plan
-  [{:table "organizations" :rows organizations-rows}
-   {:table "departments" :rows departments-rows}
-   {:table "employees" :rows employees-rows}
-   {:table "projects" :rows projects-rows}
-   {:table "skills" :rows skills-rows}
-   {:table "employee_profiles" :rows employee-profiles-rows}
-   {:table "employee_projects" :rows employee-projects-rows}
-   {:table "employee_skills" :rows employee-skills-rows}
-   {:table "contactos" :rows contactos-rows}
-   {:table "cars" :rows cars-rows}
-   {:table "siblings" :rows siblings-rows}
+  [{:table "autores" :rows autores-rows}
+   {:table "categorias" :rows categorias-rows}
+   {:table "libros" :rows libros-rows}
+   {:table "libros_imagenes" :rows libros-imagenes-rows}
+   {:table "libros_autores" :rows libros-autores-rows}
+   {:table "miembros" :rows miembros-rows}
+   {:table "prestamos" :rows prestamos-rows}
+   {:table "prestamos_detalle" :rows prestamos-detalle-rows}
    {:table "audit_log" :rows audit-log-rows}])
 
 (def ^:private non-users-clear-order
-  ["employee_skills"
-   "employee_projects"
-   "employee_profiles"
-   "employees"
-   "departments"
-   "organizations"
-   "cars"
-   "siblings"
-   "contactos"
-   "projects"
-   "skills"
+  ["prestamos_detalle"
+   "prestamos"
+   "libros_imagenes"
+   "libros_autores"
+   "libros"
+   "categorias"
+   "autores"
+   "miembros"
    "audit_log"])
-
 
 (defn- normalize-token [s]
   (some-> s str st/trim (st/replace #"^:+" "") st/lower-case))
@@ -255,9 +154,8 @@
   (let [t (normalize-token token)
         dbs crud/dbs
         keys* (set (keys dbs))
-        ;; map some common nicknames directly to configured keys
         t->key {"default" :default
-                "mysql"   :default   ; assume default is mysql per config
+                "mysql"   :default
                 "main"    :main
                 "pg"      :pg
                 "postgres" :pg
@@ -276,20 +174,16 @@
     (or direct mapped by-vendor :default)))
 
 (defn populate-tables
-  "Populate a table with rows on the selected connection. This version avoids vendor-specific
-  locking and uses simple DELETE + batch insert wrapped in a transaction by Insert-multi."
+  "Populate a table with rows on the selected connection."
   [table rows & {:keys [conn]}]
   (let [conn* (or conn :default)
         table-s (name (keyword table))
-        ;; coerce row values to DB-appropriate types using schema introspection
         typed-rows (mapv (fn [row]
                            (crud/build-postvars table-s row :conn conn*))
                          rows)]
     (println (format "[database] Seeding %s on connection %s" table-s (name conn*)))
     (try
-      ;; Clear existing rows (portable across MySQL/Postgres/SQLite)
       (Query! (str "DELETE FROM " table-s) :conn conn*)
-      ;; Batch insert rows
       (Insert-multi (keyword table-s) typed-rows :conn conn*)
       (println (format "[database] Seeded %d rows into %s (%s)"
                        (count typed-rows) table-s (name conn*)))
@@ -316,11 +210,51 @@
       (println (format "[database] Seeded %d rows into %s (%s)"
                        (count typed-rows) table-s (name conn*))))))
 
+(defn- generate-placeholder-image!
+  [filepath & {:keys [red green blue]}]
+  (let [img (java.awt.image.BufferedImage. 100 60 java.awt.image.BufferedImage/TYPE_INT_RGB)
+        g   (.createGraphics img)
+        c   (java.awt.Color. (or red 200) (or green 200) (or blue 200))]
+    (.setColor g c)
+    (.fillRect g 0 0 100 60)
+    (.dispose g)
+    (javax.imageio.ImageIO/write img "png" (java.io.File. filepath))))
+
+(defn- generate-placeholder-pdf!
+  [filepath]
+  (let [f (java.io.File. filepath)]
+    (io/make-parents f)
+    (spit f (str "PDF placeholder for " (.getName f) "\nThis is a demo PDF file generated by cgen."))
+    (println (format "[database]   Created placeholder: %s" (.getName f)))))
+
+(defn- seed-placeholder-images!
+  [rows table-name column-name]
+  (let [uploads-dir (:uploads crud/config)]
+    (doseq [row rows]
+      (when-let [filename (get row column-name)]
+        (let [filepath (str uploads-dir filename)
+              id       (:id row)
+              r        (mod (* id 73) 256)
+              g        (mod (* id 149) 256)
+              b        (mod (* id 97) 256)]
+          (io/make-parents filepath)
+          (generate-placeholder-image! filepath :red r :green g :blue b)
+          (println (format "[database]   Created placeholder: %s" filename)))))))
+
+(defn- seed-placeholder-pdfs!
+  [rows table-name column-name]
+  (let [uploads-dir (:uploads crud/config)]
+    (doseq [row rows]
+      (when-let [filename (get row column-name)]
+        (let [filepath (str uploads-dir filename)]
+          (io/make-parents filepath)
+          (generate-placeholder-pdf! filepath))))))
+
 (defn seed-non-users
   "Usage:
-   - lein run -m cgen.models.cdb/seed-non-users
-   - lein run -m cgen.models.cdb/seed-non-users pg
-   - lein run -m cgen.models.cdb/seed-non-users localdb
+   - lein seed-non-users
+   - lein seed-non-users pg
+   - lein seed-non-users localdb
 
    Seeds all configured tables except users."
   [& args]
@@ -329,18 +263,19 @@
         dbspec (get crud/dbs conn)
         sp (:subprotocol dbspec)]
     (println (format "[database] Seeding non-user tables on connection: %s (subprotocol=%s)" (name conn) sp))
-    ;; Clear child tables first to avoid FK violations.
     (doseq [table non-users-clear-order]
       (clear-table table :conn conn))
-    ;; Insert parent tables first, then dependent/link tables.
     (doseq [{:keys [table rows]} non-users-seed-plan]
       (insert-rows table rows :conn conn))
-    ;; Generate placeholder images for tables with image columns
-    (println "[database] Generating placeholder images...")
-    (seed-placeholder-images! contactos-rows "contactos" :imagen)
-    (seed-placeholder-images! siblings-rows "siblings" :imagen)
-    (seed-placeholder-images! cars-rows "cars" :imagen)
-    (seed-placeholder-images! employee-profiles-rows "employee_profiles" :avatar)
+    (println "[database] Generating placeholder images for books...")
+    (seed-placeholder-images! libros-rows "libros" :portada)
+    (println "[database] Generating placeholder PDFs for books...")
+    (seed-placeholder-pdfs! libros-rows "libros" :pdf)
+    (seed-placeholder-pdfs! libros-rows "libros" :documento)
+    (println "[database] Generating placeholder images for book gallery...")
+    (seed-placeholder-images! libros-imagenes-rows "libros_imagenes" :imagen)
+    (println "[database] Generating placeholder images for members...")
+    (seed-placeholder-images! miembros-rows "miembros" :foto)
     (println "[database] Non-user seed completed.")))
 
 (defn database
@@ -355,6 +290,5 @@
         dbspec (get crud/dbs conn)
         sp (:subprotocol dbspec)]
     (println (format "[database] Using connection: %s (subprotocol=%s)" (name conn) sp))
-    ;; add other tables here if needed
     (populate-tables "users" users-rows :conn conn)
     (println "[database] Done.")))

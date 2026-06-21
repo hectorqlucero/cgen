@@ -1,0 +1,18 @@
+{:entity :libros_autores
+ :title "Autores del Libro"
+ :table "libros_autores"
+ :connection :default
+ :rights ["U" "A" "S"]
+ :mode :parameter-driven
+ :menu-order 999
+ :menu-hidden true
+ :menu-icon "bi bi-people"
+
+ :fields [{:id :libro_id :label "Libro ID" :type :hidden}
+          {:id :autor_id :label "Libro ID" :type :hidden}]
+
+ :queries {:list "SELECT la.*, a.nombre || ' ' || a.apellidos as autor_nombre FROM libros_autores la LEFT JOIN autores a ON la.autor_id = a.id ORDER BY a.apellidos"
+           :get "SELECT la.*, a.nombre || ' ' || a.apellidos as autor_nombre FROM libros_autores la LEFT JOIN autores a ON la.autor_id = a.id WHERE la.libro_id = ?"}
+
+ :actions {:new true :edit true :delete true}
+}

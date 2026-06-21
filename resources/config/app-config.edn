@@ -93,6 +93,9 @@
  ;; --- File Upload Settings ---
  :max-upload-mb 5
  :allowed-image-exts ["jpg" "jpeg" "png" "gif" "bmp" "webp"]
+ :allowed-upload-exts {:file ["jpg" "jpeg" "png" "gif" "bmp" "webp"]
+                       :pdf ["pdf"]
+                       :document ["doc" "docx" "txt" "odt"]}
 
  ;; --- Email Settings ---
  :email-host "change_me" ; smtp.provider.com

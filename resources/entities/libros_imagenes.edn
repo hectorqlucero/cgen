@@ -1,0 +1,20 @@
+{:entity :libros_imagenes
+ :title "Imágenes del Libro"
+ :table "libros_imagenes"
+ :connection :default
+ :rights ["U" "A" "S"]
+ :mode :parameter-driven
+ :menu-order 999
+ :menu-hidden true
+ :menu-icon "bi bi-image"
+
+ :fields [{:id :id :label "ID" :type :hidden}
+          {:id :imagen :label "Imagen" :type :file :required? true}
+          {:id :descripcion :label "Descripción" :type :text :placeholder "Breve descripción..."}
+          {:id :libro_id :label "Libro ID" :type :hidden}]
+
+ :queries {:list "SELECT * FROM libros_imagenes ORDER BY id DESC"
+           :get "SELECT * FROM libros_imagenes WHERE id = ?"}
+
+ :actions {:new true :edit true :delete true}
+}

@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS libros_imagenes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  libro_id INTEGER NOT NULL,
+  imagen TEXT NOT NULL,
+  descripcion TEXT,
+  FOREIGN KEY (libro_id) REFERENCES libros(id) ON DELETE CASCADE
+);
