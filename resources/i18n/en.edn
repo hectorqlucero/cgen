@@ -27,15 +27,15 @@
 
  ;; [GENERIC] Entity Names
  :entity/users "Users"
-  :entity/audit_log "Audit Log"
-  :entity/autores "Authors"
-  :entity/categorias "Categories"
-  :entity/libros "Books"
-  :entity/libros_imagenes "Image Gallery"
-  :entity/libros_autores "Book Authors"
-  :entity/miembros "Members"
-  :entity/prestamos "Loans"
-  :entity/prestamos_detalle "Loan Details"
+ :entity/audit_log "Audit Log"
+ :entity/autores "Authors"
+ :entity/categorias "Categories"
+ :entity/libros "Books"
+ :entity/libros_imagenes "Image Gallery"
+ :entity/libros_autores "Book Authors"
+ :entity/miembros "Members"
+ :entity/prestamos "Loans"
+ :entity/prestamos_detalle "Loan Details"
 
  ;; [GENERIC] Field Labels
  :form/email "Email"
@@ -212,6 +212,7 @@
  :users/username "Username"
  :users/dob "Date of Birth"
  :users/cell "Cell Phone"
+ :users/phone "Phone"
  :users/fax "Fax"
  :users/email "Email"
  :users/level "User Level"
