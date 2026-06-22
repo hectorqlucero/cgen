@@ -21,7 +21,7 @@
           {:id :portada :label "Portada" :type :file}
           {:id :pdf :label "Libro Digital (PDF)" :type :pdf}
           {:id :documento :label "Documento Adjunto" :type :document}
-          {:id :anio_publicacion :label "Año Publicación" :type :number :placeholder "2024"}
+          {:id :anio_publicacion :label "Año Publicación" :type :number :placeholder "Ej: 2026"}
           {:id :paginas :label "Páginas" :type :number :placeholder "300"}
           {:id :sinopsis :label "Sinopsis" :type :textarea :placeholder "Sinopsis del libro..."}
           {:id :status :label "Estado" :type :radio :value "disponible"

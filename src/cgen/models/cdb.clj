@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as st]
    [buddy.hashers :as hashers]
+   [clj-time.core :as t]
    [cgen.models.crud :as crud :refer [Insert-multi Query!]]))
 
 (def users-rows
@@ -86,19 +87,24 @@
    {:libro_id 9 :autor_id 5 :rol "Autor"}
    {:libro_id 10 :autor_id 6 :rol "Traductor"}]) ;; Demo
 
-(def miembros-rows
-  [{:id 1 :nombre "Juan Pérez García" :email "juan@ejemplo.com" :telefono "555-1001" :activo "T" :fecha_registro "2024-01-15"}
-   {:id 2 :nombre "María López Hernández" :email "maria@ejemplo.com" :telefono "555-1002" :activo "T" :fecha_registro "2024-02-20"}
-   {:id 3 :nombre "Carlos Rodríguez Martínez" :email "carlos@ejemplo.com" :telefono "555-1003" :activo "T" :fecha_registro "2024-03-10"}
-   {:id 4 :nombre "Ana Sánchez Morales" :email "ana@ejemplo.com" :telefono "555-1004" :activo "T" :fecha_registro "2024-04-05"}
-   {:id 5 :nombre "Pedro Ramírez Torres" :email "pedro@ejemplo.com" :telefono "555-1005" :activo "F" :fecha_registro "2024-01-30"}
-   {:id 6 :nombre "Sofía Castillo Ortega" :email "sofia@ejemplo.com" :telefono "555-1006" :activo "T" :fecha_registro "2024-05-12"}])
+(defn ^:private seed-year []
+  (str (t/year (t/now))))
 
-(def prestamos-rows
-  [{:id 1 :miembro_id 1 :fecha_prestamo "2024-06-01" :fecha_vencimiento "2024-06-15" :status "devuelto" :fecha_devolucion "2024-06-14" :notas "Primer préstamo"}
-   {:id 2 :miembro_id 2 :fecha_prestamo "2024-06-10" :fecha_vencimiento "2024-06-24" :status "activo" :notas "Préstamo vigente"}
-   {:id 3 :miembro_id 3 :fecha_prestamo "2024-05-20" :fecha_vencimiento "2024-06-03" :status "vencido" :notas "Libro no devuelto"}
-   {:id 4 :miembro_id 4 :fecha_prestamo "2024-06-15" :fecha_vencimiento "2024-06-29" :status "activo" :notas nil}])
+(defn miembros-rows []
+  (let [y (seed-year)]
+    [{:id 1 :nombre "Juan Pérez García" :email "juan@ejemplo.com" :telefono "555-1001" :activo "T" :fecha_registro (str y "-01-15")}
+     {:id 2 :nombre "María López Hernández" :email "maria@ejemplo.com" :telefono "555-1002" :activo "T" :fecha_registro (str y "-02-20")}
+     {:id 3 :nombre "Carlos Rodríguez Martínez" :email "carlos@ejemplo.com" :telefono "555-1003" :activo "T" :fecha_registro (str y "-03-10")}
+     {:id 4 :nombre "Ana Sánchez Morales" :email "ana@ejemplo.com" :telefono "555-1004" :activo "T" :fecha_registro (str y "-04-05")}
+     {:id 5 :nombre "Pedro Ramírez Torres" :email "pedro@ejemplo.com" :telefono "555-1005" :activo "F" :fecha_registro (str y "-01-30")}
+     {:id 6 :nombre "Sofía Castillo Ortega" :email "sofia@ejemplo.com" :telefono "555-1006" :activo "T" :fecha_registro (str y "-05-12")}]))
+
+(defn prestamos-rows []
+  (let [y (seed-year)]
+    [{:id 1 :miembro_id 1 :fecha_prestamo (str y "-06-01") :fecha_vencimiento (str y "-06-15") :status "devuelto" :fecha_devolucion (str y "-06-14") :notas "Primer préstamo"}
+     {:id 2 :miembro_id 2 :fecha_prestamo (str y "-06-10") :fecha_vencimiento (str y "-06-24") :status "activo" :notas "Préstamo vigente"}
+     {:id 3 :miembro_id 3 :fecha_prestamo (str y "-05-20") :fecha_vencimiento (str y "-06-03") :status "vencido" :notas "Libro no devuelto"}
+     {:id 4 :miembro_id 4 :fecha_prestamo (str y "-06-15") :fecha_vencimiento (str y "-06-29") :status "activo" :notas nil}]))
 
 (def prestamos-detalle-rows
   [{:id 1 :prestamo_id 1 :libro_id 3 :cantidad 1 :notas nil}
@@ -108,21 +114,22 @@
    {:id 5 :prestamo_id 4 :libro_id 4 :cantidad 1 :notas nil}
    {:id 6 :prestamo_id 4 :libro_id 10 :cantidad 1 :notas nil}])
 
-(def audit-log-rows
-  [{:id 1 :entity "libros" :operation "seed" :data "initial dataset" :user_id 1 :timestamp "2024-01-01 10:00:00"}
-   {:id 2 :entity "miembros" :operation "seed" :data "initial dataset" :user_id 1 :timestamp "2024-01-01 10:01:00"}
-   {:id 3 :entity "prestamos" :operation "seed" :data "initial dataset" :user_id 1 :timestamp "2024-01-01 10:02:00"}])
+(defn audit-log-rows []
+  (let [y (seed-year)]
+    [{:id 1 :entity "libros" :operation "seed" :data "initial dataset" :user_id 1 :timestamp (str y "-01-01 10:00:00")}
+     {:id 2 :entity "miembros" :operation "seed" :data "initial dataset" :user_id 1 :timestamp (str y "-01-01 10:01:00")}
+     {:id 3 :entity "prestamos" :operation "seed" :data "initial dataset" :user_id 1 :timestamp (str y "-01-01 10:02:00")}]))
 
-(def ^:private non-users-seed-plan
+(defn ^:private non-users-seed-plan []
   [{:table "autores" :rows autores-rows}
    {:table "categorias" :rows categorias-rows}
    {:table "libros" :rows libros-rows}
    {:table "libros_imagenes" :rows libros-imagenes-rows}
    {:table "libros_autores" :rows libros-autores-rows}
-   {:table "miembros" :rows miembros-rows}
-   {:table "prestamos" :rows prestamos-rows}
+   {:table "miembros" :rows (miembros-rows)}
+   {:table "prestamos" :rows (prestamos-rows)}
    {:table "prestamos_detalle" :rows prestamos-detalle-rows}
-   {:table "audit_log" :rows audit-log-rows}])
+   {:table "audit_log" :rows (audit-log-rows)}])
 
 (def ^:private non-users-clear-order
   ["prestamos_detalle"
@@ -224,7 +231,7 @@
   [filepath]
   (let [f (java.io.File. filepath)]
     (io/make-parents f)
-    (spit f (str "PDF placeholder for " (.getName f) "\nThis is a demo PDF file generated by cgen."))
+    (spit f (str "PDF placeholder for " (.getName f) "\nThis is a demo PDF file generated by contactos."))
     (println (format "[database]   Created placeholder: %s" (.getName f)))))
 
 (defn- seed-placeholder-images!
@@ -265,7 +272,7 @@
     (println (format "[database] Seeding non-user tables on connection: %s (subprotocol=%s)" (name conn) sp))
     (doseq [table non-users-clear-order]
       (clear-table table :conn conn))
-    (doseq [{:keys [table rows]} non-users-seed-plan]
+    (doseq [{:keys [table rows]} (non-users-seed-plan)]
       (insert-rows table rows :conn conn))
     (println "[database] Generating placeholder images for books...")
     (seed-placeholder-images! libros-rows "libros" :portada)
@@ -275,7 +282,7 @@
     (println "[database] Generating placeholder images for book gallery...")
     (seed-placeholder-images! libros-imagenes-rows "libros_imagenes" :imagen)
     (println "[database] Generating placeholder images for members...")
-    (seed-placeholder-images! miembros-rows "miembros" :foto)
+    (seed-placeholder-images! (miembros-rows) "miembros" :foto)
     (println "[database] Non-user seed completed.")))
 
 (defn database
