@@ -1641,51 +1641,11 @@ The default locale is `:es` (Spanish). Leave everything else as-is for now.
 ---
 
 ### Step 3: Clean Up the Default Entities
-
-The generated project includes example entities (contactos, cars, siblings, organizations,
-departments, employees, etc.). You do not need them for Pizza. Delete them:
-
 ```bash
-# Remove example entity EDN files
-rm resources/entities/contactos.edn
-rm resources/entities/cars.edn
-rm resources/entities/siblings.edn
-rm resources/entities/organizations.edn
-rm resources/entities/departments.edn
-rm resources/entities/employees.edn
-rm resources/entities/employee_profiles.edn
-rm resources/entities/employee_projects.edn
-rm resources/entities/employee_skills.edn
-rm resources/entities/projects.edn
-rm resources/entities/skills.edn
-
-# Remove example hook files
-rm src/pizza/hooks/contactos.clj
-rm src/pizza/hooks/cars.clj
-rm src/pizza/hooks/siblings.clj
-rm src/pizza/hooks/organizations.clj
-rm src/pizza/hooks/departments.clj
-rm src/pizza/hooks/employees.clj
-rm src/pizza/hooks/employee_profiles.clj
-rm src/pizza/hooks/employee_projects.clj
-rm src/pizza/hooks/employee_skills.clj
-rm src/pizza/hooks/projects.clj
-rm src/pizza/hooks/skills.clj
-
-# Remove example migration files
-rm resources/migrations/003-contactos.sqlite.up.sql
-rm resources/migrations/003-contactos.sqlite.down.sql
-rm resources/migrations/004-siblings.sqlite.up.sql
-rm resources/migrations/004-siblings.sqlite.down.sql
-rm resources/migrations/005-cars.sqlite.up.sql
-rm resources/migrations/005-cars.sqlite.down.sql
-rm resources/migrations/007-relationship_examples.sqlite.up.sql
-rm resources/migrations/007-relationship_examples.sqlite.down.sql
+lein clean-demo
 ```
 
-Keep `001-users`, `002-users_view`, and `006-audit_log` — you need users and audit.
-
-After deleting migration files, reset the database so it only contains the tables you keep:
+After clean-demo - clearing demo project
 
 ```bash
 # Delete SQLite database so migrations run from scratch
@@ -1697,20 +1657,13 @@ lein migrate
 # Seed Example users
 lein database
 ```
-
-Also clean up the uploaded files directory:
-
-```bash
-rm -rf uploads/pizza/*
-```
-
 ---
 
 ### Step 4: Create Migrations for the Pizza Schema
 
 You need 5 new tables: `clientes`, `productos`, `repartidores`, `pedidos`, `pedido_detalle`.
 
-Create `resources/migrations/007-clientes.sqlite.up.sql`:
+Create `resources/migrations/007-pizza.sqlite.up.sql`:
 
 ```sql
 CREATE TABLE IF NOT EXISTS clientes (
@@ -1725,17 +1678,7 @@ CREATE TABLE IF NOT EXISTS clientes (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_clientes_telefono ON clientes (telefono);
-```
 
-Create `resources/migrations/007-clientes.sqlite.down.sql`:
-
-```sql
-DROP TABLE IF EXISTS clientes;
-```
-
-Create `resources/migrations/008-productos.sqlite.up.sql`:
-
-```sql
 CREATE TABLE IF NOT EXISTS productos (
   id        INTEGER PRIMARY KEY AUTOINCREMENT,
   nombre    TEXT    NOT NULL,
@@ -1743,34 +1686,14 @@ CREATE TABLE IF NOT EXISTS productos (
   precio    REAL    NOT NULL DEFAULT 0,
   activo    TEXT    NOT NULL DEFAULT 'T'
 );
-```
 
-Create `resources/migrations/008-productos.sqlite.down.sql`:
-
-```sql
-DROP TABLE IF EXISTS productos;
-```
-
-Create `resources/migrations/009-repartidores.sqlite.up.sql`:
-
-```sql
 CREATE TABLE IF NOT EXISTS repartidores (
   id       INTEGER PRIMARY KEY AUTOINCREMENT,
   nombre   TEXT    NOT NULL,
   telefono TEXT,
   activo   TEXT    NOT NULL DEFAULT 'T'
 );
-```
 
-Create `resources/migrations/009-repartidores.sqlite.down.sql`:
-
-```sql
-DROP TABLE IF EXISTS repartidores;
-```
-
-Create `resources/migrations/010-pedidos.sqlite.up.sql`:
-
-```sql
 CREATE TABLE IF NOT EXISTS pedidos (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
   cliente_id     INTEGER NOT NULL,
@@ -1785,17 +1708,7 @@ CREATE TABLE IF NOT EXISTS pedidos (
   FOREIGN KEY (cliente_id)    REFERENCES clientes(id),
   FOREIGN KEY (repartidor_id) REFERENCES repartidores(id)
 );
-```
 
-Create `resources/migrations/010-pedidos.sqlite.down.sql`:
-
-```sql
-DROP TABLE IF EXISTS pedidos;
-```
-
-Create `resources/migrations/011-pedido_detalle.sqlite.up.sql`:
-
-```sql
 CREATE TABLE IF NOT EXISTS pedido_detalle (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   pedido_id       INTEGER NOT NULL,
@@ -1808,10 +1721,14 @@ CREATE TABLE IF NOT EXISTS pedido_detalle (
 );
 ```
 
-Create `resources/migrations/011-pedido_detalle.sqlite.down.sql`:
+Create `resources/migrations/007-pizza.sqlite.down.sql`:
 
 ```sql
 DROP TABLE IF EXISTS pedido_detalle;
+DROP TABLE IF EXISTS pedidos;
+DROP TABLE IF EXISTS repartidores;
+DROP TABLE IF EXISTS productos;
+DROP TABLE IF EXISTS clientes;
 ```
 
 Run the new migrations:
@@ -1837,6 +1754,7 @@ These define what the parameter-driven engine shows for each table.
  :mode       :parameter-driven
  :menu-category :Catalogos
  :menu-icon  "bi bi-people"
+ :menu-order 40
 
  :fields [{:id :id         :label "ID"         :type :hidden}
           {:id :nombre     :label "Nombre"     :type :text  :placeholder "Nombre completo..."}
@@ -1922,6 +1840,7 @@ These define what the parameter-driven engine shows for each table.
  :mode       :parameter-driven
  :menu-category :Operacion
  :menu-icon  "bi bi-receipt"
+ :menu-order 30
 
  :fields [{:id :id            :label "ID"        :type :hidden}
           {:id :cliente_id    :label "Cliente"   :type :hidden}
@@ -2726,6 +2645,13 @@ Edit `src/pizza/menu.clj` and set `custom-nav-links` to:
   [["/"          "HOME"     "bi bi-house"        nil 0]
    ["/pedido"    "PEDIDO"   "bi bi-telephone"    "U" 10]
    ["/despacho"  "DESPACHO" "bi bi-truck"        "U" 20]])
+```
+
+Edit `src/pizza/menu.clj` and set `custom-dropdowns` to:
+```clojure
+(def custom-dropdowns
+  "Custom dropdown menus (not entity-based)"
+  {})
 ```
 
 - **Rights**: `nil` = everyone, `"U"` = Users and above (U, A, S).
