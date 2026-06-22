@@ -1891,7 +1891,14 @@ These define what the parameter-driven engine shows for each table.
 
  :fields [{:id :id              :label "ID"          :type :hidden}
           {:id :pedido_id       :label "Pedido ID"   :type :hidden}
-          {:id :producto_id     :label "Producto ID" :type :hidden}
+          {:id :producto_id
+           :label "Producto"
+           :type :fk
+           :fk :productos
+           :fk-field [:nombre]
+           :fk-can-create? true
+           :hidden-in-grid? true}
+          {:id :producto_nombre :label "Producto" :grid-only? true}
           {:id :cantidad        :label "Cantidad"    :type :number}
           {:id :precio_unitario :label "Precio Unit" :type :decimal :step 0.01 :hidden-in-grid? true}
           {:id :precio_formatted :label "Precio"     :grid-only? true}
