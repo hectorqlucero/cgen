@@ -77,8 +77,9 @@
              ;;   lein i18n-lint
              ;;   lein i18n-lint src        ; scan a specific directory
             "i18n-lint" ["run" "-m" "cgen.i18n.lint"]
-             "clean-demo" ["run" "-m" "cgen.tools.clean-demo" "--"]
-             "setup" ["run" "-m" "cgen.tools.setup" "--"]}
+            "clean-demo" ["run" "-m" "cgen.tools.clean-demo" "--"]
+            "fw-upgrade" ["run" "-m" "cgen.tools.upgrade" "--"]
+            "setup" ["run" "-m" "cgen.tools.setup" "--"]}
   :profiles {:uberjar {:aot :all
                        :main cgen.core
                        :jvm-opts ["-Dclojure.compiler.direct-linking=true"
