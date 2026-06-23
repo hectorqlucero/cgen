@@ -1,9 +1,9 @@
 (ns cgen.tools.upgrade
-  "Idempotent framework upgrade: copies framework source files from cgen
+  "Idempotent framework upgrade: copies framework source files from
    template, renames namespaces, and applies backward-compatibility shims.
-   Usage: lein fw-upgrade <cgen-dir> [project-name]
-   Example: lein fw-upgrade ~/Repo/cgen
-            lein fw-upgrade ~/Repo/cgen contactos
+   Usage: lein fw-upgrade <framework-dir> [project-name]
+   Example: lein fw-upgrade <framework-dir>             e.g. ~/Repo/cgen
+            lein fw-upgrade <framework-dir> <project-name>
    Project name auto-detected from project.clj when omitted."
   (:require
    [clojure.java.io :as io]
@@ -11,58 +11,46 @@
   (:import [java.io File]))
 
 ;; ──────────────────────────────────────────────
-;; Manifest: cgen source paths (flat list)
-;; Destination is derived by replacing "cgen" with the project's fs-name.
+;; File discovery
 ;; ──────────────────────────────────────────────
 
-(def framework-src-files
-  "Relative paths of framework source files in the cgen template.
-   Destination path is derived by replacing 'cgen' with the project's
-   filesystem-safe name (e.g. 'src/cgen/core.clj' → 'src/<project>/core.clj')."
-  ["src/cgen/core.clj"
-   "src/cgen/i18n/core.clj"
-   "src/cgen/i18n/lint.clj"
-   "src/cgen/models/export.clj"
-   "src/cgen/models/crud.clj"
-   "src/cgen/models/db.clj"
-   "src/cgen/models/db/sqlite.clj"
-   "src/cgen/models/db/mysql.clj"
-   "src/cgen/models/db/postgres.clj"
-   "src/cgen/models/form.clj"
-   "src/cgen/models/grid.clj"
-   "src/cgen/models/util.clj"
-   "src/cgen/models/routes.clj"
-   "src/cgen/models/schema_enhanced.clj"
-   "src/cgen/models/email.clj"
-   "src/cgen/web/csrf.clj"
-   "src/cgen/config/loader.clj"
-   "src/cgen/migrations.clj"
-   "src/cgen/engine/config.clj"
-   "src/cgen/engine/query.clj"
-   "src/cgen/engine/crud.clj"
-   "src/cgen/engine/render.clj"
-   "src/cgen/engine/router.clj"
-   "src/cgen/engine/scaffold.clj"
-   "src/cgen/engine/menu.clj"
-   "src/cgen/tabgrid/core.clj"
-   "src/cgen/tabgrid/data.clj"
-   "src/cgen/tabgrid/handlers.clj"
-   "src/cgen/tabgrid/render.clj"
-   "src/cgen/layout.clj"
-   "src/cgen/gen/handler.clj"])
+(def ^:private exclude-patterns
+  [#"\.git"
+   #"target"
+   #"uploads"
+   #"\.DS_Store"
+   #"\.#"
+   #"#.*#"])
 
-(def dev-src-files
-  ["dev/cgen/dev.clj"])
+(defn- should-exclude?
+  [^File f]
+  (let [path (.getPath f)]
+    (some #(re-find % path) exclude-patterns)))
+
+(defn- source-files
+  "Return all non-directory, non-excluded files under dir."
+  [^File dir]
+  (filter (fn [^File f]
+            (and (.isFile f)
+                 (not (should-exclude? f))))
+          (file-seq dir)))
+
+(defn- relative-path
+  "Return the path of child relative to parent."
+  [^File child ^File parent]
+  (let [child-path (.getAbsolutePath child)
+        parent-path (.getAbsolutePath parent)]
+    (subs child-path (inc (count parent-path)))))
 
 ;; ──────────────────────────────────────────────
 ;; Helpers
 ;; ──────────────────────────────────────────────
 
-(defn- cgen->dest-path
-  "Derive destination path by replacing the first path component 'cgen'
+(defn- replace-ns-in-path
+  "Derive destination path by replacing the framework namespace 'cgen'
    with the project's filesystem name."
-  [cgen-path fs-name]
-  (str/replace-first cgen-path "cgen" fs-name))
+  [fw-path fs-name]
+  (str/replace fw-path "cgen" fs-name))
 
 (defn- detect-project-name
   "Read project.clj and extract the project name from (defproject <name> ...).
@@ -124,17 +112,21 @@
     (when (.exists f)
       (let [content (slurp f)]
         (let [has-alias (boolean (re-find #"\"fw-upgrade\"" content))
+              has-native-access (boolean (re-find #"--enable-native-access=ALL-UNNAMED" content))
               base (-> content
                        (str/replace #"lein-ancient\s+\"0\.7\.0\""
                                     "lein-ancient \"1.0.0\"")
                        (str/replace #"sqlite-jdbc\s+\"3\.53\.1\.0\""
                                     "sqlite-jdbc \"3.53.2.0\"")
                        (str/replace #":resource-paths\s+\[\"shared\" \"resources\"\]"
-                                    ":resource-paths [\"resources\"]")
-                       (str/replace #"(:uberjar\s+\{:aot :all\s*\n\s*:main\s+\S+\s*\n\s*:jvm-opts\s+\[)([^\]]*)\]"
-                                    (str "$1$2\n                                   \"--enable-native-access=ALL-UNNAMED\"]"))
-                       (str/replace #"(:dev\s+\{:source-paths\s+\[\"src\" \"dev\"\]\s*\n\s*:main\s+\S+)"
-                                    (str "$1\n                    :jvm-opts [\"--enable-native-access=ALL-UNNAMED\"]")))
+                                    ":resource-paths [\"resources\"]"))
+              base (if has-native-access
+                     base
+                     (-> base
+                         (str/replace #"(:uberjar\s+\{:aot :all\s*\n\s*:main\s+\S+\s*\n\s*:jvm-opts\s+\[)([^\]]*)\]"
+                                      (str "$1$2\n                                   \"--enable-native-access=ALL-UNNAMED\"]"))
+                         (str/replace #"(:dev\s+\{:source-paths\s+\[\"src\" \"dev\"\]\s*\n\s*:main\s+\S+)"
+                                      (str "$1\n                    :jvm-opts [\"--enable-native-access=ALL-UNNAMED\"]"))))
               updated (if has-alias
                         base
                         (str/replace base
@@ -150,9 +142,9 @@
 ;; ──────────────────────────────────────────────
 
 (defn -main
-  "Usage: lein fw-upgrade <cgen-dir> [project-name]
-   Example: lein fw-upgrade ~/Repo/cgen
-            lein fw-upgrade ~/Repo/cgen contactos
+  "Usage: lein fw-upgrade <framework-dir> [project-name]
+   Example: lein fw-upgrade <framework-dir>             e.g. ~/Repo/cgen
+            lein fw-upgrade <framework-dir> <project-name>
    Project name auto-detected from project.clj when omitted."
   [& args]
   (let [cgen-dir (or (first args) (System/getenv "CGEN_DIR"))
@@ -161,15 +153,15 @@
 
     (when-not cgen-dir
       (println)
-      (println "Usage: lein fw-upgrade <cgen-dir> [project-name]")
+      (println "Usage: lein fw-upgrade <framework-dir> [project-name]")
       (println)
-      (println "  <cgen-dir>     Path to the cgen template directory (required)")
+      (println "  <framework-dir>     Path to the framework template directory (required)")
       (println "  [project-name] Project name override (default: auto-detect from project.clj)")
       (println)
       (println "Examples:")
-      (println "  lein fw-upgrade ~/Repo/cgen")
-      (println "  lein fw-upgrade ~/Repo/cgen contactos")
-      (println "  CGEN_DIR=~/Repo/cgen lein fw-upgrade")
+      (println "  lein fw-upgrade <framework-dir>             e.g. ~/Repo/cgen")
+      (println "  lein fw-upgrade <framework-dir> <project-name>")
+      (println "  CGEN_DIR=<framework-dir> lein fw-upgrade")
       (println)
       (System/exit 1))
 
@@ -177,7 +169,7 @@
       (println)
       (println "ERROR: could not detect project name.")
       (println "Place project.clj in the current directory or pass name as second arg:")
-      (println "  lein fw-upgrade ~/Repo/cgen contactos")
+      (println "  lein fw-upgrade <framework-dir> <project-name>")
       (println)
       (System/exit 1))
 
@@ -196,22 +188,20 @@
       (println)
 
       (when-not (.exists cgen-dir-f)
-        (println (format "ERROR: cgen directory not found: %s" cgen-dir))
+        (println (format "ERROR: framework directory not found: %s" cgen-dir))
         (println)
         (System/exit 1))
 
       (println "Step 1: Copying framework source files...")
       (let [copied (atom 0)]
-        (doseq [src framework-src-files]
-          (let [src-path (str cgen-dir "/" src)
-                dest-path (str target-dir "/" (cgen->dest-path src fs-name))]
-            (when (copy-with-ns-rename src-path dest-path project-name)
-              (swap! copied inc))))
-        (doseq [src dev-src-files]
-          (let [src-path (str cgen-dir "/" src)
-                dest-path (str target-dir "/" (cgen->dest-path src fs-name))]
-            (copy-with-ns-rename src-path dest-path project-name)
-            (swap! copied inc)))
+        (doseq [subdir ["src" "dev"]]
+          (let [fw-ns-dir (io/file cgen-dir subdir "cgen")]
+            (when (.exists fw-ns-dir)
+              (doseq [^File f (source-files fw-ns-dir)]
+                (let [rel-path (str subdir "/cgen/" (relative-path f fw-ns-dir))
+                      dest-path (str target-dir "/" (replace-ns-in-path rel-path fs-name))]
+                  (copy-with-ns-rename (.getPath f) dest-path project-name)
+                  (swap! copied inc))))))
         (println (format "  ▶ %d files copied" @copied)))
 
       (println)
