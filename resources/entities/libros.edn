@@ -16,7 +16,8 @@
            :type :fk
            :fk :categorias
            :fk-field [:nombre]
-           :fk-can-create? true}
+           :fk-can-create? true
+           :hidden-in-grid? true}
           {:id :categoria_nombre :label "Categoría" :grid-only? true}
           {:id :portada :label "Portada" :type :file}
           {:id :pdf :label "Libro Digital (PDF)" :type :pdf}

@@ -109,8 +109,6 @@
          {:type "submit"}
          [:i.bi.bi-box-arrow-in-right.me-2] (i18n/tr :auth/login)]]]]]]))
 
-
-
 (defn build-field
   "Creates a professional form field with Bootstrap 5 styling and correct HTML5/Bootstrap5 field type rendering.
    Args: {:label string :type string :id string :name string :placeholder string :required bool :error string :value string :options vector (for select/radio) :step :min :max :multiple :readonly :disabled :pattern string :autocomplete string :accept string :autofocus bool :checked bool :size int :maxlength int :minlength int :list string :inputmode string :spellcheck bool :form string :dirname string :tabindex int :aria-label string :aria-describedby string ...}"
@@ -189,22 +187,23 @@
            select-el]))
 
       (and (= type "checkbox") (empty? (:options args)))
-      (let [checked-value (or (:checked-value args) "T")]
+      (let [checked-value (:checked-value args)
+            name* (:name args)
+            id* (or (:id args) name*)]
         [:div.mb-3
-         ;; Hidden fallback ensures the key is always present in params when unchecked
-         [:input {:type "hidden" :name (:name args) :value ""}]
          [:div.form-check
           [:input.form-check-input
-           {:type     "checkbox"
-            :id       (or (:id args) (:name args))
-            :name     (:name args)
-            :value    checked-value
-            :checked  (when (= (str (:value args)) (str checked-value)) true)
-            :required (:required args)
-            :disabled (:disabled args)
-            :style    "transform: scale(1.2);"}]
+           (merge {:type "checkbox"
+                   :id id*
+                   :name name*
+                   :checked (when checked-value
+                              (= (str (:value args)) (str checked-value)))
+                   :required (:required args)
+                   :disabled (:disabled args)
+                   :style "transform: scale(1.2);"}
+                  (when checked-value {:value checked-value}))]
           [:label.form-check-label.fw-medium.ms-2
-           {:for (or (:id args) (:name args))}
+           {:for id*}
            (:label args)]]])
 
       (or (= type "radio") (= type "checkbox"))

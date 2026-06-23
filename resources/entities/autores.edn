@@ -4,7 +4,7 @@
  :connection :default
  :rights ["U" "A" "S"]
  :mode :parameter-driven
- :menu-order 110
+ :menu-order 30
  :menu-icon "bi bi-pencil"
  :menu-category :Biblioteca
 
@@ -19,5 +19,4 @@
  :queries {:list "SELECT * FROM autores ORDER BY apellidos, nombre"
            :get "SELECT * FROM autores WHERE id = ?"}
 
- :actions {:new true :edit true :delete true}
-}
+ :actions {:new true :edit true :delete true}}

@@ -240,37 +240,38 @@
                          :options resolved-options})
 
       :checkbox
-      (form/build-field {:label label
-                         :type "checkbox"
-                         :id (name id)
-                         :name (name id)
-                         :checked-value (or value "T")
-                         :value field-value})
+      (let [checked-value (or (-> options first :value) value)]
+        (form/build-field {:label label
+                           :type "checkbox"
+                           :id (name id)
+                           :name (name id)
+                           :checked-value checked-value
+                           :value field-value}))
 
       (:file :pdf :document)
       ;; File input with preview (type-appropriate accept and preview)
       (let [filename (cond
                         ;; Hiccup img vector case: extract src
-                        (and (vector? field-value)
-                             (keyword? (first field-value))
-                             (= (first field-value) :img))
-                        (when-let [attrs (second field-value)]
-                          (when-let [src (:src attrs)]
-                            (-> src
-                                (clojure.string/split #"\?")
-                                first
-                                (clojure.string/replace (:path crud/config) ""))))
+                       (and (vector? field-value)
+                            (keyword? (first field-value))
+                            (= (first field-value) :img))
+                       (when-let [attrs (second field-value)]
+                         (when-let [src (:src attrs)]
+                           (-> src
+                               (clojure.string/split #"\?")
+                               first
+                               (clojure.string/replace (:path crud/config) ""))))
 
                         ;; Old HTML string case: parse src from img tag
-                        (and (string? field-value) (re-find #"^<img" field-value))
-                        (when-let [match (re-find #"src='([^']+)'" field-value)]
-                          (-> (second match)
-                              (clojure.string/split #"\?")
-                              first
-                              (clojure.string/replace (:path crud/config) "")))
+                       (and (string? field-value) (re-find #"^<img" field-value))
+                       (when-let [match (re-find #"src='([^']+)'" field-value)]
+                         (-> (second match)
+                             (clojure.string/split #"\?")
+                             first
+                             (clojure.string/replace (:path crud/config) "")))
 
                         ;; Plain filename string
-                        :else field-value)
+                       :else field-value)
             is-image? (= type :file)
             accept-str (case type
                          :file "image/*"
@@ -300,15 +301,15 @@
                                 "odt" "bi-file-earmark-text"
                                 "bi-file-earmark")}]
                " " filename]]))
-          [:input {:type "file"
-                   :class "form-control form-control-lg"
-                   :id (name id)
-                   :name (name id)
-                   :required (and required?
-                                  (or (nil? field-value)
-                                      (and (string? field-value) (empty? field-value))
-                                      (and (map? field-value) (not (:tempfile field-value)))))
-                   :accept accept-str}]])
+         [:input {:type "file"
+                  :class "form-control form-control-lg"
+                  :id (name id)
+                  :name (name id)
+                  :required (and required?
+                                 (or (nil? field-value)
+                                     (and (string? field-value) (empty? field-value))
+                                     (and (map? field-value) (not (:tempfile field-value)))))
+                  :accept accept-str}]])
       :computed
       ;; computed fields are displayed but not editable
       [:div.mb-3

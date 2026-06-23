@@ -82,12 +82,20 @@
                   (let [field-id (:id field)
                         default-value (:value field)
                         current-value (get acc field-id)
-                        should-apply (and default-value
-                                          (or (nil? current-value)
-                                              (and (string? current-value) (empty? current-value))))]
-                    (if should-apply
-                      (assoc acc field-id default-value)
-                      acc)))
+                        checkbox? (= :checkbox (:type field))]
+                    (if checkbox?
+                      (if (nil? current-value)
+                        (if-let [off-value (-> field :options second :value)]
+                          (assoc acc field-id off-value)
+                          acc)
+                        acc)
+                      (let [should-apply (and default-value
+                                              (or (nil? current-value)
+                                                  (and (string? current-value)
+                                                       (empty? current-value))))]
+                        (if should-apply
+                          (assoc acc field-id default-value)
+                          acc)))))
                 data
                 fields)]
     result))
@@ -210,7 +218,7 @@
               (when (seq child-file-fields)
                 (doseq [ff child-file-fields]
                   (let [rows (crud/Query [(str "SELECT " (name ff) " FROM " (:table child-cfg)
-                                                " WHERE " (name child-fk) " = ?") id]
+                                               " WHERE " (name child-fk) " = ?") id]
                                          :conn connection)]
                     (doseq [row rows]
                       (when-let [fname (get row ff)]

@@ -14,7 +14,8 @@
           {:id :telefono :label "Teléfono" :type :text :placeholder "+52 555 123 4567"}
           {:id :foto :label "Foto" :type :file}
           {:id :fecha_registro :label "Fecha de Registro" :type :date}
-          {:id :activo :label "Activo" :type :checkbox :value "T"}]
+          {:id :activo :label "Activo" :type :checkbox :value "T" :options [{:value "T"}
+                                                                            {:value "F"}]}]
 
  :queries {:list "SELECT * FROM miembros ORDER BY nombre"
            :get "SELECT * FROM miembros WHERE id = ?"}

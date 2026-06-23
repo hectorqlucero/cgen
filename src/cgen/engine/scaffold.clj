@@ -310,7 +310,8 @@
           (not is-nullable) (assoc :required? true)
           (= field-type :text) (assoc :placeholder (str (humanize-label column-name) "..."))
           (= field-type :textarea) (assoc :placeholder (str (humanize-label column-name) "..."))
-          (= field-type :email) (assoc :placeholder "user@example.com"))))))
+          (= field-type :email) (assoc :placeholder "user@example.com")
+          (= field-type :checkbox) (assoc :options [{:value "T"} {:value "F"}]))))))
 
 (defn get-display-field-name
   "Gets the display field name for a foreign key reference.
