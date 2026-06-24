@@ -20,7 +20,10 @@
    #"uploads"
    #"\.DS_Store"
    #"\.#"
-   #"#.*#"])
+   #"#.*#"
+   #"menu\.clj"
+   #"routes\.clj"
+   #"proutes\.clj"])
 
 (defn- should-exclude?
   [^File f]
@@ -125,7 +128,7 @@
                      (-> base
                          (str/replace #"(:uberjar\s+\{:aot :all\s*\n\s*:main\s+\S+\s*\n\s*:jvm-opts\s+\[)([^\]]*)\]"
                                       (str "$1$2\n                                   \"--enable-native-access=ALL-UNNAMED\"]"))
-                         (str/replace #"(:dev\s+\{:source-paths\s+\[\"src\" \"dev\"\]\s*\n\s*:main\s+\S+)"
+                         (str/replace #"(:dev\s+\{:source-paths\s+\[\"src\" \"dev\"\]\s*\n\s*:main\s+[\w.-]+)"
                                       (str "$1\n                    :jvm-opts [\"--enable-native-access=ALL-UNNAMED\"]"))))
               updated (if has-alias
                         base
@@ -198,10 +201,22 @@
           (let [fw-ns-dir (io/file cgen-dir subdir "cgen")]
             (when (.exists fw-ns-dir)
               (doseq [^File f (source-files fw-ns-dir)]
-                (let [rel-path (str subdir "/cgen/" (relative-path f fw-ns-dir))
-                      dest-path (str target-dir "/" (replace-ns-in-path rel-path fs-name))]
-                  (copy-with-ns-rename (.getPath f) dest-path project-name)
-                  (swap! copied inc))))))
+                (let [rel-path (str subdir "/cgen/" (relative-path f fw-ns-dir))]
+                  (when (or (not (.startsWith rel-path "src/cgen/handlers/"))
+                            (.startsWith rel-path "src/cgen/handlers/home/"))
+                    (let [dest-path (str target-dir "/" (replace-ns-in-path rel-path fs-name))]
+                      (copy-with-ns-rename (.getPath f) dest-path project-name)
+                      (swap! copied inc))))))))
+        ;; Copy i18n resource files (en.edn, es.edn)
+        (let [i18n-dir (io/file cgen-dir "resources" "i18n")]
+          (when (.exists i18n-dir)
+            (doseq [^File f (source-files i18n-dir)]
+              (let [rel-path (relative-path f i18n-dir)
+                    dest-path (str target-dir "/resources/i18n/" rel-path)]
+                (io/make-parents (io/file dest-path))
+                (io/copy f (io/file dest-path))
+                (println (format "  ✓ %s" dest-path))
+                (swap! copied inc)))))
         (println (format "  ▶ %d files copied" @copied)))
 
       (println)
