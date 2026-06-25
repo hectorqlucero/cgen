@@ -71,19 +71,20 @@
         is-active (= (name current-sort-by) field-name)
         new-order (if (and is-active (= current-sort-order :asc)) :desc :asc)
         sort-icon (cond
-                    (not is-active) ""
-                    (= current-sort-order :asc) " &#9650;"
-                    :else " &#9660;")
+                    (not is-active) nil
+                    (= current-sort-order :asc) [:i.bi.bi-arrow-up.ms-1]
+                    :else [:i.bi.bi-arrow-down.ms-1])
         params (assoc current-params :sort-by field-name :sort-order (name new-order) :page 1)
         href (str base-url "?" (st/join "&"
                                         (map (fn [[k v]]
                                                (str (name k) "=" (java.net.URLEncoder/encode (str v) "UTF-8")))
                                              params)))]
     [:th.text-nowrap.text-uppercase.fw-semibold.px-2
+     {:aria-sort (when is-active
+                   (if (= current-sort-order :asc) "ascending" "descending"))}
      [:a {:href href
-          :class (when is-active "text-decoration-underline")
           :style "color:inherit;text-decoration:none;"}
-      (st/upper-case field-label) (when is-active [:span {:style "font-size:0.7em"} sort-icon])]]))
+      (st/upper-case field-label) sort-icon]]))
 
 ;; =============================================================================
 ;; Search form
@@ -94,22 +95,22 @@
   [request base-url current-params]
   (let [search (get current-params :search "")
         params (dissoc current-params :search :page)]
-    [:form {:method "GET" :action base-url :class "row gx-2 gy-1 align-items-center mb-2"}
+    [:form {:method "GET" :action base-url :class "row gx-2 gy-1 align-items-center mb-3"}
      (doall
       (for [[k v] params]
         [:input {:type "hidden" :name (name k) :value (str v)}]))
      [:div.col-auto
-      [:input.form-control.form-control-sm
-       {:type "search" :name "search" :placeholder (i18n/tr :common/search)
-        :value search
-        :aria-label (i18n/tr :common/search)}]]
-     [:div.col-auto
-      [:button.btn.btn-sm.btn-outline-primary {:type "submit"}
-       [:i.bi.bi-search.me-1] (i18n/tr :common/search)]]
+      [:div.input-group.input-group-sm
+       [:input.form-control
+        {:type "search" :name "search" :placeholder (i18n/tr :common/search)
+         :value search
+         :aria-label (i18n/tr :common/search)}]
+       [:button.btn.btn-outline-primary {:type "submit"}
+        [:i.bi.bi-search]]]]
      (when (and search (not (st/blank? search)))
        [:div.col-auto
-        [:a.btn.btn-sm.btn-outline-secondary {:href base-url}
-         [:i.bi.bi-x-lg.me-1] (i18n/tr :common/clear)]])]))
+        [:a.btn.btn-sm.btn-outline-danger {:href base-url}
+         [:i.bi.bi-x-lg] (i18n/tr :common/clear)]])]))
 
 ;; =============================================================================
 ;; Table head (with optional sortable headers)
@@ -121,7 +122,7 @@
   [request href fields & [args page-info current-params]]
   (let [new-record (:new args)
         {:keys [sort-by sort-order]} page-info]
-    [:thead
+    [:thead.table-light
      [:tr
       (for [field fields]
         (if (and page-info sort-by)
@@ -133,7 +134,7 @@
       [:th.text-center.px-2
        {:style "width:1%; white-space:nowrap; padding-left:0.25rem; padding-right:0.25rem;"}
        (when new-record
-         [:a.btn.btn-success.btn-sm.fw-semibold.shadow-sm
+         [:a.btn.btn-success.btn-sm.fw-semibold
           {:href (str href "/add-form") :role "button"}
           [:i.bi.bi-plus-lg.me-1]
           (i18n/tr :common/new)])]]]))
@@ -162,7 +163,7 @@
            {:style "width:1%; white-space:nowrap; padding-left:0.25rem; padding-right:0.25rem;"}
            [:div.d-flex.justify-content-center.align-items-center.gap-1
             (when edit
-              [:a.btn.btn-warning.btn-sm.fw-semibold.shadow-sm.rounded-pill
+              [:a.btn.btn-warning.btn-sm.fw-semibold
                {:href (str href "/edit-form/" (:id row)) :role "button"}
                [:i.bi.bi-pencil.me-1]
                (i18n/tr :common/edit)])
@@ -172,7 +173,7 @@
                       :style "display:inline"
                       :onsubmit (str "return confirm('" (i18n/tr :confirm/delete) "')")}
                (csrf-field)
-               [:button.btn.btn-danger.btn-sm.fw-semibold.shadow-sm.rounded-pill
+               [:button.btn.btn-danger.btn-sm.fw-semibold
                 {:type "submit"}
                 [:i.bi.bi-trash.me-1]
                 (i18n/tr :common/delete)]])]]]))]))
@@ -195,13 +196,13 @@
    - current-params: Optional map of current query params (search, sort, etc.)"
   [request title rows table-id fields href & [args page-info current-params]]
   (let [args (or args {})]
-    [:div.card.shadow.mb-4
-     [:div.card-body.bg-gradient.bg-primary.text-white.rounded-top
-      [:h4.mb-0.fw-bold title]]
-     [:div.p-3.bg-white.rounded-bottom
+    [:div.card.shadow-sm.mb-4
+     [:div.card-header.bg-primary.text-white.py-3
+      [:h5.mb-0.fw-bold title]]
+     [:div.card-body.p-3
       (search-form request href (or current-params {}))
       [:div.table-responsive
-       [:table.table.table-hover.table-bordered.table-striped.table-sm.compact.align-middle.w-100
+       [:table.table.table-hover.table-sm.align-middle.w-100.mb-0
         {:id table-id}
         (build-grid-head request href fields args page-info current-params)
         (build-grid-body request rows href fields args)]]
@@ -215,14 +216,14 @@
 (defn build-dashboard
   "Renders a read-only dashboard table."
   [request title rows table-id fields]
-  [:div.card.shadow.mb-4
-   [:div.card-body.bg-gradient.bg-primary.text-white.rounded-top
-    [:h4.mb-0.fw-bold title]]
-   [:div.p-3.bg-white.rounded-bottom
+  [:div.card.shadow-sm.mb-4
+   [:div.card-header.bg-primary.text-white.py-3
+    [:h5.mb-0.fw-bold title]]
+   [:div.card-body.p-3
     [:div.table-responsive
-     [:table.table.table-hover.table-bordered.table-striped.table-sm.compact.align-middle.w-100
+     [:table.table.table-hover.table-sm.align-middle.w-100.mb-0
       {:id table-id}
-      [:thead
+      [:thead.table-light
        [:tr
         (for [field fields]
           [:th.text-nowrap.text-uppercase.fw-semibold.px-2
@@ -318,10 +319,10 @@
             export-base (str base-url (when qs (str "?" qs)))]
         {:type :html
          :content
-         [:div.card.shadow.mb-4
-          [:style "@media print{nav.navbar,footer,#export-toolbar,.search-form{display:none!important}body{overflow:visible!important}.container-fluid.pt-3{overflow:visible!important}.card{box-shadow:none!important;border:1px solid #dee2e6}.bg-gradient{background:#0d6efd!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.table-responsive{overflow:visible!important}.report-content{max-height:none!important;overflow:visible!important}}"]
-          [:div.card-body.bg-gradient.bg-primary.text-white.rounded-top.d-flex.justify-content-between.align-items-center
-           [:h4.mb-0.fw-bold title]
+         [:div.card.shadow-sm.mb-4
+          [:style "@media print{nav.navbar,footer,#export-toolbar,.search-form{display:none!important}body{overflow:visible!important}.container-fluid.pt-3{overflow:visible!important}.card{box-shadow:none!important;border:1px solid #dee2e6}.card-header.bg-primary{background:#0d6efd!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.table-responsive{overflow:visible!important}.report-content{max-height:none!important;overflow:visible!important}}"]
+          [:div.card-header.bg-primary.text-white.py-3.d-flex.justify-content-between.align-items-center
+           [:h5.mb-0.fw-bold title]
            [:div#export-toolbar.d-flex.gap-1
             [:a.btn.btn-sm.btn-light {:href (str export-base (if qs "&" "?") "export=csv") :role "button"}
              [:i.bi.bi-file-earmark-spreadsheet.me-1] (i18n/tr :common/export)]
@@ -329,12 +330,12 @@
              [:i.bi.bi-file-earmark-pdf.me-1] "PDF"]
             [:button.btn.btn-sm.btn-light {:type "button" :onclick "window.print()"}
              [:i.bi.bi-printer.me-1] (i18n/tr :common/print)]]]
-          [:div.p-3.bg-white.rounded-bottom
+          [:div.card-body.p-3
            [:div.search-form (search-form request base-url cp)]
            [:div.table-responsive
-            [:table.table.table-hover.table-bordered.table-striped.table-sm.compact.align-middle.w-100
+            [:table.table.table-hover.table-sm.align-middle.w-100.mb-0
              {:id table-id}
-             [:thead
+             [:thead.table-light
               [:tr
                (for [field fields]
                  (sortable-header (key field) (val field) base-url cp
@@ -361,14 +362,14 @@
    Used by render-subgrid for subgrid forms."
   [request title rows table-id fields href args custom-new-url]
   (let [new? (:new args)]
-    [:div.card.shadow.mb-4
-     [:div.card-body.bg-gradient.bg-primary.text-white.rounded-top
-      [:h4.mb-0.fw-bold title]]
-     [:div.p-3.bg-white.rounded-bottom
+    [:div.card.shadow-sm.mb-4
+     [:div.card-header.bg-primary.text-white.py-3
+      [:h5.mb-0.fw-bold title]]
+     [:div.card-body.p-3
       [:div.table-responsive
-       [:table.table.table-hover.table-bordered.table-striped.table-sm.compact.align-middle.w-100
+       [:table.table.table-hover.table-sm.align-middle.w-100.mb-0
         {:id table-id}
-        [:thead
+        [:thead.table-light
          [:tr
           (for [field fields]
             [:th.text-nowrap.text-uppercase.fw-semibold.px-2
@@ -377,7 +378,7 @@
            {:style "width:1%; white-space:nowrap; padding-left:0.25rem; padding-right:0.25rem;"}
            [:div.d-flex.justify-content-center.align-items-center
             (when new?
-              [:a.btn.btn-success.btn-sm.fw-semibold.shadow-sm
+              [:a.btn.btn-success.btn-sm.fw-semibold
                {:href custom-new-url :role "button"}
                [:i.bi.bi-plus-lg.me-1]
                (i18n/tr :common/new)])]]]]
@@ -385,7 +386,7 @@
 
 (comment
   ;; Usage examples for pagination-bar
-  (pagination-bar nil {:page 1 :total-pages 5 :per-page 10 :total 42}
+  (pagination-bar {:page 1 :total-pages 5 :per-page 10 :total 42}
                   "/admin/users" {:search "john" :sort-by "name" :sort-order "asc"})
   ;; Usage examples for build-grid
   (build-grid nil "Users"
