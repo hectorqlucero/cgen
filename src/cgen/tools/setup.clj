@@ -15,7 +15,8 @@
    #"uploads"
    #"\.DS_Store"
    #"\.#"
-   #"#.*#" ])
+   #"#.*#"
+   #"tools/upgrade\.clj"])
 
 (defn- should-exclude? [^File f]
   (let [path (.getPath f)]
@@ -119,13 +120,15 @@
       (let [remaining (.listFiles tools-dir)]
         (when (or (nil? remaining) (empty? remaining))
           (.delete tools-dir))))
-    ;; Remove the setup alias but keep the clean-demo alias
+    ;; Remove the setup and fw-upgrade aliases but keep the clean-demo and i18n-lint aliases
     (let [pf (io/file root "project.clj")]
       (when (.exists pf)
         (let [content (slurp pf)
-              updated (str/replace content #"\s+\"setup\" \[\"run\" \"-m\" \".*?setup\" \"--\"\]" "")]
+              updated (-> content
+                          (str/replace #"\s+\"setup\" \[\"run\" \"-m\" \".*?setup\" \"--\"\]" "")
+                          (str/replace #"\s+\"fw-upgrade\" \[\"run\" \"-m\" \".*?upgrade\" \"--\"\]" ""))]
           (spit pf updated)
-          (println "  Removed: setup alias from project.clj"))))))
+          (println "  Removed: setup and fw-upgrade aliases from project.clj"))))))
 
 (defn- run-lein-commands! [root new-name]
   (println)
