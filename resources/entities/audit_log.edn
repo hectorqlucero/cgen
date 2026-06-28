@@ -18,4 +18,4 @@
  :queries {:list "SELECT * FROM audit_log ORDER BY id DESC"
            :get "SELECT * FROM audit_log WHERE id = ?"}
 
- :actions {:new true :edit true :delete true}}
+ :actions {:new false :edit false :delete false}}
