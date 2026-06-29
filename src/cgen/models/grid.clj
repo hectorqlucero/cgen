@@ -350,8 +350,9 @@
                 (for [row rows]
                   [:tr
                    (for [field fields]
-                     [:td.text-break.align-middle
-                      ((key field) row)])]))]]]]]}))))
+                     (let [cell-fn (get-in pi [:cell-fn (key field)])]
+                       [:td.text-break.align-middle
+                        (if cell-fn (cell-fn row) ((key field) row))]))]))]]]]]}))))
 
 ;; =============================================================================
 ;; Grid with custom new-record URL (used by render-subgrid in tabgrid)
