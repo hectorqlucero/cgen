@@ -154,7 +154,7 @@
                    (prepare-data entity data))]
     (if (:success prepared)
       (let [clean-data (:data prepared)
-            is-new-record? (not (:id clean-data))
+            is-new-record? (zero? (crud/crud-fix-id (:id clean-data)))
 
             ;; Add audit fields if entity has them
             enhanced-data (if (or (:audit? config)
@@ -274,12 +274,22 @@
         false))))  ; Return failure indicator
 
 (defn save-with-audit
-  "Saves a record and creates an audit trail entry."
+  "Saves a record and creates an audit trail entry.
+   For updates, fetches the old record before saving so the audit log
+   can show a before/after diff."
   [entity data user-id & [opts]]
-  (let [result (save-record entity data opts)
-        operation (if (:id data) :update :create)]
+  (let [id-val (crud/crud-fix-id (:id data))
+        old-data (when-not (zero? id-val)
+                   (try
+                     (query/get-record entity id-val)
+                     (catch Exception _ nil)))
+        result (save-record entity data (assoc opts :user-id user-id))
+        operation (if old-data :update :create)
+        audit-data (if old-data
+                     {:new data :old old-data}
+                     data)]
     (when (:success result)
-      (create-audit-entry entity operation data user-id))
+      (create-audit-entry entity operation audit-data user-id))
     result))
 
 (defn delete-with-audit
