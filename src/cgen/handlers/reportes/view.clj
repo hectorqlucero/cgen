@@ -3,7 +3,7 @@
 
 (defn- stat-card
   [label value color]
-  [:div.col-md-3.mb-3
+  [:div.col-6.col-md-3.mb-3
    [:div.card.border-0.shadow-sm
     [:div.card-body.text-center
      [:h3.text (str value)]

@@ -11,15 +11,15 @@
   (list
    [:div.container.d-flex.justify-content-center.align-items-center
     {:style "min-height: 80vh;"}
-    [:div.card.shadow-lg.w-100
-     {:style "max-width: 420px;"}
-     [:div.card-header.bg-primary.text-white.text-center
-      [:h4.mb-0.fw-bold title]]
-     [:div.card-body.p-4
-      [:form {:method "POST"
-              :action "/change/password"
-              :class "needs-validation"
-              :novalidate true}
+     [:div.card.shadow-lg.w-100
+      {:style "max-width: min(420px, calc(100vw - 2rem));"}
+      [:div.card-header.bg-primary.text-white.text-center
+       [:h4.mb-0.fw-bold title]]
+      [:div.card-body.p-4
+       [:form {:method "POST"
+               :action "/change/password"
+               :class "needs-validation"
+               :novalidate true}
        (csrf-field)
        [:div.mb-3
         [:label.form-label.fw-semibold {:for "email"}
@@ -65,8 +65,8 @@
   (list
    [:div.container.d-flex.justify-content-center.align-items-center
     {:style "min-height: 80vh;"}
-    [:div.card.shadow-lg.w-100
-     {:style "max-width: 420px;"}
+     [:div.card.shadow-lg.w-100
+      {:style "max-width: min(420px, calc(100vw - 2rem));"}
      [:div.card-header.bg-primary.text-white.text-center
       [:h4.mb-0.fw-bold title]]
      [:div.card-body.p-4
@@ -407,12 +407,12 @@
            (doall buttons)
            :else
            buttons)]]
-       ;; Full card for standalone page
-       (list
-        [:div.d-flex.justify-content-center.align-items-center.w-100
-         {:style "min-height: 45vh;"}
-         [:div.card.shadow-lg.w-100
-          {:style "max-width: 540px;"}
+        ;; Full card for standalone page
+        (list
+         [:div.d-flex.justify-content-center.align-items-center.w-100
+          {:style "min-height: 45vh;"}
+          [:div.card.shadow-lg.w-100
+           {:style "max-width: min(540px, calc(100vw - 2rem));"}
           (when title
             [:div.card-header
              [:h4.mb-0.fw-bold.text-center title]])

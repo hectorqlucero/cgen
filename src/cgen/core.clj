@@ -208,7 +208,7 @@
 (defn -main
   []
   (ensure-upload-dirs!)
-  (jetty/run-jetty app {:port (:port config)}))
+  (jetty/run-jetty app {:host "0.0.0.0" :port (:port config)}))
 
 (comment
   (:port config))

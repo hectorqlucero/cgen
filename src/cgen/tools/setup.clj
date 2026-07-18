@@ -1,6 +1,7 @@
 (ns cgen.tools.setup
   (:require
    [clojure.java.io :as io]
+   [clojure.java.shell :as sh]
    [clojure.string :as str])
   (:import [java.io File]))
 
@@ -133,34 +134,25 @@
 (defn- run-lein-commands! [root new-name]
   (println)
   (println "--- Running lein migrate ---")
-  (let [proc (.exec (Runtime/getRuntime)
-                    (into-array String ["lein" "migrate"])
-                    (into-array String [])
-                    (io/file root))
-        _ (.waitFor proc)
-        exit (.exitValue proc)]
+  (let [{:keys [exit out err]} (sh/sh "lein" "migrate" :dir (str root))]
+    (println out)
+    (when (seq err) (println err))
     (if (zero? exit)
       (println "  ✓ Migration successful")
       (println "  ⚠ Migration exited with code" exit)))
   (println)
   (println "--- Seeding database ---")
-  (let [proc (.exec (Runtime/getRuntime)
-                    (into-array String ["lein" "database"])
-                    (into-array String [])
-                    (io/file root))
-        _ (.waitFor proc)
-        exit (.exitValue proc)]
+  (let [{:keys [exit out err]} (sh/sh "lein" "database" :dir (str root))]
+    (println out)
+    (when (seq err) (println err))
     (if (zero? exit)
       (println "  ✓ Database seeded")
       (println "  ⚠ Seed exited with code" exit)))
   (println)
   (println "--- Seeding non-user tables ---")
-  (let [proc (.exec (Runtime/getRuntime)
-                    (into-array String ["lein" "seed-non-users" "localdb"])
-                    (into-array String [])
-                    (io/file root))
-        _ (.waitFor proc)
-        exit (.exitValue proc)]
+  (let [{:keys [exit out err]} (sh/sh "lein" "seed-non-users" "localdb" :dir (str root))]
+    (println out)
+    (when (seq err) (println err))
     (if (zero? exit)
       (println "  ✓ Non-user tables seeded")
       (println "  ⚠ Seed exited with code" exit))))
@@ -238,4 +230,5 @@
       (run-lein-commands! target-dir new-name)
       (println)
       ;; Step 7: Print success
-      (print-success! target-dir new-name))))
+      (print-success! target-dir new-name))
+    (System/exit 0)))

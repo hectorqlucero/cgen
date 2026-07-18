@@ -1,11 +1,12 @@
 (ns cgen.hooks.prestamos
   (:require [clj-time.core :as t]
+            [clj-time.coerce :as c]
             [clj-time.format :as f]))
 
 (defn- parse-date [s]
   (when s
     (try
-      (t/to-date-time (f/parse (f/formatters :date) s))
+      (c/to-date-time (f/parse (f/formatters :date) s))
       (catch Exception _ nil))))
 
 (defn- days-between [start end]

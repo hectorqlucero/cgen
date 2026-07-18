@@ -844,65 +844,365 @@ th.subgrid-sortable:hover {
   background: #f3f4f6;
 }
 
-/* Responsive Design Enhancements */
+/* ════ Mobile & Responsive Enhancements ════════════════════════ */
+
+/* ── Touch action optimization ─────────────────────────────────── */
+a, button, .btn, input, select, textarea, .nav-link, .dropdown-toggle {
+  touch-action: manipulation;
+}
+
+/* ── Table mobile improvements (tables stay as tables) ─────────── */
+@media (max-width: 767.98px) {
+
+  /* Search forms full-width on mobile */
+  .row.gx-2.gy-1 {
+    flex-wrap: wrap;
+  }
+  .row.gx-2.gy-1 > .col-auto {
+    flex: 1 1 100%;
+  }
+  .row.gx-2.gy-1 > .col-auto .input-group {
+    width: 100%;
+  }
+
+  /* Report export toolbar stacking */
+  .card-header .d-flex.gap-1 {
+    flex-wrap: wrap;
+    gap: .35rem !important;
+  }
+  .card-header .btn {
+    font-size: .8rem;
+    padding: .3rem .6rem;
+  }
+
+  /* Subgrid search wrap full width */
+  .subgrid-search-wrap {
+    flex-wrap: wrap;
+  }
+  .subgrid-search-wrap .subgrid-search {
+    max-width: 100%;
+    flex: 1;
+  }
+
+  /* Row hover: always show action buttons on mobile (no hover) */
+  .ws-subgrid-table td:last-child .d-flex.gap-1,
+  .subgrid-table td:last-child .d-flex.gap-1 {
+    opacity: 1 !important;
+  }
+
+  /* Tighter table padding on mobile */
+  .table td, .table th {
+    padding: .4rem .5rem;
+    font-size: .85rem;
+  }
+
+  /* Table text wrapping */
+  .table td {
+    white-space: normal !important;
+    word-break: break-word;
+  }
+
+  /* Card-body padding reduction for tables */
+  .card-body .table-responsive {
+    margin-bottom: 0;
+  }
+}
+
+/* ════ Tablet breakpoint (≤992px) ══════════════════════════════ */
 @media (max-width: 992px) {
+  /* Workspace pages: let .px-4 scroll; inner containers flow naturally */
+  body:has(.tabgrid-container) .container-fluid.px-4 {
+    overflow-y: auto !important;
+    max-height: none !important;
+  }
+
   .ws-layout {
     flex-direction: column;
-    height: auto;
-    min-height: unset;
+    height: auto !important;
+    min-height: unset !important;
+    overflow: visible;
   }
 
   .ws-nav {
     width: 100%;
     min-width: 0;
-    max-height: 240px;
+    max-height: 320px;
+    height: auto !important;
     border-right: none;
     border-bottom: 1px solid var(--ws-border);
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .ws-nav-header {
+    flex-shrink: 0;
+    padding: .5rem .75rem;
     flex-direction: row;
-    overflow-x: auto;
-    overflow-y: hidden;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .35rem;
+  }
+
+  .ws-nav-search {
+    flex-shrink: 0;
+    padding: .35rem .75rem;
   }
 
   .ws-record-list {
-    flex-direction: row;
-    display: flex;
-    overflow-x: auto;
-    overflow-y: hidden;
+    display: block;
+    overflow-y: auto;
+    overflow-x: hidden;
     width: 100%;
-    height: auto;
-    padding-bottom: 1rem !important;
+    height: auto !important;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-bottom: .25rem !important;
   }
 
   .ws-record-item {
-    min-width: 180px;
-    max-width: 220px;
-    flex: 0 0 auto;
-    margin-right: .5rem;
+    min-width: 0;
+    max-width: none;
+    flex: none;
+    margin-right: 0;
     margin-bottom: 0;
+    border-left: 3px solid transparent;
+    border-bottom: none;
+    border-radius: 0;
+    padding: .4rem .75rem;
+  }
+
+  .ws-record-item:hover {
+    border-left-color: var(--ws-primary-mid);
+  }
+
+  .ws-record-item.active {
+    border-left-color: var(--ws-primary);
+    border-bottom-color: transparent;
   }
 
   .ws-main {
     padding: 0 .5rem;
+    overflow: visible;
+    flex: none;
+  }
+
+  .ws-tabs-container {
+    overflow: visible;
+  }
+
+  .ws-tab-content {
+    padding: .75rem;
+    overflow: visible;
+  }
+
+  /* Record hero wraps on tablet */
+  .ws-record-hero {
+    flex-wrap: wrap;
+    gap: .75rem;
+  }
+  .ws-hero-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  /* Field grid min-width reduction */
+  .ws-fields-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+
+  .ws-o2o-body {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+
+  /* Report stat cards */
+  .col-md-3 {
+    flex: 0 0 50%;
+    max-width: 50%;
+  }
+}
+
+/* ════ Phone breakpoint (≤600px) ═══════════════════════════════ */
+@media (max-width: 600px) {
+  /* ── Navigator: compact ──────────────────────────────────── */
+  .ws-nav {
+    max-height: 240px;
+  }
+
+  .ws-nav-header {
+    padding: .35rem .6rem;
+  }
+
+  .ws-nav-search {
+    padding: .25rem .6rem;
+  }
+
+  .ws-record-item {
+    padding: .3rem .6rem;
+    font-size: .88em;
+  }
+
+  .ws-avatar {
+    width: 1.4rem;
+    height: 1.4rem;
+    font-size: .5rem;
+  }
+
+  /* ── Main workspace ──────────────────────────────────────── */
+  .ws-main {
+    padding: 0 .25rem;
   }
 
   .ws-tab-content {
     padding: .5rem;
   }
+
+  /* ── Record hero: stack vertically ───────────────────────── */
+  .ws-record-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: .5rem;
+    padding: .625rem .75rem .5rem;
+  }
+
+  .ws-hero-avatar {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: .75rem;
+  }
+
+  .ws-hero-name {
+    font-size: .95rem;
+  }
+
+  .ws-hero-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: .35rem;
+  }
+  .ws-hero-actions .btn {
+    font-size: .82rem;
+    padding: .35rem .65rem;
+  }
+
+  /* ── Field grid: single column on phones ──────────────────── */
+  .ws-fields-grid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+
+  .ws-field {
+    padding: .4rem .75rem;
+  }
+
+  .ws-field-label {
+    font-size: .55rem;
+  }
+
+  .ws-field-value {
+    font-size: .78rem;
+  }
+
+  .ws-o2o-body {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .ws-o2o-field {
+    padding: .4rem .75rem;
+  }
+
+  /* ── Tab strip: scrollable, compact ──────────────────────── */
+  .ws-tab-strip {
+    padding: 0 .5rem;
+  }
+
+  .ws-tab {
+    padding: .55rem .65rem;
+    font-size: .75rem;
+  }
+
+  .ws-tab-pill {
+    font-size: .55rem;
+    padding: 0 .25rem;
+    height: 1rem;
+  }
+
+  /* ── Pane toolbar wrapping ───────────────────────────────── */
+  .ws-pane-toolbar {
+    flex-wrap: wrap;
+    gap: .35rem;
+    padding: .5rem .75rem;
+  }
+
+  .ws-pane-title {
+    font-size: .8rem;
+  }
+
+  /* ── Empty state smaller on phones ────────────────────────── */
+  .ws-empty-state {
+    min-height: 160px;
+  }
+  .ws-empty-state i {
+    font-size: 2rem;
+  }
+  .ws-empty-state p {
+    font-size: .8rem;
+  }
+
+  /* ── Modal fullscreen on phones ────────────────────────────── */
+  .modal-dialog {
+    margin: .5rem;
+    max-width: calc(100vw - 1rem);
+  }
+  .modal-body {
+    padding: .75rem;
+  }
+  .modal-body .table > tbody > tr > td {
+    font-size: .8rem;
+  }
+
+  /* ── Report stat cards: 2 per row ─────────────────────────── */
+  .col-md-3 {
+    flex: 0 0 50%;
+    max-width: 50%;
+  }
+  .col-md-3 .card-body h3 {
+    font-size: 1.25rem;
+  }
+
+  /* ── Report table stacking on phones ───────────────────────── */
+  .report-content .card-body {
+    padding: .5rem;
+  }
 }
 
-@media (max-width: 600px) {
-  .ws-nav {
-    max-height: 120px;
+/* ════ Extra small phones (≤380px) ══════════════════════════════ */
+@media (max-width: 380px) {
+  .ws-fields-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ws-o2o-body {
+    grid-template-columns: 1fr;
   }
 
   .ws-record-item {
-    min-width: 140px;
-    max-width: 180px;
-    font-size: .9em;
+    min-width: 120px;
+    max-width: 150px;
   }
 
-  .ws-main {
-    padding: 0 .25rem;
+  .ws-hero-actions .btn {
+    font-size: .78rem;
+    padding: .3rem .5rem;
+  }
+}
+
+/* ── Safe area insets for notched phones ──────────────────────── */
+@supports (padding: env(safe-area-inset-bottom)) {
+  footer {
+    padding-bottom: calc(.5rem + env(safe-area-inset-bottom));
+  }
+  .ws-tab-content {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
   }
 }
 

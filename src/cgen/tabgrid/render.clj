@@ -218,13 +218,15 @@
             [(into [:tbody]
                    (for [row records]
                      (into [:tr {:data-row-id (:id row)}]
-                           (concat
-                            (for [[fid _] fields]
-                              [:td.small {:title (some-> (get row fid) str)}
-                               (render-field-value (get row fid))])
-                            (when (or show-edit? show-delete?)
-                              [[:td
-                                [:div.d-flex.gap-1
+                            (concat
+                             (for [[fid flabel] fields]
+                               [:td.small {:title (some-> (get row fid) str)
+                                           :data-label flabel}
+                                (render-field-value (get row fid))])
+                             (when (or show-edit? show-delete?)
+                               [[:td
+                                 {:data-label (i18n/tr :common/actions)}
+                                 [:div.d-flex.gap-1
                                  (when show-edit?
                                    [:a.btn.btn-sm.btn-outline-primary
                                     {:href (str "/admin/" sg-entity-name "/edit-form/" (:id row)
@@ -279,10 +281,12 @@
   (let [return-url (str "/admin/" entity-name "/" parent-id)
         related-id (or (get row (keyword related-fk)) (:id row))]
     [:tr {:data-row-id related-id}
-     (for [[fid _] fields]
-       [:td.small {:title (some-> (get row fid) str)}
+     (for [[fid flabel] fields]
+       [:td.small {:title (some-> (get row fid) str)
+                   :data-label flabel}
         (render-field-value (get row fid))])
      [:td
+      {:data-label (i18n/tr :common/actions)}
       [:div.d-flex.gap-1
        (when has-pivot?
          [:a.btn.btn-sm.btn-outline-primary
@@ -560,8 +564,8 @@
             [:a.btn.btn-sm.btn-success
              {:href (str "/admin/" entity-name "/" (get-record-id entity-name row))}
              [:i.bi.bi-check-circle.me-1] (i18n/tr :common/select)]]
-           (for [[field-id _] fields]
-             [:td (render-field-value (get row field-id))])])]]]
+           (for [[field-id flabel] fields]
+             [:td {:data-label flabel} (render-field-value (get row field-id))])])]]]
      [:div.modal-footer
       [:button.btn.btn-secondary {:type "button" :data-bs-dismiss "modal"}
        (i18n/tr :common/close)]]]]])

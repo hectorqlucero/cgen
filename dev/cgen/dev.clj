@@ -43,5 +43,6 @@
    (-> #'core/app
        (wrap-reload {:reload-compile-errors? false})
        wrap-auto-reload)
-   {:port (:port config)
-    :join? false}))
+    {:host "0.0.0.0"
+     :port (:port config)
+     :join? false}))

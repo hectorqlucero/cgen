@@ -337,6 +337,7 @@
         (html5
          {:lang "es"}
          [:head
+          [:meta {:name "viewport" :content "width=device-width, initial-scale=1, viewport-fit=cover"}]
           [:style ".preload { visibility: hidden; }"]
           [:script
            "document.addEventListener('DOMContentLoaded',function(){"
@@ -357,21 +358,22 @@
            "});"]
           (app-css)
           [:title title]]
-         [:body.preload.theme-sketchy
-          {:style "display:flex;flex-direction:column;min-height:100vh;overflow-x:hidden;"}
-          [:div.d-print-none {:style "flex-shrink:0;height:70px;"}]
+          [:body.preload.theme-sketchy
+           {:style "display:flex;flex-direction:column;min-height:100vh;overflow-x:hidden;"}
+           [:div.d-print-none.navbar-spacer {:style "flex-shrink:0;height:70px;"}]
           [:div.container-fluid.pt-3
            {:style "flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden;"}
            (cond
              (= ok -1) (menus-none)
              (= ok 0) (menus-public)
              (> ok 0) (menus-private request))
-           [:div.container-fluid.px-4.report-content
-            {:style "flex:1;min-height:0;max-height:calc(100vh - 200px);overflow-y:auto;padding-bottom:80px;"}
-            (doall body-content)]]
+            [:div.container-fluid.px-4.report-content
+             {:style "flex:1;min-height:0;overflow-y:auto;padding-bottom:1rem;"}
+             (doall body-content)]]
           (app-scripts)
           js
-          [:footer.bg-light.text-center.fixed-bottom.py-2.shadow-sm
+          [:footer.bg-light.text-center.py-2.shadow-sm
+           {:style "flex-shrink:0;margin-top:auto;"}
            [:span (i18n/tr :layout/copyright {:year (t/year (t/now)) :company (:company-name config)})]]])))))
 
 (defn error-404

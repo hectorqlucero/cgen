@@ -154,13 +154,15 @@
         [:td.text-center.text-muted.py-4
          {:colspan (+ (count fields) 1)}
          [:em (i18n/tr :grid/no-records)]]]
-       (for [row rows]
-         [:tr
-          (for [field fields]
-            [:td.text-break.align-middle
-             ((key field) row)])
-          [:td.text-center.align-middle
-           {:style "width:1%; white-space:nowrap; padding-left:0.25rem; padding-right:0.25rem;"}
+        (for [row rows]
+          [:tr
+           (for [field fields]
+             [:td.text-break.align-middle
+              {:data-label (val field)}
+              ((key field) row)])
+           [:td.text-center.align-middle
+            {:data-label (i18n/tr :common/actions)
+             :style "width:1%; white-space:nowrap; padding-left:0.25rem; padding-right:0.25rem;"}
            [:div.d-flex.justify-content-center.align-items-center.gap-1
             (when edit
               [:a.btn.btn-warning.btn-sm.fw-semibold
@@ -234,11 +236,12 @@
           [:td.text-center.text-muted.py-4
            {:colspan (count fields)}
            [:em (i18n/tr :grid/no-records)]]]
-         (for [row rows]
-           [:tr
-            (for [field fields]
-              [:td.text-truncate.align-middle
-               ((key field) row)])]))]]]]])
+          (for [row rows]
+            [:tr
+             (for [field fields]
+               [:td.text-truncate.align-middle
+                {:data-label (val field)}
+                ((key field) row)])]))]]]]])
 
 ;; =============================================================================
 ;; Report (read-only table with export buttons)
@@ -352,6 +355,7 @@
                    (for [field fields]
                      (let [cell-fn (get-in pi [:cell-fn (key field)])]
                        [:td.text-break.align-middle
+                        {:data-label (val field)}
                         (if cell-fn (cell-fn row) ((key field) row))]))]))]]]]]}))))
 
 ;; =============================================================================

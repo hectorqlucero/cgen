@@ -10,7 +10,8 @@
 
 (defn main
   [title stats]
-  [:div.container.text-center.text-capitalize.bg-primary.w-50
+  [:div.container-fluid.text-center.text-capitalize.bg-primary
+   {:style "max-width: min(600px, 100%);"}
    [:h1 title]
    [:div.row
     (map (fn [[k v]] (card (name k) v)) stats)]])
