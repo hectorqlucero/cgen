@@ -372,24 +372,25 @@
         view (:view args)
         cancel-url (:cancel-url args)]
     (list
-     (when-not (= view true)
-       [:button.btn.btn-primary.btn-lg.fw-semibold.shadow-sm.rounded
-        {:type "submit"
-         :onclick "if(this.form && !this.form.checkValidity()){this.form.reportValidity();return false;}"} ; HTML5 validation
-        (i18n/tr :form/submit)])
-     [:a.btn.btn-outline-secondary.btn-lg.fw-semibold.shadow-sm.rounded
-      {:type "button"
-       :href cancel-url}
-      (i18n/tr :form/cancel)])))
+     [:div.form-actions
+      (when-not (= view true)
+        [:button.btn.btn-primary.btn-lg.fw-bold.shadow-sm.rounded
+         {:type "submit"
+          :onclick "if(this.form && !this.form.checkValidity()){this.form.reportValidity();return false;}"} ; HTML5 validation
+         (i18n/tr :form/submit)])
+      [:a.btn.btn-outline-secondary.btn-lg.fw-semibold.shadow-sm.rounded
+       {:type "button"
+        :href cancel-url}
+       (i18n/tr :form/cancel)]])))
 
 (defn form
   "Creates a professional form container with Bootstrap 5 styling and themed colors.
    If title is passed, it is rendered in the header. Handles HTML5 validation.
-   If :bare is true, returns only the <form>...</form> for modal AJAX."
+    If :bare is true, returns only the <form>...</form> for modal AJAX."
   ([href fields buttons] (form href fields buttons nil))
   ([href fields buttons title] (form href fields buttons title nil))
-  ([href fields buttons title opts]
-   (let [bare (:bare opts)]
+   ([href fields buttons title opts]
+    (let [bare (:bare opts)]
      (if bare
        ;; Only the <form> for modal AJAX
        [:form {:method "POST"
@@ -398,8 +399,8 @@
                :class "needs-validation"
                :novalidate false}
         (csrf-field)
-        fields
-        [:div.d-flex.gap-2.justify-content-end.mt-4
+         fields
+         [:div.d-flex.gap-2.justify-content-end.mt-4
          (cond
            (and (sequential? buttons) (not (vector? (first buttons))))
            (doall buttons)
@@ -411,7 +412,7 @@
         (list
          [:div.d-flex.justify-content-center.align-items-center.w-100
           {:style "min-height: 45vh;"}
-          [:div.card.shadow-lg.w-100
+          [:div.card.shadow-lg.w-100.form-card
            {:style "max-width: min(540px, calc(100vw - 2rem));"}
           (when title
             [:div.card-header
@@ -423,8 +424,8 @@
                    :class "needs-validation"
                    :novalidate true}
             (csrf-field)
-            fields
-            [:div.d-flex.gap-2.justify-content-end.mt-4
+             fields
+             [:div.form-actions
              (cond
                (and (sequential? buttons) (not (vector? (first buttons))))
                (doall buttons)

@@ -134,7 +134,7 @@
       [:th.text-center.px-2
        {:style "width:1%; white-space:nowrap; padding-left:0.25rem; padding-right:0.25rem;"}
        (when new-record
-         [:a.btn.btn-success.btn-sm.fw-semibold
+         [:a.btn.btn-success.btn-sm.fw-bold
           {:href (str href "/add-form") :role "button"}
           [:i.bi.bi-plus-lg.me-1]
           (i18n/tr :common/new)])]]]))
@@ -149,43 +149,97 @@
   [request rows href fields & [args]]
   (let [{:keys [edit delete]} args]
     [:tbody
-     (if (empty? rows)
-       [:tr
-        [:td.text-center.text-muted.py-4
-         {:colspan (+ (count fields) 1)}
-         [:em (i18n/tr :grid/no-records)]]]
+      (if (empty? rows)
+        [:tr
+         [:td.text-center.text-muted.py-5
+          {:colspan (+ (count fields) 1)}
+          [:div.grid-empty-state
+           [:i.bi.bi-inbox]
+           [:p (i18n/tr :grid/no-records)]]]]
         (for [row rows]
           [:tr
            (for [field fields]
              [:td.text-break.align-middle
               {:data-label (val field)}
               ((key field) row)])
-           [:td.text-center.align-middle
-            {:data-label (i18n/tr :common/actions)
-             :style "width:1%; white-space:nowrap; padding-left:0.25rem; padding-right:0.25rem;"}
-           [:div.d-flex.justify-content-center.align-items-center.gap-1
-            (when edit
-              [:a.btn.btn-warning.btn-sm.fw-semibold
-               {:href (str href "/edit-form/" (:id row)) :role "button"}
-               [:i.bi.bi-pencil.me-1]
-               (i18n/tr :common/edit)])
-            (when delete
-              [:form {:method "POST"
-                      :action (str href "/delete/" (:id row))
-                      :style "display:inline"
-                      :onsubmit (str "return confirm('" (i18n/tr :confirm/delete) "')")}
-               (csrf-field)
-               [:button.btn.btn-danger.btn-sm.fw-semibold
-                {:type "submit"}
-                [:i.bi.bi-trash.me-1]
-                (i18n/tr :common/delete)]])]]]))]))
+            [:td.text-center.align-middle
+             {:data-label (i18n/tr :common/actions)
+              :style "width:1%; white-space:nowrap; padding-left:0.25rem; padding-right:0.25rem;"}
+            [:div.d-flex.justify-content-center.align-items-center.gap-1
+             (when edit
+               [:a.btn.btn-outline-primary.btn-sm.fw-semibold
+                {:href (str href "/edit-form/" (:id row)) :role "button"}
+                [:i.bi.bi-pencil.me-1]
+                (i18n/tr :common/edit)])
+             (when delete
+               [:form {:method "POST"
+                       :action (str href "/delete/" (:id row))
+                       :style "display:inline"
+                       :onsubmit (str "return confirm('" (i18n/tr :confirm/delete) "')")}
+                (csrf-field)
+                [:button.btn.btn-outline-danger.btn-sm.fw-semibold
+                 {:type "submit"}
+                 [:i.bi.bi-trash.me-1]
+                 (i18n/tr :common/delete)]])]]]))]))
 
 ;; =============================================================================
 ;; Full grid (card + table + pagination + search)
 ;; =============================================================================
 
+(defn- render-record-card
+  "Renders a single record as a card."
+  [row fields href actions]
+  (let [{:keys [edit delete]} actions
+        primary-field (first fields)
+        primary-value (when primary-field ((key primary-field) row))]
+    [:div.card.h-100.grid-record-card
+     [:div.card-body
+      [:div.d-flex.justify-content-between.align-items-start.mb-2
+       [:h6.card-title.fw-bold.mb-0 (or primary-value (str "#" (:id row)))]
+       [:span.badge.bg-secondary.rounded-pill (str "#" (:id row))]]
+      (for [field (rest fields)]
+        [:div.mt-2
+         [:small.text-muted.fw-semibold (val field)]
+         [:div.text-truncate ((key field) row)]])
+      [:div.d-flex.gap-2.mt-3.pt-2.border-top
+       (when edit
+         [:a.btn.btn-sm.btn-outline-primary.fw-semibold
+          {:href (str href "/edit-form/" (:id row)) :role "button"}
+          [:i.bi.bi-pencil.me-1]
+          (i18n/tr :common/edit)])
+       (when delete
+         [:form {:method "POST"
+                 :action (str href "/delete/" (:id row))
+                 :style "display:inline"
+                 :onsubmit (str "return confirm('" (i18n/tr :confirm/delete) "')")}
+          (csrf-field)
+          [:button.btn.btn-sm.btn-outline-danger.fw-semibold
+           {:type "submit"}
+           [:i.bi.bi-trash.me-1]
+           (i18n/tr :common/delete)]])]]]))
+
+(defn build-grid-cards
+  "Renders records as a responsive card grid instead of a table."
+  [request title rows fields href actions]
+  [:div.card.shadow-sm.mb-4
+   [:div.card-header.bg-primary.text-white.py-3
+    [:div.d-flex.align-items-center
+     [:h5.mb-0.fw-bold title]
+     [:span.grid-record-count (str (count rows))]]]
+   [:div.card-body.p-3
+    (search-form request href {})
+    (if (empty? rows)
+      [:div.grid-empty-state
+       [:i.bi.bi-inbox]
+       [:p (i18n/tr :grid/no-records)]]
+      [:div.row.g-3
+       (for [row rows]
+         [:div.col-sm-6.col-lg-4.col-xl-3
+          (render-record-card row fields href actions)])])]])
+
 (defn build-grid
   "Renders a complete grid with search, sortable table, and pagination.
+   Uses card view for small datasets (≤12 records) and table view for larger ones.
    Args:
    - request: Ring request
    - title: String heading
@@ -197,19 +251,40 @@
    - page-info: Optional map with :page, :per-page, :total, :total-pages, :sort-by, :sort-order
    - current-params: Optional map of current query params (search, sort, etc.)"
   [request title rows table-id fields href & [args page-info current-params]]
-  (let [args (or args {})]
-    [:div.card.shadow-sm.mb-4
-     [:div.card-header.bg-primary.text-white.py-3
-      [:h5.mb-0.fw-bold title]]
-     [:div.card-body.p-3
-      (search-form request href (or current-params {}))
-      [:div.table-responsive
-       [:table.table.table-hover.table-sm.align-middle.w-100.mb-0
-        {:id table-id}
-        (build-grid-head request href fields args page-info current-params)
-        (build-grid-body request rows href fields args)]]
-      (when page-info
-        (pagination-bar page-info href (or current-params {})))]]))
+  (let [args (or args {})
+        total (or (:total page-info) (count rows))]
+    ;; Use card view for small datasets without pagination
+    (if (and (<= total 12) (not page-info))
+      [:div.card.shadow-sm.mb-4
+       [:div.card-header.bg-primary.text-white.py-3
+        [:div.d-flex.align-items-center
+         [:h5.mb-0.fw-bold title]
+         [:span.grid-record-count (str total)]]]
+       [:div.card-body.p-3
+        (search-form request href (or current-params {}))
+        (if (empty? rows)
+          [:div.grid-empty-state
+           [:i.bi.bi-inbox]
+           [:p (i18n/tr :grid/no-records)]]
+          [:div.row.g-3
+           (for [row rows]
+             [:div.col-sm-6.col-lg-4.col-xl-3
+              (render-record-card row fields href args)])])]]
+      ;; Use table view for larger datasets or when paginated
+      [:div.card.shadow-sm.mb-4
+       [:div.card-header.bg-primary.text-white.py-3
+        [:div.d-flex.align-items-center
+         [:h5.mb-0.fw-bold title]
+         [:span.grid-record-count (str total)]]]
+       [:div.card-body.p-3
+        (search-form request href (or current-params {}))
+        [:div.table-responsive
+         [:table.table.table-hover.table-sm.align-middle.w-100.mb-0
+          {:id table-id}
+          (build-grid-head request href fields args page-info current-params)
+          (build-grid-body request rows href fields args)]]
+        (when page-info
+          (pagination-bar page-info href (or current-params {})))]])))
 
 ;; =============================================================================
 ;; Dashboard (read-only table, no actions)
@@ -233,9 +308,11 @@
       [:tbody
        (if (empty? rows)
          [:tr
-          [:td.text-center.text-muted.py-4
+          [:td.text-center.text-muted.py-5
            {:colspan (count fields)}
-           [:em (i18n/tr :grid/no-records)]]]
+           [:div.grid-empty-state
+            [:i.bi.bi-inbox]
+            [:p (i18n/tr :grid/no-records)]]]]
           (for [row rows]
             [:tr
              (for [field fields]
@@ -347,9 +424,11 @@
              [:tbody
               (if (empty? rows)
                 [:tr
-                 [:td.text-center.text-muted.py-4
+                 [:td.text-center.text-muted.py-5
                   {:colspan (count fields)}
-                  [:em (i18n/tr :grid/no-records)]]]
+                  [:div.grid-empty-state
+                   [:i.bi.bi-inbox]
+                   [:p (i18n/tr :grid/no-records)]]]]
                 (for [row rows]
                   [:tr
                    (for [field fields]
@@ -364,30 +443,57 @@
 
 (defn build-grid-with-custom-new
   "Builds a grid with a custom new-record URL.
-   Used by render-subgrid for subgrid forms."
+   Used by render-subgrid for subgrid forms.
+   Uses card view for small datasets (≤12 records) and table view for larger ones."
   [request title rows table-id fields href args custom-new-url]
-  (let [new? (:new args)]
-    [:div.card.shadow-sm.mb-4
-     [:div.card-header.bg-primary.text-white.py-3
-      [:h5.mb-0.fw-bold title]]
-     [:div.card-body.p-3
-      [:div.table-responsive
-       [:table.table.table-hover.table-sm.align-middle.w-100.mb-0
-        {:id table-id}
-        [:thead.table-light
-         [:tr
-          (for [field fields]
-            [:th.text-nowrap.text-uppercase.fw-semibold.px-2
-             (st/upper-case (val field))])
-          [:th.text-center.px-2
-           {:style "width:1%; white-space:nowrap; padding-left:0.25rem; padding-right:0.25rem;"}
-           [:div.d-flex.justify-content-center.align-items-center
-            (when new?
-              [:a.btn.btn-success.btn-sm.fw-semibold
-               {:href custom-new-url :role "button"}
-               [:i.bi.bi-plus-lg.me-1]
-               (i18n/tr :common/new)])]]]]
-        (build-grid-body request rows href fields args)]]]]))
+  (let [new? (:new args)
+        total (count rows)
+        actions (assoc args :new false)]
+    ;; Use card view for small datasets
+    (if (<= total 12)
+      [:div.card.shadow-sm.mb-4
+       [:div.card-header.bg-primary.text-white.py-3
+        [:div.d-flex.align-items-center
+         [:h5.mb-0.fw-bold title]
+         [:span.grid-record-count (str total)]
+         (when new?
+           [:a.btn.btn-success.btn-sm.fw-bold.ms-auto
+            {:href custom-new-url :role "button"}
+            [:i.bi.bi-plus-lg.me-1]
+            (i18n/tr :common/new)])]]
+       [:div.card-body.p-3
+        (if (empty? rows)
+          [:div.grid-empty-state
+           [:i.bi.bi-inbox]
+           [:p (i18n/tr :grid/no-records)]]
+          [:div.row.g-3
+           (for [row rows]
+             [:div.col-sm-6.col-lg-4.col-xl-3
+              (render-record-card row fields href actions)])])]]
+      ;; Use table view for larger datasets
+      [:div.card.shadow-sm.mb-4
+       [:div.card-header.bg-primary.text-white.py-3
+        [:div.d-flex.align-items-center
+         [:h5.mb-0.fw-bold title]
+         [:span.grid-record-count (str total)]]]
+       [:div.card-body.p-3
+        [:div.table-responsive
+         [:table.table.table-hover.table-sm.align-middle.w-100.mb-0
+          {:id table-id}
+          [:thead.table-light
+           [:tr
+            (for [field fields]
+              [:th.text-nowrap.text-uppercase.fw-semibold.px-2
+               (st/upper-case (val field))])
+            [:th.text-center.px-2
+             {:style "width:1%; white-space:nowrap; padding-left:0.25rem; padding-right:0.25rem;"}
+             [:div.d-flex.justify-content-center.align-items-center
+              (when new?
+                [:a.btn.btn-success.btn-sm.fw-bold
+                 {:href custom-new-url :role "button"}
+                 [:i.bi.bi-plus-lg.me-1]
+                 (i18n/tr :common/new)])]]]]
+         (build-grid-body request rows href fields args)]]]])))
 
 (comment
   ;; Usage examples for pagination-bar

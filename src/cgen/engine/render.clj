@@ -334,12 +334,14 @@
   ([entity row subgrid-fk] (render-form entity row subgrid-fk nil nil nil))
   ([entity row subgrid-fk return-url] (render-form entity row subgrid-fk return-url nil nil))
   ([entity row subgrid-fk return-url active-tab] (render-form entity row subgrid-fk return-url active-tab nil))
-  ([entity row subgrid-fk return-url active-tab edited-id]
-   (let [config (config/get-entity-config entity)
-         fields (config/get-form-fields entity subgrid-fk)
-         entity-name (name entity)
-         href (str "/admin/" entity-name "/save")
-         custom-form-fn (get-in config [:ui :form-fn])]
+   ([entity row subgrid-fk return-url active-tab edited-id]
+    (let [config (config/get-entity-config entity)
+          fields (config/get-form-fields entity subgrid-fk)
+          entity-name (name entity)
+          href (str "/admin/" entity-name "/save")
+          custom-form-fn (get-in config [:ui :form-fn])
+          form-title (str (if (:id row) (i18n/tr :common/edit) (i18n/tr :common/new))
+                          " " (resolve-title (:title config)))]
      (if custom-form-fn
        (custom-form-fn entity row)
        (let [fk-hidden (when (and subgrid-fk (get row subgrid-fk))
@@ -379,7 +381,7 @@
                           (str cancel-base "?" cancel-q)
                           cancel-base)
              buttons (form/build-form-buttons {:cancel-url cancel-url})]
-         (form/form href all-elements buttons))))))
+         (form/form href all-elements buttons form-title))))))
 
 (defn- build-fields-map
   "Builds a field map for grid rendering from entity config."

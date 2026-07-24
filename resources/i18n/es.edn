@@ -178,6 +178,16 @@
  :subgrid/rel-11 "1:1"
  :subgrid/rel-1n "1:N"
  :subgrid/rel-nm "N:M"
+ :subgrid/rel-11-label "Registro"
+ :subgrid/rel-1n-label "Registros"
+ :subgrid/rel-nm-label "Asociaciones"
+ :subgrid/rel-legend "Tipo de relación"
+ :subgrid/rel-11-desc "Un registro vinculado"
+ :subgrid/rel-1n-desc "Registros relacionados"
+ :subgrid/rel-nm-desc "Asociaciones múltiples"
+ :subgrid/relationships "{count} relaciones"
+  :subgrid/last-updated "Última actualización"
+  :subgrid/total-records "{count} registros"
 
  ;; [GENERIC] Pivot Attributes
  :pivot/edit-attributes "Editar atributos"
@@ -196,6 +206,17 @@
  :layout/error-404 "Error 404"
  :layout/go-back "Regresar"
  :layout/toggle-nav "Alternar navegación"
+
+ ;; [GENERIC] Breadcrumbs
+ :breadcrumb/home "Inicio"
+ :breadcrumb/new "Nuevo"
+ :breadcrumb/edit "Editar"
+ :breadcrumb/record "Registro"
+
+ ;; [GENERIC] Form Sections
+ :form/section-basic "Información básica"
+ :form/section-details "Detalles"
+ :form/section-extra "Información adicional"
 
  ;; [GENERIC] Temp Password
  :temp-password/title "Crear Contraseña Temporal"

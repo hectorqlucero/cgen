@@ -164,6 +164,52 @@ body:has(.tabgrid-container) .content {
   vertical-align: middle;
 }
 
+/* ── Navigator header actions ────────────────────────────────── */
+.ws-nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: .875rem 1rem;
+  border-bottom: 1px solid var(--ws-border);
+  flex-shrink: 0;
+  gap: .5rem;
+}
+
+.ws-nav-header-actions {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+/* ── Navigator toggle button (visible only on phones/tablets) ──── */
+.ws-nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--ws-border);
+  border-radius: var(--ws-radius-sm);
+  background: var(--ws-surface);
+  color: var(--ws-text);
+  cursor: pointer;
+  font-size: .85rem;
+  transition: background .15s;
+}
+
+.ws-nav-toggle:hover {
+  background: var(--ws-primary-lt);
+}
+
+.ws-nav.ws-nav-expanded .ws-nav-toggle {
+  background: var(--ws-primary-lt);
+}
+
+.ws-nav.ws-nav-expanded .ws-nav-toggle i {
+  transform: rotate(90deg);
+  transition: transform .2s ease;
+}
+
 /* ══ Layout ══════════════════════════════════════════════════════ */
 .ws-layout {
   display: flex;
@@ -851,7 +897,34 @@ a, button, .btn, input, select, textarea, .nav-link, .dropdown-toggle {
   touch-action: manipulation;
 }
 
-/* ── Table mobile improvements (tables stay as tables) ─────────── */
+/* ── Minimum touch target size (44×44px WCAG) ──────────────────── */
+.btn, button, a.nav-link, .form-check-input, .form-select, .form-control {
+  min-height: 44px;
+}
+
+.form-check-input {
+  width: 1.3em;
+  height: 1.3em;
+  margin-top: .35em;
+}
+
+/* ── Prevent iOS input zoom on focus ────────────────────────────── */
+@media screen and (max-width: 767.98px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="search"],
+  input[type="date"],
+  input[type="tel"],
+  input[type="url"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* ── Table mobile improvements ──────────────────────────────────── */
 @media (max-width: 767.98px) {
 
   /* Search forms full-width on mobile */
@@ -872,16 +945,19 @@ a, button, .btn, input, select, textarea, .nav-link, .dropdown-toggle {
   }
   .card-header .btn {
     font-size: .8rem;
-    padding: .3rem .6rem;
+    padding: .4rem .7rem;
+    min-height: 40px;
   }
 
   /* Subgrid search wrap full width */
   .subgrid-search-wrap {
     flex-wrap: wrap;
+    padding: .5rem;
   }
   .subgrid-search-wrap .subgrid-search {
     max-width: 100%;
     flex: 1;
+    min-height: 44px;
   }
 
   /* Row hover: always show action buttons on mobile (no hover) */
@@ -890,10 +966,14 @@ a, button, .btn, input, select, textarea, .nav-link, .dropdown-toggle {
     opacity: 1 !important;
   }
 
-  /* Tighter table padding on mobile */
-  .table td, .table th {
-    padding: .4rem .5rem;
-    font-size: .85rem;
+  /* Subgrid table action buttons: larger touch targets */
+  .subgrid-table td .btn,
+  .ws-subgrid-table td .btn {
+    min-width: 40px;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   /* Table text wrapping */
@@ -905,6 +985,34 @@ a, button, .btn, input, select, textarea, .nav-link, .dropdown-toggle {
   /* Card-body padding reduction for tables */
   .card-body .table-responsive {
     margin-bottom: 0;
+  }
+
+  /* Card headers: compact */
+  .card-header {
+    padding: .75rem 1rem !important;
+  }
+
+  /* Grid record count in header */
+  .grid-record-count {
+    font-size: .65rem;
+    padding: 0 .35rem;
+    min-width: 1.3rem;
+    height: 1.3rem;
+  }
+
+  /* Grid search form: proper touch size on phones */
+  .row.gx-2.gy-1 > .col-auto .input-group.input-group-sm {
+    height: auto;
+  }
+
+  .row.gx-2.gy-1 > .col-auto .input-group.input-group-sm .form-control {
+    min-height: 44px;
+    font-size: .9rem;
+  }
+
+  .row.gx-2.gy-1 > .col-auto .input-group.input-group-sm .btn {
+    min-height: 44px;
+    min-width: 44px;
   }
 }
 
@@ -992,7 +1100,8 @@ a, button, .btn, input, select, textarea, .nav-link, .dropdown-toggle {
 
   .ws-tab-content {
     padding: .75rem;
-    overflow: visible;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Record hero wraps on tablet */
@@ -1023,22 +1132,96 @@ a, button, .btn, input, select, textarea, .nav-link, .dropdown-toggle {
 
 /* ════ Phone breakpoint (≤600px) ═══════════════════════════════ */
 @media (max-width: 600px) {
-  /* ── Navigator: compact ──────────────────────────────────── */
+  /* ── Viewport: use dvh for proper mobile chrome handling ────── */
+  .tabgrid-container {
+    height: 100dvh;
+  }
+
+  body:has(.tabgrid-container) {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  /* ── Navigator: collapsible strip on phones ──────────────────── */
+  .ws-nav-toggle {
+    display: inline-flex;
+  }
+
   .ws-nav {
-    max-height: 240px;
+    max-height: none;
+    height: auto !important;
+    border-right: none;
+    border-bottom: 1px solid var(--ws-border);
+    overflow: hidden;
+  }
+
+  .ws-nav .ws-record-list {
+    display: block;
+    overflow-x: hidden;
+    overflow-y: auto;
+    gap: 0;
+    padding: .35rem .6rem !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    max-height: 0;
+    opacity: 0;
+    transition: max-height .3s ease, opacity .2s ease, padding .2s ease;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .ws-nav .ws-record-list::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ws-nav.ws-nav-expanded .ws-record-list {
+    max-height: 50vh;
+    opacity: 1;
+    padding-top: .35rem !important;
+    padding-bottom: .35rem !important;
   }
 
   .ws-nav-header {
-    padding: .35rem .6rem;
+    padding: .4rem .6rem;
   }
 
   .ws-nav-search {
-    padding: .25rem .6rem;
+    padding: .3rem .6rem;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height .3s ease, opacity .2s ease;
+  }
+
+  .ws-nav.ws-nav-expanded .ws-nav-search {
+    max-height: 50px;
+    opacity: 1;
   }
 
   .ws-record-item {
-    padding: .3rem .6rem;
-    font-size: .88em;
+    min-width: 0;
+    max-width: none;
+    flex: none;
+    width: 100%;
+    padding: .45rem .6rem;
+    border-left: 3px solid transparent;
+    border-bottom: none;
+    border-radius: var(--ws-radius-sm);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--ws-border);
+  }
+
+  .ws-record-item:hover,
+  .ws-record-item.active {
+    border-left-color: var(--ws-primary-mid);
+    border-bottom-color: var(--ws-border);
+    background: var(--ws-primary-lt);
+  }
+
+  .ws-record-item.active {
+    background: var(--ws-primary-lt);
+    border-left-color: var(--ws-primary);
   }
 
   .ws-avatar {
@@ -1047,13 +1230,23 @@ a, button, .btn, input, select, textarea, .nav-link, .dropdown-toggle {
     font-size: .5rem;
   }
 
+  .ws-record-info {
+    flex-direction: column;
+    gap: .1rem;
+    align-items: flex-start;
+  }
+
   /* ── Main workspace ──────────────────────────────────────── */
   .ws-main {
-    padding: 0 .25rem;
+    padding: 0;
+    overflow: visible;
+    flex: none;
   }
 
   .ws-tab-content {
     padding: .5rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* ── Record hero: stack vertically ───────────────────────── */
@@ -1082,12 +1275,37 @@ a, button, .btn, input, select, textarea, .nav-link, .dropdown-toggle {
   }
   .ws-hero-actions .btn {
     font-size: .82rem;
-    padding: .35rem .65rem;
+    padding: .4rem .7rem;
+    min-height: 44px;
+  }
+
+  /* ── Primary fields: full width cards ──────────────────────── */
+  .ws-primary-fields {
+    flex-direction: column;
+    gap: .5rem;
+    padding: .5rem .75rem;
+  }
+
+  .ws-primary-field {
+    min-width: 100%;
+    padding: .5rem .75rem;
+  }
+
+  .ws-primary-field-value {
+    font-size: .9rem;
+  }
+
+  /* ── Status bar: compact ──────────────────────────────────── */
+  .ws-status-bar {
+    flex-direction: column;
+    gap: .35rem;
+    padding: .35rem .75rem;
+    font-size: .7rem;
   }
 
   /* ── Field grid: single column on phones ──────────────────── */
   .ws-fields-grid {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    grid-template-columns: 1fr;
   }
 
   .ws-field {
@@ -1103,21 +1321,29 @@ a, button, .btn, input, select, textarea, .nav-link, .dropdown-toggle {
   }
 
   .ws-o2o-body {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
 
   .ws-o2o-field {
     padding: .4rem .75rem;
   }
 
-  /* ── Tab strip: scrollable, compact ──────────────────────── */
+  /* ── Tab strip: horizontal scroll, compact ────────────────── */
+  .ws-tabs-container {
+    overflow: visible;
+  }
+
   .ws-tab-strip {
     padding: 0 .5rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .ws-tab {
     padding: .55rem .65rem;
     font-size: .75rem;
+    white-space: nowrap;
+    min-height: 44px;
   }
 
   .ws-tab-pill {
@@ -1137,6 +1363,33 @@ a, button, .btn, input, select, textarea, .nav-link, .dropdown-toggle {
     font-size: .8rem;
   }
 
+  /* ── Pane "New" button: full width ─────────────────────────── */
+  .ws-pane-toolbar .btn-success {
+    min-height: 44px;
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* ── Subgrid: full-width action buttons ────────────────────── */
+  .subgrid-table td,
+  .ws-subgrid-table td {
+    padding: .4rem .5rem;
+    font-size: .82rem;
+  }
+
+  .subgrid-table td .d-flex,
+  .ws-subgrid-table td .d-flex {
+    flex-wrap: wrap;
+    gap: .25rem;
+  }
+
+  .subgrid-table td .btn,
+  .ws-subgrid-table td .btn {
+    min-height: 40px;
+    flex: 1;
+    justify-content: center;
+  }
+
   /* ── Empty state smaller on phones ────────────────────────── */
   .ws-empty-state {
     min-height: 160px;
@@ -1148,16 +1401,39 @@ a, button, .btn, input, select, textarea, .nav-link, .dropdown-toggle {
     font-size: .8rem;
   }
 
-  /* ── Modal fullscreen on phones ────────────────────────────── */
+  /* ── Modals: near-fullscreen on phones ────────────────────── */
   .modal-dialog {
     margin: .5rem;
     max-width: calc(100vw - 1rem);
+    max-height: calc(100dvh - 1rem);
+  }
+  .modal-content {
+    border-radius: 12px !important;
+    max-height: calc(100dvh - 1rem);
+    overflow-y: auto;
   }
   .modal-body {
     padding: .75rem;
   }
   .modal-body .table > tbody > tr > td {
     font-size: .8rem;
+    padding: .35rem .4rem;
+  }
+  .modal-footer {
+    padding: .6rem .75rem;
+    flex-wrap: wrap;
+    gap: .4rem;
+  }
+  .modal-footer .btn {
+    min-height: 44px;
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* ── Select parent modal table ─────────────────────────────── */
+  .modal-body .table td .btn {
+    min-height: 40px;
+    padding: .35rem .6rem;
   }
 
   /* ── Report stat cards: 2 per row ─────────────────────────── */
@@ -1173,6 +1449,125 @@ a, button, .btn, input, select, textarea, .nav-link, .dropdown-toggle {
   .report-content .card-body {
     padding: .5rem;
   }
+
+  /* ── Breadcrumb: compact ───────────────────────────────────── */
+  .breadcrumb {
+    font-size: .78rem !important;
+    padding: .3rem .5rem !important;
+  }
+
+  /* ── Card body: tighter padding ────────────────────────────── */
+  .card-body {
+    padding: 1rem !important;
+  }
+
+  /* ── Global form elements: bigger touch targets ────────────── */
+  .form-control,
+  .form-select {
+    min-height: 48px;
+    padding: .6rem .75rem !important;
+  }
+
+  .form-label {
+    font-size: .82rem !important;
+  }
+
+  /* ── Grid search: make input-group-sm full-size on phones ───── */
+  .input-group.input-group-sm {
+    height: auto !important;
+    min-height: 48px;
+    overflow: visible;
+  }
+
+  .input-group.input-group-sm > .form-control {
+    min-height: 48px;
+    font-size: 16px;
+    padding: .6rem .75rem;
+  }
+
+  .input-group.input-group-sm > .btn {
+    min-height: 48px;
+    min-width: 48px;
+    padding: .5rem .75rem;
+  }
+
+  /* Ensure grid search form is fully visible on phones */
+  .card-body form.row {
+    margin-bottom: .75rem;
+  }
+
+  .card-body form.row > .col-auto {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  /* ── Subgrid search: ensure visible on phones ──────────────── */
+  .ws-pane-card {
+    overflow: visible !important;
+    border-radius: 12px !important;
+  }
+
+  .subgrid-search-wrap {
+    display: flex !important;
+    flex-wrap: wrap;
+    padding: .5rem 1rem !important;
+    border-bottom: 1px solid var(--ws-border);
+    gap: .35rem;
+  }
+
+  .subgrid-search-wrap .subgrid-search {
+    flex: 1 1 100%;
+    max-width: 100%;
+    min-height: 48px;
+    font-size: 16px;
+    padding: .6rem .75rem;
+  }
+
+  .subgrid-search-wrap .subgrid-clear {
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* ── Button sizes: all primary buttons at least 48px ───────── */
+  .btn-primary,
+  .btn-success,
+  .btn-danger {
+    min-height: 48px;
+    padding: .55rem 1rem !important;
+  }
+
+  /* ── Grid/Report search form: absolutely ensure visible ─────── */
+  .search-form,
+  .search-form form {
+    display: block !important;
+    width: 100%;
+  }
+  .search-form form > .col-auto {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  .search-form .input-group {
+    display: flex !important;
+    flex-wrap: wrap;
+    width: 100% !important;
+  }
+  .search-form .input-group .form-control {
+    flex: 1 1 0%;
+    min-height: 48px;
+    font-size: 16px;
+  }
+  .search-form .input-group .btn {
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  /* ── Report card: ensure card-body isn't clipped ──────────── */
+  .report-content > .container-fluid > .card,
+  .report-content .card {
+    overflow: visible !important;
+  }
 }
 
 /* ════ Extra small phones (≤380px) ══════════════════════════════ */
@@ -1186,13 +1581,35 @@ a, button, .btn, input, select, textarea, .nav-link, .dropdown-toggle {
   }
 
   .ws-record-item {
-    min-width: 120px;
-    max-width: 150px;
+    min-width: 0;
+    max-width: none;
+    padding: .4rem .5rem;
   }
 
   .ws-hero-actions .btn {
     font-size: .78rem;
-    padding: .3rem .5rem;
+    padding: .35rem .55rem;
+  }
+
+  .ws-tab {
+    padding: .5rem .5rem;
+    font-size: .7rem;
+  }
+
+  .ws-primary-field {
+    padding: .4rem .6rem;
+  }
+
+  .ws-primary-field-value {
+    font-size: .82rem;
+  }
+
+  .breadcrumb {
+    font-size: .72rem !important;
+  }
+
+  .card-body {
+    padding: .75rem !important;
   }
 }
 
@@ -1204,76 +1621,26 @@ a, button, .btn, input, select, textarea, .nav-link, .dropdown-toggle {
   .ws-tab-content {
     padding-bottom: calc(1rem + env(safe-area-inset-bottom));
   }
+  body:has(.tabgrid-container) {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
-/* Consistent Button Styles */
-.btn,
-.btn-warning,
-.btn-danger,
-.btn-primary,
-.btn-success,
-.btn-info,
-.btn-secondary {
-  border-radius: var(--ws-radius-sm) !important;
-  font-weight: 500;
-  font-size: .98rem;
-  padding: .45em 1.1em;
-  display: inline-flex;
-  align-items: center;
-  gap: .5em;
-  transition: background .15s, color .15s, box-shadow .15s;
-  box-shadow: none;
+/* ── Viewport height: use dvh on modern browsers ─────────────── */
+@supports (height: 100dvh) {
+  .tabgrid-container {
+    height: 100dvh;
+  }
 }
 
-.btn i,
-.btn svg {
-  font-size: 1.1em;
-  vertical-align: middle;
+/* ── Prevent rubber-banding on workspace pages ───────────────── */
+body:has(.tabgrid-container) {
+  overscroll-behavior: none;
 }
 
-.btn:focus {
-  outline: 2px solid var(--ws-primary-mid);
-  outline-offset: 2px;
-}
-
-.btn-warning,
-.btn.btn-warning {
-  background-color: var(--ws-warning) !important;
-  border-color: var(--ws-warning) !important;
-  color: var(--ws-text) !important;
-}
-
-.btn-warning:hover,
-.btn-warning:focus {
-  background-color: var(--ws-warning-bg) !important;
-  color: var(--ws-text) !important;
-}
-
-.btn-danger,
-.btn.btn-danger {
-  background-color: var(--ws-danger) !important;
-  border-color: var(--ws-danger) !important;
-  color: var(--ws-surface) !important;
-}
-
-.btn-danger:hover,
-.btn-danger:focus {
-  background-color: var(--ws-danger-bg) !important;
-  color: var(--ws-danger) !important;
-}
-
-.btn-primary,
-.btn.btn-primary {
-  background-color: var(--ws-primary) !important;
-  border-color: var(--ws-primary) !important;
-  color: var(--ws-surface) !important;
-}
-
-.btn-primary:hover,
-.btn-primary:focus {
-  background-color: var(--ws-primary-mid) !important;
-  color: var(--ws-surface) !important;
-}
+/* ═══════════════════════════════════════════════════════════════════
+   Legacy button overrides — kept for backward compat
+   ═══════════════════════════════════════════════════════════════════ */
 
 /* --- Button group fix for actions column --- */
 .table td .btn-group,
@@ -1292,35 +1659,19 @@ a, button, .btn, input, select, textarea, .nav-link, .dropdown-toggle {
 }
 
 /* ════ Sticky table headers ════════════════════════════════════════ */
-.ws-subgrid-table thead {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-}
-.ws-subgrid-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: var(--ws-surface, #fff);
-  box-shadow: inset 0 -1px 0 var(--ws-border);
-}
-
-/* Classic grid / report / dashboard sticky headers */
+.ws-subgrid-table thead,
 .table-responsive thead th {
   position: sticky;
   top: 0;
-  z-index: 1;
-  background: #fff;
-  box-shadow: inset 0 1px 0 #dee2e6, inset 0 -1px 0 #dee2e6;
+  z-index: 2;
+  background: #f8fafc;
+  box-shadow: inset 0 -2px 0 #e2e8f0;
 }
 
-/* ════ Row hover — reveal action buttons ══════════════════════════ */
-.ws-subgrid-table td:last-child .d-flex.gap-1 {
-  opacity: 0.35;
-  transition: opacity 0.15s ease;
-}
-.ws-subgrid-table tr:hover td:last-child .d-flex.gap-1 {
-  opacity: 1;
+/* ════ Row hover — action buttons always visible ══════════════════ */
+.ws-subgrid-table td:last-child .d-flex.gap-1,
+.table td:last-child .d-flex.gap-1 {
+  opacity: 1 !important;
 }
 
 /* ════ Column text truncation ══════════════════════════════════════ */
@@ -1334,4 +1685,625 @@ a, button, .btn, input, select, textarea, .nav-link, .dropdown-toggle {
   max-width: none;
   overflow: visible;
   white-space: normal;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   UI OVERHAUL — Theme-compatible structural improvements
+   Uses var(--bs-*) so Bootswatch themes control all colors.
+   Only structural changes: radius, shadows, spacing, font, layout.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Global font ──────────────────────────────────────────────── */
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Cards — rounder, softer ──────────────────────────────────── */
+.card {
+  border-radius: 14px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,.05), 0 4px 14px rgba(0,0,0,.06) !important;
+  transition: box-shadow .2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 2px 6px rgba(0,0,0,.07), 0 8px 24px rgba(0,0,0,.09) !important;
+}
+
+.card-header {
+  border-radius: 14px 14px 0 0 !important;
+  padding: 1.15rem 1.5rem !important;
+}
+
+.card-header h5 {
+  font-weight: 800 !important;
+  letter-spacing: -.015em;
+}
+
+.card-body {
+  padding: 1.5rem !important;
+}
+
+/* ── Tables — more spacious, striped ──────────────────────────── */
+.table thead th {
+  font-weight: 700 !important;
+  font-size: .73rem !important;
+  letter-spacing: .05em !important;
+  text-transform: uppercase !important;
+  padding: .8rem 1rem !important;
+}
+
+.table tbody tr {
+  transition: background .12s ease;
+}
+
+.table tbody tr:nth-child(even) {
+  opacity: .97;
+}
+
+.table td {
+  padding: .7rem 1rem !important;
+  font-size: .88rem !important;
+  vertical-align: middle !important;
+}
+
+/* ── Buttons — rounder, smoother transitions ──────────────────── */
+.btn {
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  font-size: .87rem !important;
+  padding: .48rem 1.05rem !important;
+  transition: all .2s ease !important;
+  box-shadow: none !important;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0,0,0,.12) !important;
+}
+
+.btn:active {
+  transform: translateY(0);
+  box-shadow: none !important;
+}
+
+.btn i, .btn svg {
+  font-size: 1.05em;
+}
+
+/* ── Form inputs — rounder, bigger ────────────────────────────── */
+.form-control,
+.form-select {
+  border-radius: 10px !important;
+  padding: .6rem .9rem !important;
+  font-size: .9rem !important;
+  transition: border-color .2s, box-shadow .2s !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+  box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb, 13,110,253), .15) !important;
+}
+
+.form-label {
+  font-weight: 600 !important;
+  font-size: .84rem !important;
+  margin-bottom: .35rem !important;
+}
+
+/* ── Pagination — rounder ─────────────────────────────────────── */
+.pagination .page-item .page-link {
+  border-radius: 8px !important;
+  margin: 0 2px !important;
+  font-weight: 600 !important;
+  font-size: .82rem !important;
+  padding: .4rem .7rem !important;
+  transition: all .15s ease !important;
+}
+
+/* ── Badges — rounder ─────────────────────────────────────────── */
+.badge {
+  font-weight: 600 !important;
+  font-size: .7rem !important;
+  border-radius: 8px !important;
+  letter-spacing: .01em;
+}
+
+/* ── Dropdown menus — rounder, bigger ─────────────────────────── */
+.dropdown-menu {
+  border-radius: 12px !important;
+  box-shadow: 0 8px 30px rgba(0,0,0,.12) !important;
+  padding: .4rem !important;
+  border: 1px solid var(--bs-border-color, #dee2e6) !important;
+}
+
+.dropdown-item {
+  border-radius: 8px !important;
+  padding: .5rem .8rem !important;
+  font-weight: 500 !important;
+  transition: background .12s;
+}
+
+/* ── Modal — rounder ──────────────────────────────────────────── */
+.modal-content {
+  border: none !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(0,0,0,.2) !important;
+}
+
+.modal-header {
+  border-bottom: none !important;
+  padding: 1.2rem 1.5rem !important;
+  border-radius: 16px 16px 0 0 !important;
+}
+
+.modal-footer {
+  border-top: 1px solid var(--bs-border-color, #dee2e6) !important;
+}
+
+.modal-title {
+  font-weight: 700 !important;
+}
+
+/* ── Alerts — rounder, no border ──────────────────────────────── */
+.alert {
+  border-radius: 12px !important;
+  border: none !important;
+  font-weight: 500;
+}
+
+/* ── Scrollbar — thin ─────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bs-secondary-color, #6c757d); border-radius: 999px; opacity: .4; }
+
+/* ── Focus ring — accessible ──────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid var(--bs-primary, #0d6efd) !important;
+  outline-offset: 2px !important;
+}
+
+/* ── Selection color ──────────────────────────────────────────── */
+::selection {
+  background: rgba(var(--bs-primary-rgb, 13,110,253), .2);
+}
+
+/* ── Breadcrumb ───────────────────────────────────────────────── */
+.breadcrumb-nav {
+  padding: .4rem 0;
+  margin-bottom: .6rem;
+}
+
+.breadcrumb {
+  background: transparent !important;
+  border-radius: 10px !important;
+  padding: .4rem .65rem !important;
+  font-size: .84rem !important;
+}
+
+.breadcrumb-item a {
+  text-decoration: none !important;
+  font-weight: 500 !important;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+  content: "\f285" !important;
+  font-family: "bootstrap-icons" !important;
+  font-size: .65rem;
+}
+
+/* ── Record count badge ───────────────────────────────────────── */
+.grid-record-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6rem;
+  height: 1.6rem;
+  padding: 0 .45rem;
+  background: rgba(255,255,255,.2);
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 700;
+  margin-left: .5rem;
+}
+
+/* ── Empty state ──────────────────────────────────────────────── */
+.grid-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3.5rem 1.5rem;
+  text-align: center;
+  gap: .6rem;
+}
+
+.grid-empty-state i {
+  font-size: 3rem !important;
+  opacity: .35;
+}
+
+.grid-empty-state p {
+  font-size: .95rem !important;
+  margin: 0;
+}
+
+/* ── Sticky table headers ─────────────────────────────────────── */
+.table-responsive thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* ── Action buttons always visible ────────────────────────────── */
+.ws-subgrid-table td:last-child .d-flex.gap-1,
+.table td:last-child .d-flex.gap-1 {
+  opacity: 1 !important;
+}
+
+/* ── Column truncation ────────────────────────────────────────── */
+.ws-subgrid-table td {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-subgrid-table td:last-child {
+  max-width: none;
+  overflow: visible;
+  white-space: normal;
+}
+
+/* ── Workspace sidebar ────────────────────────────────────────── */
+.ws-nav-header {
+  padding: .9rem 1rem !important;
+}
+
+.ws-nav-title {
+  font-weight: 700 !important;
+  letter-spacing: .04em;
+}
+
+.ws-count-badge {
+  font-weight: 700 !important;
+}
+
+.ws-new-btn {
+  border-radius: 8px !important;
+}
+
+.ws-search-input {
+  border-radius: 8px !important;
+}
+
+.ws-record-item {
+  border-left: 3px solid transparent !important;
+  transition: background .12s, border-color .12s !important;
+}
+
+/* ── Record hero ──────────────────────────────────────────────── */
+.ws-hero-name {
+  font-weight: 800 !important;
+  letter-spacing: -.015em;
+}
+
+.ws-field-label {
+  font-weight: 700 !important;
+  font-size: .62rem !important;
+  letter-spacing: .06em;
+}
+
+.ws-field-value {
+  font-weight: 500 !important;
+}
+
+/* ── Tab strip ────────────────────────────────────────────────── */
+.ws-tab {
+  font-weight: 500 !important;
+  transition: all .15s ease !important;
+}
+
+.ws-tab.active {
+  font-weight: 700 !important;
+}
+
+/* ── Pane cards ───────────────────────────────────────────────── */
+.ws-pane-card {
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+
+.ws-pane-toolbar {
+  border-radius: 12px 12px 0 0 !important;
+}
+
+.ws-pane-title {
+  font-weight: 700 !important;
+}
+
+/* ── 1:1 card ─────────────────────────────────────────────────── */
+.ws-o2o-card {
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+
+.ws-o2o-header {
+  border-radius: 12px 12px 0 0 !important;
+}
+
+.ws-o2o-title {
+  font-weight: 700 !important;
+}
+
+/* ── Subgrid tables ───────────────────────────────────────────── */
+.subgrid-search {
+  border-radius: 8px !important;
+}
+
+.subgrid-clear {
+  border-radius: 8px !important;
+  transition: all .12s;
+}
+
+/* ── Login / password cards ───────────────────────────────────── */
+.card.shadow-lg {
+  border-radius: 18px !important;
+}
+
+/* ── Loading spinner ──────────────────────────────────────────── */
+.subgrid-loading {
+  padding: 2.5rem !important;
+  text-align: center;
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.subgrid-loading::before {
+  content: '';
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid var(--bs-border-color, #dee2e6);
+  border-top-color: var(--bs-primary, #0d6efd);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+
+/* ── Mobile: stack form buttons ───────────────────────────────── */
+@media (max-width: 767.98px) {
+  .form-actions {
+    flex-direction: column;
+  }
+  .form-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .ws-hero-actions {
+    width: 100%;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CARD-BASED GRID VIEW
+   ═══════════════════════════════════════════════════════════════════ */
+
+.grid-record-card {
+  transition: transform .2s ease, box-shadow .2s ease;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+.grid-record-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,.1) !important;
+}
+
+.grid-record-card .card-title {
+  color: var(--bs-body-color, #111827);
+  font-size: .95rem;
+}
+
+.grid-record-card .badge {
+  font-size: .65rem;
+  background-color: var(--bs-secondary, #6c757d) !important;
+}
+
+.grid-record-card .text-muted {
+  font-size: .75rem;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+.grid-record-card .mt-2 > div:not(.text-muted) {
+  font-size: .85rem;
+  color: var(--bs-body-color, #111827);
+}
+
+/* Card action buttons: full-width touch targets on phones */
+.grid-record-card .d-flex.gap-2 {
+  flex-wrap: wrap;
+}
+
+.grid-record-card .d-flex.gap-2 .btn {
+  flex: 1;
+  justify-content: center;
+  min-height: 44px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   WORKSPACE DASHBOARD LAYOUT
+   ═══════════════════════════════════════════════════════════════════ */
+
+.ws-dashboard-hero {
+  background: linear-gradient(135deg, var(--bs-body-bg, #f8f9fa) 0%, var(--bs-surface, #ffffff) 100%);
+  border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+.ws-primary-fields {
+  display: flex;
+  gap: 1rem;
+  padding: .75rem 1.25rem;
+  background: var(--bs-body-bg, #f8f9fa);
+  border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+  overflow-x: auto;
+}
+
+.ws-primary-field {
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+  padding: .5rem .75rem;
+  background: var(--bs-surface, #ffffff);
+  border-radius: 8px;
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  box-shadow: 0 1px 3px rgba(0,0,0,.05);
+}
+
+.ws-primary-field-label {
+  display: block;
+  font-size: .65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--bs-secondary-color, #6c7280);
+  margin-bottom: .2rem;
+}
+
+.ws-primary-field-value {
+  display: block;
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--bs-body-color, #111827);
+  word-break: break-word;
+  min-height: 1.2em;
+  line-height: 1.4;
+}
+
+/* ── Status bar ───────────────────────────────────────────────── */
+.ws-status-bar {
+  display: flex;
+  gap: 1.5rem;
+  padding: .5rem 1.25rem;
+  background: linear-gradient(90deg, rgba(var(--bs-primary-rgb, 13,110,253), .05) 0%, transparent 100%);
+  border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+  font-size: .75rem;
+  color: var(--bs-secondary-color, #6c7280);
+}
+
+.ws-status-item {
+  display: flex;
+  align-items: center;
+  gap: .3rem;
+}
+
+.ws-status-item i {
+  font-size: .85rem;
+  opacity: .7;
+}
+
+/* ── Responsive adjustments ───────────────────────────────────── */
+@media (max-width: 767.98px) {
+  .ws-primary-fields {
+    flex-direction: column;
+    gap: .5rem;
+    padding: .5rem;
+  }
+  
+  .ws-primary-field {
+    min-width: 100%;
+  }
+  
+  .ws-status-bar {
+    flex-direction: column;
+    gap: .5rem;
+    padding: .4rem .75rem;
+  }
+  
+  .grid-record-card {
+    margin-bottom: .5rem;
+  }
+  
+  /* Cards single-column on phones */
+  .grid-record-card .d-flex.gap-2 .btn {
+    min-height: 44px;
+    padding: .5rem .75rem;
+    font-size: .85rem;
+  }
+  
+  /* Form card: full-width, no centering restriction */
+  .form-card {
+    max-width: 100% !important;
+  }
+  
+  .form-card .card-body {
+    padding: 1rem !important;
+  }
+  
+  /* Multi-column forms: single column on phones */
+  .form-card .row.g-3 > .col-md-6 {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+  
+  /* Form actions: full-width stacked */
+  .form-actions {
+    flex-direction: column !important;
+    gap: .5rem !important;
+  }
+  
+  .form-actions .btn {
+    width: 100%;
+    min-height: 48px;
+    justify-content: center;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MULTI-COLUMN FORM LAYOUT
+   ═══════════════════════════════════════════════════════════════════ */
+
+.form-card {
+  transition: box-shadow .2s ease;
+}
+
+.form-card:hover {
+  box-shadow: 0 8px 24px rgba(0,0,0,.12) !important;
+}
+
+.form-card .card-header {
+  background: linear-gradient(135deg, var(--bs-primary, #0d6efd) 0%, rgba(var(--bs-primary-rgb, 13,110,253), .9) 100%);
+  border-bottom: none;
+}
+
+.form-card .card-body {
+  padding: 1.5rem;
+}
+
+/* Multi-column form fields */
+.form-card .row.g-3 > .col-md-6 {
+  margin-bottom: 0;
+}
+
+.form-card .form-field-groups > div.mb-3,
+.form-card .row.g-3 > div > div.mb-3 {
+  padding: .75rem;
+  border-radius: 8px;
+  transition: background .15s ease;
+}
+
+.form-card .form-field-groups > div.mb-3:hover,
+.form-card .row.g-3 > div > div.mb-3:hover {
+  background: rgba(var(--bs-primary-rgb, 13,110,253), .03);
+}
+
+/* Form section dividers */
+.form-card .form-field-groups > div.mb-3,
+.form-card .row.g-3 > div > div.mb-3 {
+  border-left: 3px solid transparent;
+  transition: border-color .15s, background .15s;
+}
+
+.form-card .form-field-groups > div.mb-3:focus-within,
+.form-card .row.g-3 > div > div.mb-3:focus-within {
+  border-left-color: var(--bs-primary, #0d6efd);
+  background: rgba(var(--bs-primary-rgb, 13,110,253), .05);
 }

@@ -122,7 +122,7 @@
       '<div class="modal-dialog modal-lg">' +
       '<div class="modal-content">' +
       '<div class="modal-header bg-primary text-white">' +
-      '<h5 class="modal-title">' + (title || 'Agregar Nuevo') + '</h5>' +
+      '<h5 class="modal-title fw-bold">' + (title || 'Agregar Nuevo') + '</h5>' +
       '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>' +
       '</div>' +
       '<div class="modal-body">' +
@@ -134,8 +134,8 @@
       '</form>' +
       '</div>' +
       '<div class="modal-footer">' +
-      '<button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal">Cancelar</button>' +
-      '<button type="button" class="btn btn-primary btn-lg" id="fkSaveBtn">Guardar</button>' +
+      '<button type="button" class="btn btn-outline-secondary btn-lg fw-semibold" data-bs-dismiss="modal">Cancelar</button>' +
+      '<button type="button" class="btn btn-primary btn-lg fw-bold" id="fkSaveBtn">Guardar</button>' +
       '</div>' +
       '</div>' +
       '</div>' +
@@ -243,7 +243,7 @@
       '<div class="modal-dialog modal-lg">' +
       '<div class="modal-content">' +
       '<div class="modal-header bg-primary text-white">' +
-      '<h5 class="modal-title">' + (title || 'Agregar Nuevo') + '</h5>' +
+      '<h5 class="modal-title fw-bold">' + (title || 'Agregar Nuevo') + '</h5>' +
       '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>' +
       '</div>' +
       '<div class="modal-body">' +
@@ -255,8 +255,8 @@
       '</form>' +
       '</div>' +
       '<div class="modal-footer">' +
-      '<button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal">Cancelar</button>' +
-      '<button type="button" class="btn btn-primary btn-lg" id="fkSaveBtn">Guardar</button>' +
+      '<button type="button" class="btn btn-outline-secondary btn-lg fw-semibold" data-bs-dismiss="modal">Cancelar</button>' +
+      '<button type="button" class="btn btn-primary btn-lg fw-bold" id="fkSaveBtn">Guardar</button>' +
       '</div>' +
       '</div>' +
       '</div>' +
@@ -285,7 +285,7 @@
       '<div class="modal-dialog modal-lg">' +
       '<div class="modal-content">' +
       '<div class="modal-header bg-primary text-white">' +
-      '<h5 class="modal-title">' + (title || 'Agregar Nuevo') + '</h5>' +
+      '<h5 class="modal-title fw-bold">' + (title || 'Agregar Nuevo') + '</h5>' +
       '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>' +
       '</div>' +
       '<div class="modal-body">' +
@@ -297,8 +297,8 @@
       '</form>' +
       '</div>' +
       '<div class="modal-footer">' +
-      '<button type="button" class="btn btn-secondary btn-lg" data-bs-dismiss="modal">Cancelar</button>' +
-      '<button type="button" class="btn btn-primary btn-lg" id="fkSaveBtn">Guardar</button>' +
+      '<button type="button" class="btn btn-outline-secondary btn-lg fw-semibold" data-bs-dismiss="modal">Cancelar</button>' +
+      '<button type="button" class="btn btn-primary btn-lg fw-bold" id="fkSaveBtn">Guardar</button>' +
       '</div>' +
       '</div>' +
       '</div>' +

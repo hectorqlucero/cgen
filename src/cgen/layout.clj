@@ -53,6 +53,21 @@
       (build-dropdown-link request href label icon))))
 
 ;; HELPER FUNCTIONS
+(defn breadcrumb-nav
+  "Renders Bootstrap 5 breadcrumb navigation from a vector of {:label string, :href string} maps.
+   The last item is rendered as active (non-clickable)."
+  [items]
+  (when (seq items)
+    [:nav.breadcrumb-nav
+     [:ol.breadcrumb.mb-0
+      (map-indexed
+       (fn [i {:keys [label href]}]
+         (if (= i (dec (count items)))
+           ^{:key i}[:li.breadcrumb-item.active {:aria-current "page"} label]
+           ^{:key i}[:li.breadcrumb-item
+                     [:a.text-decoration-none {:href href} label]]))
+       items)]]))
+
 (defn menu-item->map [[href label & rest]]
   (let [[role-or-icon maybe-icon] rest
         role (when (and role-or-icon (not (clojure.string/starts-with? (str role-or-icon) "bi ")))
@@ -318,7 +333,7 @@
   (list
    [:script {:src "/vendor/bootstrap.bundle.min.js"}]
    (theme-js)
-   [:script {:src "/js/fk-dependent.js?v=6"}]))
+   [:script {:src "/js/fk-dependent.js?v=7"}]))
 
 ;; LAYOUT FUNCTIONS
 
@@ -357,6 +372,7 @@
            "link.onload=function(){document.body.classList.remove('preload');};"
            "});"]
           (app-css)
+          [:link {:rel "stylesheet" :href "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" :crossorigin "anonymous"}]
           [:title title]]
           [:body.preload.theme-sketchy
            {:style "display:flex;flex-direction:column;min-height:100vh;overflow-x:hidden;"}
