@@ -11,7 +11,7 @@
     (.getCanonicalFile d)))
 
 (def ^:private exclude-patterns
-  [#"\.git"
+  [#"\.git$"          ;; legacy fallback; primary check is in should-exclude?
    #"target"
    #"uploads"
    #"\.DS_Store"
@@ -20,8 +20,11 @@
    #"tools/upgrade\.clj"])
 
 (defn- should-exclude? [^File f]
-  (let [path (.getPath f)]
+  (let [path (.getPath f)
+        parts (str/split path #"/")]
     (or (some #(re-find % path) exclude-patterns)
+        ;; Exclude .git directory and its contents (but not .gitignore, .github, etc.)
+        (some #(= % ".git") parts)
         ;; Exclude the root-level db/ directory only (not src/.../db/)
         (and (re-find #"(^|/)db(/|$)" path)
              (not (re-find #"/src/" path))
@@ -48,7 +51,7 @@
   "Replace 'cgen' with new-name in file contents, skipping binary files."
   [^File f new-name]
   (let [name (.getName f)]
-    (when (some #(str/ends-with? name %) [".clj" ".edn" ".md" ".json" ".css" ".js" ".html" ".sql" ".txt"])
+    (when (some #(str/ends-with? name %) [".clj" ".edn" ".md" ".json" ".css" ".js" ".html" ".sql" ".txt" ".gitignore"])
       (let [content (slurp f)
             updated (str/replace content "cgen" new-name)]
         (spit f updated)))))
