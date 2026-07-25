@@ -31,21 +31,26 @@
   (query/list-with-hooks entity))
 
 (defn fetch-subgrid-records
-  "Fetches subgrid records filtered by parent foreign key using SQL WHERE."
+  "Fetches subgrid records filtered by parent foreign key.
+   Uses the entity's :list query (which may include JOINs and formatted fields)
+   and filters in Clojure, falling back to raw SQL when no :list query is defined."
   [subgrid-entity parent-id foreign-key]
   (when (and subgrid-entity parent-id foreign-key)
     (let [cfg     (config/get-entity-config subgrid-entity)
-          table   (:table cfg)
-          conn    (:connection cfg)
-          fk-name (name foreign-key)]
-      (if table
-        (crud/Query [(str "SELECT * FROM " table " WHERE " fk-name " = ?")
-                     (Long/parseLong (str parent-id))]
-                    :conn conn)
-        ;; fallback: no table in config, use list query + filter
-        (let [fk-kw (keyword foreign-key)]
-          (filter #(= (str (get % fk-kw)) (str parent-id))
-                  (query/list-with-hooks subgrid-entity)))))))
+          fk-kw   (keyword foreign-key)
+          fk-val  (str parent-id)]
+      (if (get-in cfg [:queries :list])
+        ;; Use entity's :list query (preserves JOINs, formatted fields, hooks)
+        ;; then filter by foreign key in Clojure
+        (filter #(= (str (get % fk-kw)) fk-val)
+                (query/list-with-hooks subgrid-entity))
+        ;; Fallback: no :list query defined, use raw SELECT *
+        (let [table (:table cfg)
+              conn  (:connection cfg)]
+          (when table
+            (crud/Query [(str "SELECT * FROM " table " WHERE " (name foreign-key) " = ?")
+                         (Long/parseLong fk-val)]
+                        :conn conn)))))))
 
 (defn fetch-one-to-one-record
   "Fetches the single associated record for a one-to-one relationship, or nil.
