@@ -186,8 +186,20 @@
  :subgrid/rel-1n-desc "Registros relacionados"
  :subgrid/rel-nm-desc "Asociaciones múltiples"
  :subgrid/relationships "{count} relaciones"
-  :subgrid/last-updated "Última actualización"
-  :subgrid/total-records "{count} registros"
+   :subgrid/last-updated "Última actualización"
+   :subgrid/total-records "{count} registros"
+   :subgrid/has-record "1 registro"
+   :subgrid/no-record "Sin registro"
+   :subgrid/search "Filtrar..."
+   :subgrid/clear-filter "Limpiar filtro"
+   :subgrid/showing-n "Mostrando {n} de {total}"
+
+ ;; [GENERIC] TabGrid
+ :tabgrid/record-list "Registros"
+ :tabgrid/total-records "registros"
+ :tabgrid/select-record "Seleccione un registro para ver sus detalles."
+ :tabgrid/no-record-selected "Seleccione un registro para ver los detalles."
+ :tabgrid/select-hint "Elija un registro de la lista de la izquierda."
 
  ;; [GENERIC] Pivot Attributes
  :pivot/edit-attributes "Editar atributos"

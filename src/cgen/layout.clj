@@ -383,8 +383,8 @@
              (= ok -1) (menus-none)
              (= ok 0) (menus-public)
              (> ok 0) (menus-private request))
-            [:div.container-fluid.px-4.report-content
-             {:style "flex:1;min-height:0;overflow-y:auto;padding-bottom:1rem;"}
+            [:div.container-fluid.px-4.report-content.tg-page-scroll
+             {:style "flex:1;min-height:0;"}
              (doall body-content)]]
           (app-scripts)
           js

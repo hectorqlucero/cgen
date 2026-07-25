@@ -206,7 +206,7 @@
           success? (or (= true result) (:success result))]
 
       (when success?
-        ;; Clean up child entity orphaned files (replaces vendor introspection cascade)
+        ;; Clean up child entity orphaned files and M:M junction rows
         (try
           (doseq [subgrid (:subgrids config)]
             (let [child-entity (:entity subgrid)
@@ -215,16 +215,28 @@
                                  (catch Exception _ nil))
                   child-file-fields (when child-cfg
                                       (map :id (filter #(file-types (:type %)) (:fields child-cfg))))]
-              (when (seq child-file-fields)
+              ;; Clean up child entity files (1:M and 1:1 only — skip M:M)
+              (when (and (seq child-file-fields)
+                         (not= (:relationship-type subgrid) :many-to-many))
                 (doseq [ff child-file-fields]
                   (let [rows (crud/Query [(str "SELECT " (name ff) " FROM " (:table child-cfg)
                                                " WHERE " (name child-fk) " = ?") id]
                                          :conn connection)]
                     (doseq [row rows]
                       (when-let [fname (get row ff)]
-                        (crud/safe-delete-upload! fname))))))))
+                        (crud/safe-delete-upload! fname))))))
+              ;; Clean up M:M junction rows
+              (when (= (:relationship-type subgrid) :many-to-many)
+                (let [through-table (or (:through-table subgrid) child-entity)
+                      through-cfg  (try (config/get-entity-config through-table)
+                                        (catch Exception _ nil))
+                      through-table-name (or (:table through-cfg) (name through-table))]
+                  (when through-table-name
+                    (crud/Delete through-table-name
+                                 [(str (name child-fk) " = ?") id]
+                                 :conn connection))))))
           (catch Exception e
-            (println "[WARN] Error cleaning up child entity files:" (.getMessage e)))))
+            (println "[WARN] Error cleaning up child entities:" (.getMessage e)))))
 
       (when (and success?
                  (not (:skip-hooks? opts))

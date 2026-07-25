@@ -1,20 +1,15 @@
 (ns cgen.tabgrid.render
-  "Entity Workspace -- navigator + pinned record header + relationship tabs."
+  "Responsive TabGrid rendering for generated CRUD pages."
   (:require
    [clojure.string :as str]
-   [cgen.i18n.core :as i18n]
    [hiccup.util :refer [raw-string]]
+   [ring.util.codec :as ring-codec]
    [cgen.engine.config :as config]
+   [cgen.i18n.core :as i18n]
+   [cgen.models.crud :as crud]
    [cgen.web.csrf :refer [csrf-field]]))
 
-;;; -- Utilities -------------------------------------------------------
-
-(defn- safe-id [s]
-  (-> (str s) str/lower-case (str/replace #"[^a-z0-9]+" "-")))
-
-(defn get-record-id
-  "Returns the primary key; composite PKs are pipe-joined."
-  [entity-name row]
+(defn get-record-id [entity-name row]
   (try
     (let [pk (:primary-key (config/get-entity-config entity-name))]
       (if (and pk (vector? pk) (> (count pk) 1))
@@ -22,616 +17,613 @@
         (:id row)))
     (catch Exception _ (:id row))))
 
-(defn parent-display-label
-  "First non-id string value, falling back to \"#<id>\"."
-  [fields parent-row selected-parent-id]
-  (or (some (fn [[fid _]]
-              (when (not= fid :id)
-                (let [v (get parent-row fid)]
-                  (when (and v (string? v) (seq v)) v))))
-            fields)
-      (str "#" selected-parent-id)))
+(def ^:private image-exts #{"jpg" "jpeg" "png" "gif" "bmp" "webp" "svg"})
 
-(defn- render-field-value [value]
-  (if (and (string? value) (re-find #"^<" value))
-    (raw-string value)
-    value))
+(defn- file-extension [filename]
+  (when (and filename (string? filename))
+    (let [parts (str/split filename #"\.")]
+      (when (> (count parts) 1)
+        (str/lower-case (last parts))))))
 
-(defn- row-display-label [fields row]
+(defn- field-value [value]
+  (cond
+    (and (string? value) (re-find #"^<" value)) (raw-string value)
+    (nil? value) [:span.text-muted "—"]
+    (and (string? value)
+         (seq value)
+         (contains? image-exts (file-extension value)))
+    (let [path (str (:path crud/config) value "?" (random-uuid))]
+      [:img.rounded.shadow-sm.border
+       {:src path :alt value
+        :style "max-height: 52px; width: auto; object-fit: cover; cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease;"
+        :onmouseover "this.style.transform='scale(1.15)';this.style.boxShadow='0 4px 12px rgba(0,0,0,0.2)'"
+        :onmouseout "this.style.transform='scale(1)';this.style.boxShadow=''"
+        :onclick "window.open(this.src, '_blank')"}])
+    :else value))
+
+(def ^:private field-type-icon
+  {:text "bi-type"
+   :email "bi-envelope"
+   :number "bi-123"
+   :decimal "bi-currency-exchange"
+   :date "bi-calendar"
+   :datetime "bi-calendar-date"
+   :radio "bi-ui-radios"
+   :checkbox "bi-check-square"
+   :select "bi-menu-button-wide"
+   :textarea "bi-textarea-resize"
+   :file "bi-file-earmark"
+   :pdf "bi-file-earmark-pdf"
+   :document "bi-file-earmark-word"
+   :hidden "bi-eye-slash"
+   :fk "bi-arrow-repeat"
+   :imagen "bi-image"
+   :image "bi-image"
+   :phone "bi-telephone"
+   :url "bi-link"
+   :currency "bi-currency-dollar"
+   :percentage "bi-percent"})
+
+(def ^:private field-type-color
+  {:text "text-body"
+   :email "text-primary"
+   :number "text-info"
+   :decimal "text-info"
+   :date "text-warning"
+   :datetime "text-warning"
+   :radio "text-secondary"
+   :checkbox "text-success"
+   :select "text-secondary"
+   :textarea "text-secondary"
+   :file "text-danger"
+   :pdf "text-danger"
+   :document "text-primary"
+   :hidden "text-muted"
+   :fk "text-secondary"
+   :imagen "text-success"
+   :image "text-success"
+   :phone "text-success"
+   :url "text-primary"
+   :currency "text-warning"
+   :percentage "text-info"})
+
+(defn- row-label [fields row]
   (or (some (fn [[fid _]]
               (when (not= fid :id)
                 (let [v (get row fid)]
-                  (when (and v (string? v) (seq v)) v))))
+                  (when (and (string? v) (seq v)) v))))
             fields)
       (str "#" (:id row))))
 
-(defn- row-secondary-label [fields row]
-  (second
-   (keep (fn [[fid _]]
-           (when (not= fid :id)
-             (let [v (get row fid)]
-               (when (and v (string? v) (seq v)) v))))
-         fields)))
+(defn- row-label-and-rest [fields row]
+  (let [label-field (first (filter (fn [[fid _]]
+                                     (and (not= fid :id)
+                                          (let [v (get row fid)]
+                                            (and (string? v) (seq v)))))
+                                   fields))]
+    [label-field (rest (drop-while #(not= label-field %) fields))]))
 
-(defn- ws-initials [s]
-  (let [s (str s)]
-    (str/upper-case (subs s 0 (min 2 (count s))))))
+(defn- row-subtitle [fields row]
+  (let [[_label remaining] (row-label-and-rest fields row)]
+    (some (fn [[fid _]]
+            (when (not= fid :id)
+              (let [v (get row fid)]
+                (when (and (string? v) (seq v)) v))))
+          remaining)))
 
-;;; -- Navigator (left panel) ------------------------------------------
+(defn- render-record-list [entity-name fields all-rows selected-id actions]
+  (let [list-id   (str "record-list-" entity-name)
+        search-id (str list-id "-search")
+        count-id  (str list-id "-count")
+        total     (count all-rows)
+        new-url   (when (:new actions)
+                    (str "/admin/" entity-name "/add-form"))]
+    [:div.card.mb-4.shadow-sm.border-0.tg-list-card
+     [:div.card-header.border-0.pb-0
+      [:div.d-flex.justify-content-between.align-items-center.mb-3
+       [:div.d-flex.align-items-center.gap-2
+        [:h5.mb-0.fw-bold (i18n/tr :tabgrid/record-list)]
+        [:span.badge.rounded-pill.bg-primary-subtle.text-primary-emphasis.fw-semibold
+         {:id count-id} (str total)]]
+       (when new-url
+         [:a.btn.btn-primary.btn-sm.px-3.fw-semibold.shadow-sm.d-none.d-sm-inline-flex
+          {:href new-url}
+          [:i.bi.bi-plus-lg.me-1] (i18n/tr :common/new)])]
+      ;; ── Search bar with Ctrl+K hint ──
+      [:div.input-group.input-group-sm.tg-search-group
+       [:span.input-group-text.bg-light.border-end-0
+        [:i.bi.bi-search.text-muted]]
+       [:input.form-control.bg-light.border-start-0
+        {:type "text"
+         :id search-id
+         :placeholder (i18n/tr :common/search)
+         :style "border-left: 0;"
+         :oninput (str "var q=this.value.toLowerCase();"
+                       "var items=document.getElementById('" list-id "').querySelectorAll('.list-group-item[data-id]');"
+                       "var c=0;"
+                       "for(var i=0;i<items.length;i++){"
+                       "var show=items[i].textContent.toLowerCase().indexOf(q)!==-1;"
+                       "items[i].style.display=show?'':'none';"
+                       "if(show)c++;}"
+                       "var ct=document.getElementById('" count-id "');"
+                       "if(ct)ct.textContent=c;")}]
+       ;; Ctrl+K hint (hidden on mobile)
+       [:span.tg-kbd-hint.d-none.d-lg-inline-flex "Ctrl+K"]
+       [:button.btn.btn-outline-secondary.border-start-0
+        {:type "button"
+         :onclick (str "this.previousElementSibling.previousElementSibling.value='';"
+                       "this.previousElementSibling.previousElementSibling.dispatchEvent(new Event('input'));"
+                       "this.previousElementSibling.previousElementSibling.focus()")}
+        [:i.bi.bi-x-lg]]]]
+     ;; ── Scroll wrapper ──
+     [:div.tg-list-scroll
+      {:id list-id}
+      [:div.list-group.border-0
+       (for [row all-rows
+             :let [rid (str (get-record-id entity-name row))
+                   active? (= rid selected-id)]
+             :when row]
+         [:a.list-group-item.list-group-item-action.py-3
+          {:href (str "/admin/" entity-name "/" rid)
+           :class (when active? "active")
+           :data-id rid}
+          [:div.d-flex.justify-content-between.align-items-center
+           [:div.me-2.min-w-0
+            [:div.fw-semibold.text-truncate (row-label fields row)]
+            (when-let [subtitle (row-subtitle fields row)]
+              [:div.text-muted.small.text-truncate.mt-1 subtitle])]
+           [:span.badge.rounded-pill.bg-secondary-subtle.text-secondary-emphasis.flex-shrink-0.ms-2
+            (str "#" rid)]]])
+       (when (zero? total)
+         [:div.text-center.py-5.tg-empty-state
+          [:div.d-inline-flex.align-items-center.justify-content-center.rounded-3.bg-body-tertiary.mb-3
+           {:style "width: 64px; height: 64px;"}
+           [:i.bi.bi-inbox.fs-1.text-body-tertiary]]
+          [:h6.fw-semibold.text-muted.mb-1 (i18n/tr :grid/no-records)]
+          (when new-url
+            [:a.btn.btn-sm.btn-outline-primary.px-3.fw-semibold.mt-2
+             {:href new-url}
+             [:i.bi.bi-plus-circle.me-1] (i18n/tr :common/new)])])]]
+     ;; ── Mobile FAB: "New" button ──
+     (when new-url
+       [:a.tg-fab.d-sm-none
+        {:href new-url :title (i18n/tr :common/new)}
+        [:i.bi.bi-plus-lg]])]))
 
-(defn render-navigator
-  [request entity-name title fields all-rows selected-parent-id actions]
-  [:aside.ws-nav
-   [:div.ws-nav-header
-    [:div.ws-nav-title
-     [:span.ws-nav-title-text title]
-     [:span.ws-count-badge (count all-rows)]]
-    [:div.ws-nav-header-actions
-     (when (:new actions)
-       [:a.ws-new-btn
-        {:href (str "/admin/" entity-name "/add-form")
-         :title (str (i18n/tr :common/new) " " title)}
-        [:i.bi.bi-plus-lg]])
-     [:button.ws-nav-toggle.d-lg-none
-      {:type "button"
-       :onclick "this.closest('.ws-nav').classList.toggle('ws-nav-expanded')"}
-      [:i.bi.bi-list]]]]
-   [:div.ws-nav-search
-    [:div.ws-search-wrap
-     [:i.bi.bi-search.ws-search-icon]
-      [:input.ws-search-input
-        {:id "ws-nav-search-input"
-         :type "search"
-         :placeholder (str (i18n/tr :common/search) "...")}]]]
-   [:ul.ws-record-list
-    {:id (str entity-name "-record-list")}
-    (for [row    all-rows
-          :let   [row-id    (str (get-record-id entity-name row))
-                  label     (row-display-label fields row)
-                  secondary (row-secondary-label fields row)
-                  active?   (= row-id (str selected-parent-id))]]
-      [:li.ws-record-item
-       {:class (when active? "active")}
-       [:a.ws-record-link
-        {:href (str "/admin/" entity-name "/" row-id)
-         :title (str label (when secondary (str " — " secondary)))}
-        [:span.ws-avatar (ws-initials label)]
-        [:div.ws-record-info
-         [:span.ws-record-label label]
-         (when secondary [:span.ws-record-secondary secondary])]]])]])
-
-;;; -- Pinned record header --------------------------------------------
-
-(defn- confirm-js
-  "JS confirm() string for delete onsubmit."
-  [request]
-  (str "return confirm('" (i18n/tr :confirm/delete) "')"))
-
-(defn- field-display-value
-  "Resolved display value — runs compute-fn for computed fields."
-  [entity-name field-id row]
-  (let [cfg (first (filter #(= (:id %) field-id)
-                           (:fields (config/get-entity-config entity-name))))]
-    (if (= :computed (:type cfg))
-      (some-> (:compute-fn cfg) (apply [row]))
-      (get row field-id))))
-
-(defn- render-field-pair
-  "Single label/value field cell for the fields grid."
-  [entity-name field-id field-label row]
-  [:div.ws-field
-   [:span.ws-field-label field-label]
-   [:span.ws-field-value
-    (let [v (render-field-value (field-display-value entity-name field-id row))]
-      (if (or (nil? v) (= v ""))
-        [:span.text-muted "—"]
-        v))]])
-
-(defn- render-record-header
-  [request entity-name title fields row actions]
-  (if-not row
-    [:div.ws-empty-state [:i.bi.bi-inbox] [:p (i18n/tr :grid/no-records)]]
-    (let [label (parent-display-label fields row nil)
-          rid   (get-record-id entity-name row)
-          ;; Separate primary fields from secondary fields
-          primary-fields (take 3 fields)
-          secondary-fields (drop 3 fields)]
-      [:div.ws-record-header
-       ;; Dashboard-style header with key metrics
-       [:div.ws-record-hero.ws-dashboard-hero
-        [:div.ws-hero-avatar (ws-initials label)]
-        [:div.ws-hero-meta
-         [:h2.ws-hero-name label]
-         [:span.ws-hero-id
-          [:i.bi.bi-hash.me-1 {:style "font-size:.6rem"}]
-          rid
-          [:span.ms-2.fw-normal.text-muted {:style "font-size:.7rem"} title]]]
-        [:div.ws-hero-actions
-         (when (:edit actions)
-           [:a.btn.btn-sm.btn-primary
-            {:href (str "/admin/" entity-name "/edit-form/" rid)}
-            [:i.bi.bi-pencil.me-1] (i18n/tr :common/edit)])
-         (when (:delete actions)
-           [:form.d-inline
-            {:method "POST"
-             :action (str "/admin/" entity-name "/delete/" rid)
-             :onsubmit (confirm-js request)}
-            (csrf-field)
-            [:button.btn.btn-sm.btn-outline-danger {:type "submit"}
-             [:i.bi.bi-trash.me-1] (i18n/tr :common/delete)]])]]
-       ;; Primary fields as prominent cards
-       (when (seq primary-fields)
-         [:div.ws-primary-fields
-          (for [[field-id field-label] primary-fields]
-            [:div.ws-primary-field
-             [:span.ws-primary-field-label field-label]
-             [:span.ws-primary-field-value
-              (let [v (render-field-value (field-display-value entity-name field-id row))]
-                (if (or (nil? v) (= v ""))
-                  [:span.text-muted "—"]
-                  v))]])])
-       ;; Secondary fields in grid
-       (when (seq secondary-fields)
-         [:div.ws-fields-grid
-          (for [[field-id field-label] secondary-fields]
-            (render-field-pair entity-name field-id field-label row))])])))
-
-;;; -- 1:1 pane --------------------------------------------------------
-
-(defn- render-o2o-pane
-  [request parent-entity-name parent-id subgrid]
-  (let [sg-name     (name (:entity subgrid))
-        pane-id     (str parent-entity-name "-" sg-name "-pane")
-        record      (:record subgrid)
-        fields      (:fields subgrid)
-        actions     (:actions subgrid)
-        return-url  (str "/admin/" parent-entity-name "/" parent-id)]
-    [:div.ws-o2o-card
-     [:div.ws-o2o-header
-      [:span.ws-o2o-title
-       [:i.me-1 {:class (or (:icon subgrid) "bi bi-person-vcard")}]
-       (:title subgrid)]
-      [:div.d-flex.align-items-center.gap-2
-       (if record
-         [:span.ws-o2o-status-linked
-          [:i.bi.bi-check-circle-fill.me-1] (i18n/tr :subgrid/linked)]
-         [:span.ws-o2o-status-unlinked
-          [:i.bi.bi-dash-circle.me-1] (i18n/tr :subgrid/not-set)])
-       (if record
-         (when (:edit actions)
-           [:a.btn.btn-sm.btn-outline-primary
-            {:href (str "/admin/" sg-name "/edit-form/" (:id record)
-                        "?return_url=" return-url "&active_tab=" pane-id "&edited_id=" (:id record))}
-            [:i.bi.bi-pencil.me-1] (i18n/tr :common/edit)])
-         [:a.btn.btn-sm.btn-outline-success
-          {:href (str "/admin/" sg-name "/add-form"
-                      "?parent_id=" parent-id
-                      "&parent_entity=" parent-entity-name
-                      "&active_tab=" pane-id)}
-          [:i.bi.bi-plus-circle.me-1]
-          (i18n/tr :subgrid/create {:title (:title subgrid)})])]]
-     (if record
-       [:div.ws-o2o-body
-        (for [[fid flabel] fields
-              :let [v (get record fid)]
-              :when (some? v)]
-          [:div.ws-o2o-field
-           [:span.ws-o2o-field-label flabel]
-           [:span.ws-o2o-field-value (render-field-value v)]])]
-       [:div.ws-o2o-empty
-        [:i.bi.bi-dash-circle.me-2]
-        (i18n/tr :subgrid/no-linked-yet {:title (:title subgrid)})])]))
-
-;;; -- 1:M pane --------------------------------------------------------
-
-(defn- render-subgrid-table
-  "Server-rendered 1:M subgrid table."
-  [request parent-entity parent-id sg-name sg-entity-name fields records actions]
-  (let [pane-id (str parent-entity "-" sg-name "-pane")
-        return-url (str "/admin/" parent-entity "/" parent-id)
-        show-edit? (:edit actions)
-        show-delete? (:delete actions)]
-    (if (seq records)
-      [:div.table-responsive
-       (into [:table.table.table-hover.table-bordered.table-sm.subgrid-table
-              {:id (str parent-entity "-" sg-name "-table")}
-             [:thead
-              [:tr
-               (for [[_ label] fields] [:th.subgrid-sortable label [:i.bi.bi-chevron-expand.ms-1]])
-               (when (or show-edit? show-delete?)
-                 [:th {:style "width:120px"} (i18n/tr :common/actions)])]]]
-            [(into [:tbody]
-                   (for [row records]
-                     (into [:tr {:data-row-id (:id row)}]
-                            (concat
-                             (for [[fid flabel] fields]
-                               [:td.small {:title (some-> (get row fid) str)
-                                           :data-label flabel}
-                                (render-field-value (get row fid))])
-                             (when (or show-edit? show-delete?)
-                               [[:td
-                                 {:data-label (i18n/tr :common/actions)}
-                                 [:div.d-flex.gap-1
-                                 (when show-edit?
-                                   [:a.btn.btn-sm.btn-outline-primary
-                                    {:href (str "/admin/" sg-entity-name "/edit-form/" (:id row)
-                                                "?return_url=" return-url "&active_tab=" pane-id "&edited_id=" (:id row))}
-                                    [:i.bi.bi-pencil]])
-                                 (when show-delete?
-                                   [:form.d-inline
-                                    {:method "POST"
-                                     :action (str "/admin/" sg-entity-name "/delete/" (:id row))}
-                                    (csrf-field)
-                                    [:input {:type "hidden" :name "return_url" :value return-url}]
-                                    [:input {:type "hidden" :name "active_tab" :value pane-id}]
-                                    [:button.btn.btn-sm.btn-outline-danger
-                                     {:type "submit"
-                                      :onclick (str "return confirm('" (i18n/tr :confirm/delete) "')")}
-                                      [:i.bi.bi-trash]]])]]])))))])]
-
-      [:div.text-center.p-4.text-muted
-       [:i.bi.bi-inbox {:style "font-size:1.5rem;opacity:0.5"}]
-       [:p.mt-2 (i18n/tr :grid/no-records)]])))
-
-(defn- render-otm-pane
-  [request entity-name subgrid selected-parent-id]
-  (let [sg-name (safe-id (name (:entity subgrid)))
-        sg-entity-name (name (:entity subgrid))
-        records (:records subgrid)
-        fields (:fields subgrid)
-        actions (:actions subgrid)]
-    [:div.ws-pane-card
-     [:div.ws-pane-toolbar
-      [:span.ws-pane-title
-       [:i.me-1 {:class (or (:icon subgrid) "bi bi-list-ul")}]
-       (:title subgrid)
-       [:span.badge.bg-secondary.ms-2 (or (:count subgrid) 0)]]
-      [:a.btn.btn-sm.btn-success
-       {:href (str "/admin/" sg-entity-name "/add-form"
-                   "?parent_id=" selected-parent-id
-                   "&parent_entity=" entity-name
-                   "&active_tab=" entity-name "-" sg-name "-pane")}
-       [:i.bi.bi-plus-circle.me-1] (i18n/tr :common/new)]]
-      (when (seq records)
-        [:div.subgrid-search-wrap
-         [:input.subgrid-search.form-control.form-control-sm
-          {:type "search" :placeholder (str (i18n/tr :common/search) "...")}]
-         [:span.badge.rounded-pill.bg-light.text-secondary.border.subgrid-clear
-          [:i.bi.bi-x] (str " " (i18n/tr :common/clear))]])
-      (render-subgrid-table request entity-name selected-parent-id
-                            sg-name sg-entity-name fields records actions)]))
-
-(defn- render-m2m-row
-  [request fields has-pivot? through fk related-fk parent-id entity-name pane-id row]
-  (let [return-url (str "/admin/" entity-name "/" parent-id)
-        related-id (or (get row (keyword related-fk)) (:id row))]
-    [:tr {:data-row-id related-id}
-     (for [[fid flabel] fields]
-       [:td.small {:title (some-> (get row fid) str)
-                   :data-label flabel}
-        (render-field-value (get row fid))])
-     [:td
-      {:data-label (i18n/tr :common/actions)}
-      [:div.d-flex.gap-1
-       (when has-pivot?
-         [:a.btn.btn-sm.btn-outline-primary
-          {:href (str "/tabgrid/pivot-form"
-                      "?through_table=" through
-                      "&parent_fk=" fk
-                      "&parent_id=" parent-id
-                      "&related_fk=" related-fk
-                      "&related_id=" related-id
-                      "&active_tab=" pane-id
-                      "&return_url=" return-url)
-           :title (i18n/tr :pivot/edit-attributes)}
-          [:i.bi.bi-sliders]])
-       [:form.d-inline
-        {:method "POST" :action "/tabgrid/dissociate"}
-        (csrf-field)
-        [:input {:type "hidden" :name "through_table" :value through}]
-        [:input {:type "hidden" :name "parent_fk" :value fk}]
-        [:input {:type "hidden" :name "parent_id" :value parent-id}]
-        [:input {:type "hidden" :name "related_fk" :value related-fk}]
-        [:input {:type "hidden" :name "related_id" :value related-id}]
-        [:input {:type "hidden" :name "active_tab" :value pane-id}]
-        [:button.btn.btn-sm.btn-outline-danger
-         {:type "submit"
-          :title (i18n/tr :subgrid/unlink)
-          :onclick (str "return confirm('" (i18n/tr :confirm/unlink) "')")}
-         [:i.bi.bi-x-circle-fill]]]]]]))
-
-(defn render-m2m-pane
-  [request entity-name entity-title subgrid selected-parent-id]
-  (let [sg-name (safe-id (name (:entity subgrid)))
-        records (:records subgrid)
-        fields (:fields subgrid)
-        through (name (:through-table subgrid))
-        fk (name (:foreign-key subgrid))
-        related-fk (name (:related-fk subgrid))
-        pane-id (str entity-name "-" sg-name "-pane")
-        junction-entity (keyword (or through (name (:entity subgrid))))
-        junction-cfg (try (config/get-entity-config junction-entity)
-                          (catch Exception _ nil))
-        fk-ids #{(keyword fk) (keyword related-fk)}
-        has-pivot? (boolean (some #(and (not= :hidden (:type %))
-                                        (not (contains? fk-ids (:id %))))
-                                  (:fields junction-cfg)))
-        link-url (str "/tabgrid/link-form"
-                      "?through_table=" through
-                      "&parent_fk=" fk
-                      "&parent_id=" selected-parent-id
-                      "&related_entity=" (name (:related-entity subgrid))
-                      "&related_fk=" related-fk
-                      "&return_url=/admin/" entity-name "/" selected-parent-id
-                      "&active_tab=" pane-id)]
-    [:div.ws-pane-card
-     [:div.ws-pane-toolbar
-      [:span.ws-pane-title
-       [:i.me-1 {:class (or (:icon subgrid) "bi bi-link-45deg")}]
-       (or entity-title (:title subgrid))
-       [:span.badge.bg-secondary.ms-2 (or (:count subgrid) 0)]]
-      [:a.btn.btn-sm.btn-success
-       {:href link-url}
-       [:i.bi.bi-plus-circle.me-1] (i18n/tr :subgrid/link)]]
-     (when (seq records)
-       [:div.subgrid-search-wrap
-        [:input.subgrid-search.form-control.form-control-sm
-         {:type "search" :placeholder (str (i18n/tr :common/search) "...")}]
-        [:span.badge.rounded-pill.bg-light.text-secondary.border.subgrid-clear
-         [:i.bi.bi-x] (str " " (i18n/tr :common/clear))]])
-      (if (seq records)
-        [:div.table-responsive
-         (into [:table.table.table-hover.table-sm.table-bordered.mb-0.subgrid-table
-                {:id (str entity-name "-" sg-name "-table")}
-              [:thead
-               [:tr
-                (for [[_ label] fields] [:th.subgrid-sortable label [:i.bi.bi-chevron-expand.ms-1]])
-                [:th {:style "width:100px"}
-                 (i18n/tr :common/actions)]]]]
-             [(into [:tbody]
-                    (map (partial render-m2m-row
-                                  request fields has-pivot? through
-                                  fk related-fk selected-parent-id entity-name pane-id)
-                          records))])]
-        [:div.text-center.p-4.text-muted
-        [:i.bi.bi-link {:style "font-size:2rem;opacity:0.4"}]
-        [:p.mt-2 (i18n/tr :subgrid/no-associations)]])]))
-
-;;; -- Tab strip + panes -----------------------------------------------
-
-(defn- tab-cls [rel-type idx]
-  (str (case rel-type
-         :one-to-one   "ws-tab ws-tab-o2o"
-         :many-to-many "ws-tab ws-tab-m2m"
-         "ws-tab ws-tab-otm")
-       (when (= idx 0) " active")))
-
-(defn- render-tab-strip [request entity-name subgrids]
-  (into [:div.ws-tab-strip {:role "tablist"}]
-        (map-indexed
-         (fn [idx sg]
-           (let [sg-name (safe-id (name (:entity sg)))
-                 pane-id (str entity-name "-" sg-name "-pane")
-                 rel-type (:relationship-type sg)
-                 rel-label (case rel-type
-                             :one-to-one (i18n/tr :subgrid/rel-11-label)
-                             :one-to-many (i18n/tr :subgrid/rel-1n-label)
-                             :many-to-many (i18n/tr :subgrid/rel-nm-label))
-                 rel-icon (case rel-type
-                            :one-to-one "bi bi-person-badge"
-                            :one-to-many "bi bi-list-ul"
-                            :many-to-many "bi bi-link-45deg")
-                 cnt (:count sg)]
-             [:button
-              {:class (tab-cls rel-type idx)
-               :role "tab"
-               :data-pane (str "#" pane-id)}
-              [:i.me-1 {:class rel-icon}]
-              [:span (:title sg)]
-              [:span.ws-tab-end
-               (when-let [c cnt]
-                 [:span.ws-tab-pill c])]]))
-         subgrids)))
-
-(defn- render-tab-panes
-  [request entity-name subgrids selected-parent-id]
-  (into [:div.ws-tab-content]
-        (map-indexed
-         (fn [idx sg]
-           (let [sg-name  (safe-id (name (:entity sg)))
-                 pane-id  (str entity-name "-" sg-name "-pane")
-                 rel-type (:relationship-type sg)]
-             [:div
-              {:id    pane-id
-               :class (str "ws-tab-pane" (when (= idx 0) " active"))}
-              (case rel-type
-                :one-to-one
-                (render-o2o-pane request entity-name selected-parent-id sg)
-                :many-to-many
-                (render-m2m-pane request entity-name nil sg selected-parent-id)
-                (render-otm-pane request entity-name sg selected-parent-id))]))
-         subgrids)))
-
-;;; -- Tab switching JS (minimal, inline) ------------------------------
-
-(defn- tab-switch-js
-  "Inline vanilla JS for tab switching"
-  []
+(defn- tabgrid-js [entity-name search-id]
   [:script
-   "(function(){
-       var s=document.querySelector('.ws-tab-strip');
-       if(s){
-        s.addEventListener('click',function(e){
-          var t=e.target.closest('.ws-tab');
-          if(!t)return;
-          var p=t.getAttribute('data-pane');
-          if(!p)return;
-          s.querySelectorAll('.ws-tab').forEach(function(x){x.classList.remove('active');});
-          t.classList.add('active');
-          document.querySelectorAll('.ws-tab-pane').forEach(function(x){x.classList.remove('active');});
-          var pane=document.querySelector(p);
-          if(pane)pane.classList.add('active');
-          if(p.charAt(0)==='#')p=p.substring(1);
-          var u=new URL(window.location);
-          u.searchParams.set('active_tab',p);
-          window.history.replaceState(null,'',u.toString());
-        });
-       }
+   (str
+    "(function(){"
+    ;; ── Ctrl+K shortcut ──
+    "document.addEventListener('keydown',function(e){"
+    "if((e.ctrlKey||e.metaKey)&&e.key==='k'){"
+    "e.preventDefault();"
+    "var s=document.getElementById('" search-id "');"
+    "if(s){s.focus();s.select();}"
+    "}"
+    "});"
+    ;; ── Keyboard nav in record list ──
+    "document.getElementById('" search-id "').addEventListener('keydown',function(e){"
+    "var list=document.getElementById('record-list-" entity-name "');"
+    "var items=Array.from(list.querySelectorAll('.list-group-item[data-id]:not([style*=\"display: none\"]'));"
+    "var cur=items.findIndex(function(i){return i===document.activeElement||i===e.target.closest('.list-group-item');});"
+    "if(e.key==='ArrowDown'){e.preventDefault();var n=cur<items.length-1?cur+1:0;items[n].focus();}"
+    "if(e.key==='ArrowUp'){e.preventDefault();var p=cur>0?cur-1:items.length-1;items[p].focus();}"
+    "if(e.key==='Enter'&&document.activeElement.classList.contains('list-group-item')){"
+    "document.activeElement.click();}"
+    "});"
+    ;; ── Mobile auto-scroll to detail ──
+    "var dt=document.querySelector('.tg-entity-header');"
+    "if(dt&&window.innerWidth<768){"
+    "setTimeout(function(){dt.scrollIntoView({behavior:'smooth',block:'start'});},150);"
+    "}"
+    ;; ── Subgrid persistent search ──
+    "function filterSubgrid(key){"
+    "var tbl=document.querySelector('.tg-sg-table[data-sg-key=\"'+key+'\"]');"
+    "if(!tbl)return;"
+    "var input=document.querySelector('.tg-sg-search[data-sg-key=\"'+key+'\"]');"
+    "var clear=document.querySelector('.tg-sg-clear[data-sg-key=\"'+key+'\"]');"
+    "var countEl=document.querySelector('.tg-sg-count[data-sg-key=\"'+key+'\"]');"
+    "var q=(input.value||'').toLowerCase().trim();"
+    "var rows=Array.from(tbl.querySelectorAll('tbody tr'));"
+    "var shown=0;"
+    "rows.forEach(function(r){"
+    "var txt=r.textContent.toLowerCase();"
+    "var match=!q||txt.indexOf(q)!==-1;"
+    "r.style.display=match?'':'none';"
+    "if(match)shown++;"
+    "});"
+    "if(clear)clear.style.display=q?'':'none';"
+    "if(countEl){"
+    "if(q){countEl.textContent=shown+'/'+rows.length;}"
+    "else{countEl.textContent='';}"
+    "}"
+    "}"
+    "document.querySelectorAll('.tg-sg-search').forEach(function(input){"
+    "var key=input.getAttribute('data-sg-key');"
+    "var saved=sessionStorage.getItem('sgf_'+key);"
+    "if(saved){input.value=saved;}"
+    "filterSubgrid(key);"
+    "input.addEventListener('input',function(){"
+    "sessionStorage.setItem('sgf_'+key,input.value);"
+    "filterSubgrid(key);"
+    "});"
+    "});"
+    "document.querySelectorAll('.tg-sg-clear').forEach(function(btn){"
+    "btn.addEventListener('click',function(){"
+    "var key=btn.getAttribute('data-sg-key');"
+    "var input=document.querySelector('.tg-sg-search[data-sg-key=\"'+key+'\"]');"
+    "if(input){input.value='';sessionStorage.removeItem('sgf_'+key);filterSubgrid(key);input.focus();}"
+    "});"
+    "});"
+    "})()")])
 
-        if(s){
-         var p=new URLSearchParams(window.location.search).get('active_tab');
-         if(p){
-           var b=document.querySelector('[data-pane=\"#'+p+'\"]');
-           if(b)b.click();
-           setTimeout(function(){
-             var l=document.querySelector('.ws-record-list'),
-                 a=l&&l.querySelector('.ws-record-item.active');
-             if(a)l.scrollTop=Math.max(0,a.offsetTop-l.clientHeight/2);
-           },0);
-         }
-        }
-        var ei=new URLSearchParams(window.location.search).get('edited_id');
-       if(ei){
-         (function eiPoll(){
-           var r=document.querySelector('[data-row-id=\"'+ei+'\"]');
-           if(r){
-             r.style.background='#c7d2fe';
-             setTimeout(function(){r.scrollIntoView({block:'center',inline:'nearest'});},50);
-           }else{setTimeout(eiPoll,50);}
-         })();
-       }
-        var si=document.querySelectorAll('.subgrid-search');
-        [].forEach.call(si,function(i){
-          var sk='sg_'+i.closest('.ws-pane-card').querySelector('.subgrid-table').id;
-          var sv=sessionStorage.getItem(sk);
-          if(sv){i.value=sv;}
-          i.addEventListener('input',function(){
-            var q=this.value.toLowerCase().trim(),t=this.closest('.ws-pane-card').querySelector('.subgrid-table');
-            if(!t)return;
-            sessionStorage.setItem(sk,q);
-            [].forEach.call(t.querySelectorAll('tbody tr'),function(r){
-              var f=0; [].forEach.call(r.cells,function(c){if(c.textContent.toLowerCase().indexOf(q)>-1)f=1;});
-              r.style.display=f?'':'none';
-            });
-          });
-          if(sv){i.dispatchEvent(new Event('input',{bubbles:true}));}
-          var ci=i.parentNode.querySelector('.subgrid-clear');
-          if(ci){
-            if(i.value)ci.style.display='inline';
-            i.addEventListener('input',function(){ci.style.display=this.value?'inline':'none';});
-            ci.addEventListener('click',function(){
-              i.value='';ci.style.display='none';sessionStorage.setItem(sk,'');
-              [].forEach.call(i.closest('.ws-pane-card').querySelector('.subgrid-table').querySelectorAll('tbody tr'),function(r){r.style.display='';});
-            });
-          }
-        });
-        var ni=document.getElementById('ws-nav-search-input');
-        if(ni){
-          ni.addEventListener('input',function(){
-            var q=this.value.toLowerCase().trim(),ul=document.querySelector('.ws-record-list');
-            if(!ul)return;
-            [].forEach.call(ul.querySelectorAll('.ws-record-item'),function(li){
-              li.style.display=(!q||li.textContent.toLowerCase().indexOf(q)>-1)?'':'none';
-            });
-          });
-        }
-       [].forEach.call(document.querySelectorAll('.subgrid-table'),function(t){
-         var hs=t.querySelectorAll('th.subgrid-sortable');
-         [].forEach.call(hs,function(h){h.addEventListener('click',function(){
-           var c=this.cellIndex,d=this.getAttribute('data-dir')||'asc';d=d==='asc'?'desc':'asc';
-           this.setAttribute('data-dir',d);
-           [].forEach.call(hs,function(x){x.querySelector('i').className='bi bi-chevron-expand ms-1';});
-           this.querySelector('i').className=d==='asc'?'bi bi-chevron-up ms-1':'bi bi-chevron-down ms-1';
-           var a=[].slice.call(t.querySelector('tbody').rows).sort(function(x,y){
-             var u=x.cells[c].textContent.trim(),v=y.cells[c].textContent.trim();
-             var p=parseFloat(u),q=parseFloat(v);
-             return!isNaN(p)&&!isNaN(q)?(d==='asc'?p-q:q-p):d==='asc'?u.localeCompare(v):v.localeCompare(u);
-           });
-           a.forEach(function(r){t.querySelector('tbody').appendChild(r);});
-         });});
-       });
-     })()"])
+(defn- render-entity-summary [entity-name title fields row actions]
+  (let [display-name (or (some-> (first fields) key row str) title)]
+    [:div.card.mb-4.shadow-sm.border-0.overflow-hidden.tg-entity-header
+     ;; ── Header with accent bar ──
+     [:div.card-header.border-0.pb-0.pt-4.px-4
+      {:style "background: linear-gradient(135deg, rgba(13,110,253,0.05) 0%, rgba(108,117,125,0.02) 100%);"}
+      [:div.d-flex.justify-content-between.align-items-start.flex-column.flex-md-row.g-3
+       [:div.d-flex.align-items-center.gap-3
+        [:div.d-flex.align-items-center.justify-content-center.rounded-3.shadow-sm
+         {:style "width: 48px; height: 48px; background: linear-gradient(135deg, var(--tg-primary) 0%, color-mix(in srgb, var(--tg-primary) 60%, #6610f2) 100%);"}
+         [:i.bi.bi-folder2-open.text-white.fs-5]]
+        [:div
+         [:h4.fw-bold.mb-0.ls-tight (str display-name)]
+         [:span.badge.bg-secondary-subtle.text-secondary-emphasis.rounded-pill.fs-7.mt-1
+          (str "#" (get-record-id entity-name row))]]]
+       [:div.d-flex.flex-wrap.gap-2
+        (when (:edit actions)
+          [:a.btn.btn-primary.btn-sm.px-3.fw-semibold.shadow-sm
+           {:href (str "/admin/" entity-name "/edit-form/" (get-record-id entity-name row))}
+           [:i.bi.bi-pencil-square.me-1] (i18n/tr :common/edit)])
+        (when (:delete actions)
+          [:form.d-inline {:method "POST" :action (str "/admin/" entity-name "/delete/" (get-record-id entity-name row))
+                           :onsubmit (str "return confirm('" (i18n/tr :confirm/delete) "')")}
+           (csrf-field)
+           [:button.btn.btn-sm.btn-outline-danger.px-3.fw-semibold
+            {:type "submit"}
+            [:i.bi.bi-trash3.me-1] (i18n/tr :common/delete)]])]]]
+     ;; ── Fields grid ──
+     [:div.card-body.pt-3.pb-4.px-4
+      [:div.row.g-3
+       (for [[field-id label] fields
+             :let [val (get row field-id)
+                   icon (field-type-icon field-id)
+                   color (field-type-color field-id)]]
+         [:div.col-12.col-md-6
+          [:div.border.rounded-3.p-3.h-100.field-card-hover
+           [:div.d-flex.align-items-center.gap-2.mb-1
+            [:i.bi {:class [icon color] :style "font-size: 0.8rem;"}]
+            [:div.text-uppercase.text-muted.fs-7.fw-semibold label]]
+           [:div.fs-6 {:style "min-height: 1.5em; word-break: break-word;"} (field-value val)]]])]]]))
 
-(defn render-accordion-content
-  "Renders workspace tab content."
-  [request entity-name title fields rows actions subgrids selected-parent-id]
-  (let [parent-row (first rows)
-        relationship-count (count subgrids)]
-    [:div.ws-main
-     ;; Status bar with relationship count
-     (when (pos? relationship-count)
-       (let [total (reduce + (map #(or (:count %) 0) subgrids))]
-         [:div.ws-status-bar
-          [:div.ws-status-item
-           [:i.bi.bi-diagram-3.me-1]
-           [:span (i18n/tr :subgrid/relationships {:count relationship-count})]]
-          (when (pos? total)
-            [:div.ws-status-item
-             [:i.bi.bi-table.me-1]
-             [:span (i18n/tr :subgrid/total-records {:count total})]])]))
-     (render-record-header request entity-name title fields parent-row actions)
-     (when (seq subgrids)
-       [:div.ws-tabs-container
-        (render-tab-strip request entity-name subgrids)
-        (render-tab-panes request entity-name subgrids selected-parent-id)])
-     (tab-switch-js)]))
+(defn- pivot-fields?
+  [through-table parent-fk related-fk]
+  (try
+    (let [cfg     (config/get-entity-config through-table)
+          fk-ids  #{parent-fk related-fk}
+          visible (remove #(or (= :hidden (:type %))
+                               (contains? fk-ids (:id %)))
+                          (:fields cfg))]
+      (seq visible))
+    (catch Exception _ false)))
 
-(defn render-tab-content
-  "Legacy alias."
-  [request entity-name title fields rows actions subgrids selected-parent-id]
-  (render-accordion-content request entity-name title fields rows actions
-                            subgrids selected-parent-id))
+(defn- m2m-action-btns
+  [subgrid parent-id record return-url]
+  (let [through-table (:through-table subgrid)
+        parent-fk     (name (:foreign-key subgrid))
+        related-fk    (name (:related-fk subgrid))
+        related-id    (:id record)]
+    [:div.d-flex.gap-1
+     (when (pivot-fields? through-table
+                          (keyword parent-fk) (keyword related-fk))
+       [:a.btn.btn-outline-secondary.btn-sm.rounded-pill
+        {:href (str "/tabgrid/pivot-form"
+                    "?through_table=" (name through-table)
+                    "&parent_fk=" parent-fk
+                    "&parent_id=" parent-id
+                    "&related_fk=" related-fk
+                    "&related_id=" related-id
+                    "&return_url=" (ring-codec/url-encode return-url))
+         :title (i18n/tr :common/edit)}
+        [:i.bi.bi-sliders]])
+     [:form.d-inline
+      {:method "POST"
+       :action "/tabgrid/dissociate"}
+      (csrf-field)
+      [:input {:type "hidden" :name "through_table" :value (name through-table)}]
+      [:input {:type "hidden" :name "parent_fk" :value parent-fk}]
+      [:input {:type "hidden" :name "parent_id" :value (str parent-id)}]
+      [:input {:type "hidden" :name "related_fk" :value related-fk}]
+      [:input {:type "hidden" :name "related_id" :value (str related-id)}]
+      [:input {:type "hidden" :name "return_url" :value return-url}]
+      [:button.btn.btn-outline-danger.btn-sm.rounded-pill
+       {:type "submit"
+        :onclick "return confirm('¿Desvincular?')"
+        :title (i18n/tr :subgrid/unlink)}
+       [:i.bi.bi-x-lg]]]]))
 
-(defn render-parent-selector-modal
-  "Modal to pick a parent record."
-  [request entity-name title fields all-rows]
-  [:div.modal.fade
-   {:id (str entity-name "-select-parent-modal") :tabindex "-1"}
-   [:div.modal-dialog.modal-xl
-    [:div.modal-content
-     [:div.modal-header.bg-primary.text-white
-      [:h5.modal-title
-       [:i.bi.bi-search.me-2] (i18n/tr :common/select) " " title]
-      [:button.btn-close.btn-close-white
-       {:type "button" :data-bs-dismiss "modal"}]]
-     [:div.modal-body
-      [:table.table.table-hover.table-sm
-       {:id (str entity-name "-select-table")}
-       [:thead
-        [:tr
-         [:th (i18n/tr :common/select)]
-         (for [[_ label] fields] [:th label])]]
-       [:tbody
-        (for [row all-rows]
-          [:tr
-           [:td
-            [:a.btn.btn-sm.btn-success
-             {:href (str "/admin/" entity-name "/" (get-record-id entity-name row))}
-             [:i.bi.bi-check-circle.me-1] (i18n/tr :common/select)]]
-           (for [[field-id flabel] fields]
-             [:td {:data-label flabel} (render-field-value (get row field-id))])])]]]
-     [:div.modal-footer
-      [:button.btn.btn-secondary {:type "button" :data-bs-dismiss "modal"}
-       (i18n/tr :common/close)]]]]])
+(defn- subgrid-search-bar
+  "Renders a persistent search input for a subgrid table. Keyed by sg-key."
+  [sg-key]
+  [:div.px-3.py-2.tg-sg-search-bar.d-flex.align-items-center.gap-2
+   [:div.input-group.input-group-sm
+    [:span.input-group-text.border-0.bg-body-tertiary.text-muted
+     [:i.bi.bi-search {:style "font-size: 0.8rem;"}]]
+     [:input.form-control.border-0.bg-body-tertiary.tg-sg-search
+     {:type "text"
+      :placeholder (i18n/tr :subgrid/search)
+      :data-sg-key sg-key
+      :aria-label (i18n/tr :subgrid/search)}]
+    [:button.btn.btn-outline-secondary.border-0.tg-sg-clear
+     {:type "button"
+      :data-sg-key sg-key
+      :title (i18n/tr :subgrid/clear-filter)
+      :style "display:none;"}
+     [:i.bi.bi-x-lg]]]
+   [:small.text-muted.tg-sg-count {:data-sg-key sg-key :style "white-space:nowrap;"}]])
 
-(defn render-tabgrid
-  "Entry point: full Entity Workspace."
-  [request entity-name title fields rows all-rows actions subgrids]
-  (let [first-row          (first rows)
-        selected-parent-id (or (some-> (get-in request [:params :id]) str)
-                               (when first-row
-                                 (str (get-record-id entity-name first-row))))]
+(defn- render-m2m-card
+  [entity-name parent-id subgrid]
+  (let [sg-fields  (:fields subgrid)
+        return-url (str "/admin/" entity-name "/" parent-id)
+        through     (name (:through-table subgrid))
+        parent-fk   (name (:foreign-key subgrid))
+        related-fk  (name (:related-fk subgrid))
+        related-ent (name (:related-entity subgrid))]
+    [:div.card.mb-3.shadow-sm.border-0.overflow-hidden.tg-subgrid-m2m
+     [:div.card-header.d-flex.justify-content-between.align-items-center.py-3.border-0
+      {:style "background: linear-gradient(135deg, rgba(13,110,253,0.04) 0%, rgba(111,66,193,0.04) 100%);"}
+      [:div.d-flex.align-items-center.gap-2
+       [:div.bg-primary-subtle.rounded-2.d-flex.align-items-center.justify-content-center.shadow-sm
+        {:style "width: 40px; height: 40px;"}
+        [:i.bi.text-primary-emphasis.fs-5 {:class (:icon subgrid)}]]
+       [:div
+        [:div.d-flex.align-items-center.gap-2
+         [:h6.mb-0.fw-semibold (:title subgrid)]
+         [:span.badge.rounded-pill.bg-primary-subtle.text-primary-emphasis.fs-7.fw-semibold "M:M"]]
+        [:small.text-muted (str (or (:count subgrid) 0) " " (i18n/tr :subgrid/linked))]]]
+      [:a.btn.btn-sm.btn-primary.px-3.fw-semibold.shadow-sm
+       {:href (str "/tabgrid/link-form"
+                   "?through_table=" through
+                   "&parent_fk=" parent-fk
+                   "&parent_id=" parent-id
+                   "&related_entity=" related-ent
+                   "&related_fk=" related-fk
+                   "&return_url=" (ring-codec/url-encode return-url))}
+       [:i.bi.bi-link-45deg.me-1] (i18n/tr :subgrid/link)]]
+     [:div.card-body.p-0
+      (when (seq (:records subgrid))
+        (subgrid-search-bar (str entity-name "-" related-ent)))
+      (if (seq (:records subgrid))
+        [:div.table-responsive
+         [:table.table.table-hover.mb-0.tg-sg-table
+          {:data-sg-key (str entity-name "-" related-ent)}
+          [:thead.bg-body-tertiary
+           [:tr
+            (for [[fid label] sg-fields]
+              [:th.fw-semibold.text-uppercase.fs-7.text-muted.px-3 label])
+            [:th.text-end.fw-semibold.text-uppercase.fs-7.text-muted.px-3 (i18n/tr :common/actions)]]]
+          [:tbody
+           (for [record (:records subgrid)
+                 :let [rid (:id record)]]
+             ^{:key rid}
+             [:tr
+              (for [[fid label] sg-fields]
+                [:td.px-3.py-2 {:data-label label} (field-value (get record fid))])
+              [:td.text-end.text-nowrap.px-3.py-2 {:data-label (i18n/tr :common/actions)}
+               (m2m-action-btns subgrid parent-id record return-url)]])]]]
+        [:div.text-center.py-5.tg-empty-state
+         [:div.d-inline-flex.align-items-center.justify-content-center.rounded-3.bg-primary-subtle.mb-3
+          {:style "width: 64px; height: 64px;"}
+          [:i.bi.bi-link-45deg.fs-1.text-primary-emphasis]]
+         [:h6.fw-semibold.text-muted.mb-1 (i18n/tr :grid/no-records)]
+         [:a.btn.btn-sm.btn-outline-primary.px-3.fw-semibold.mt-2
+          {:href (str "/tabgrid/link-form"
+                      "?through_table=" through
+                      "&parent_fk=" parent-fk
+                      "&parent_id=" parent-id
+                      "&related_entity=" related-ent
+                      "&related_fk=" related-fk
+                      "&return_url=" (ring-codec/url-encode return-url))}
+          [:i.bi.bi-link-45deg.me-1] (i18n/tr :subgrid/link)]])]]))
+
+(defn- render-1to1-card
+  [entity-name parent-id subgrid]
+  (let [sg-entity  (:entity subgrid)
+        sg-name    (name sg-entity)
+        sg-fields  (:fields subgrid)
+        actions    (:actions subgrid)
+        record     (:record subgrid)
+        return-url (str "/admin/" entity-name "/" parent-id)]
+    [:div.card.mb-3.shadow-sm.border-0.overflow-hidden.tg-subgrid-1to1
+     [:div.card-header.d-flex.justify-content-between.align-items-center.py-3.border-0
+      {:style "background: linear-gradient(135deg, rgba(13,202,240,0.06) 0%, rgba(108,117,125,0.03) 100%);"}
+      [:div.d-flex.align-items-center.gap-2
+       [:div.bg-info-subtle.rounded-2.d-flex.align-items-center.justify-content-center.shadow-sm
+        {:style "width: 40px; height: 40px;"}
+        [:i.bi.text-info-emphasis.fs-5 {:class (:icon subgrid)}]]
+       [:div
+        [:div.d-flex.align-items-center.gap-2
+         [:h6.mb-0.fw-semibold (:title subgrid)]
+         [:span.badge.rounded-pill.bg-info-subtle.text-info-emphasis.fs-7.fw-semibold "1:1"]]
+        [:small.text-muted (if record (i18n/tr :subgrid/has-record) (i18n/tr :subgrid/no-record))]]]
+      (when (and (:new actions) (not record))
+        [:a.btn.btn-sm.btn-info.px-3.fw-semibold.text-white.shadow-sm
+         {:href (str "/admin/" sg-name "/add-form/" parent-id
+                     "?return_url=" (ring-codec/url-encode return-url)
+                     "&parent_entity=" entity-name)}
+         [:i.bi.bi-plus.me-1] (i18n/tr :common/new)])]
+     [:div.card-body.p-0
+      (if record
+        [:div.table-responsive
+         [:table.table.table-hover.mb-0
+          [:thead.bg-body-tertiary
+           [:tr
+            (for [[fid label] sg-fields]
+              [:th.fw-semibold.text-uppercase.fs-7.text-muted.px-3 label])
+            (when (:edit actions)
+              [:th.text-end.fw-semibold.text-uppercase.fs-7.text-muted.px-3 (i18n/tr :common/actions)])]]
+          [:tbody
+           [:tr
+            (for [[fid label] sg-fields]
+              [:td.px-3.py-2 {:data-label label} (field-value (get record fid))])
+            (when (:edit actions)
+              [:td.text-end.text-nowrap.px-3.py-2 {:data-label (i18n/tr :common/actions)}
+               [:a.btn.btn-outline-primary.btn-sm.rounded-pill
+                {:href (str "/admin/" sg-name "/edit-form/" (:id record)
+                            "?return_url=" (ring-codec/url-encode return-url))
+                 :title (i18n/tr :common/edit)}
+                [:i.bi.bi-pencil.me-1] (i18n/tr :common/edit)]])]]]]
+        [:div.text-center.py-5.tg-empty-state
+         [:div.d-inline-flex.align-items-center.justify-content-center.rounded-3.bg-info-subtle.mb-3
+          {:style "width: 64px; height: 64px;"}
+          [:i.bi.bi-inbox.fs-1.text-info-emphasis]]
+         [:h6.fw-semibold.text-muted.mb-1 (i18n/tr :grid/no-records)]
+         (when (:new actions)
+           [:a.btn.btn-sm.btn-outline-info.px-3.fw-semibold.mt-2
+            {:href (str "/admin/" sg-name "/add-form/" parent-id
+                        "?return_url=" (ring-codec/url-encode return-url)
+                        "&parent_entity=" entity-name)}
+            [:i.bi.bi-plus-circle.me-1] (i18n/tr :common/new)])])]]))
+
+(defn- action-btns-1toN
+  [sg-name actions return-url record]
+  (let [rid (:id record)]
+    [:div.d-flex.gap-1
+     (when (:edit actions)
+       [:a.btn.btn-outline-primary.btn-sm.rounded-pill
+        {:href (str "/admin/" sg-name "/edit-form/" rid
+                    "?return_url=" (ring-codec/url-encode return-url))
+         :title (i18n/tr :common/edit)}
+        [:i.bi.bi-pencil.me-1] (i18n/tr :common/edit)])
+     (when (:delete actions)
+       [:form.d-inline
+        {:method "POST"
+         :action (str "/admin/" sg-name "/delete/" rid)}
+        (csrf-field)
+        [:input {:type "hidden" :name "return_url" :value return-url}]
+        [:button.btn.btn-outline-danger.btn-sm.rounded-pill
+         {:type "submit" :onclick "return confirm('¿Está seguro?')"
+          :title (i18n/tr :common/delete)}
+         [:i.bi.bi-trash3.me-1] (i18n/tr :common/delete)]])]))
+
+(defn- render-1toN-card
+  [entity-name parent-id subgrid]
+  (let [sg-entity  (:entity subgrid)
+        sg-name    (name sg-entity)
+        sg-fields  (:fields subgrid)
+        actions    (:actions subgrid)
+        return-url (str "/admin/" entity-name "/" parent-id)
+        action-btns (partial action-btns-1toN sg-name actions return-url)]
+    [:div.card.mb-3.shadow-sm.border-0.overflow-hidden.tg-subgrid-1toN
+     [:div.card-header.d-flex.justify-content-between.align-items-center.py-3.border-0
+      {:style "background: linear-gradient(135deg, rgba(25,135,84,0.06) 0%, rgba(108,117,125,0.03) 100%);"}
+      [:div.d-flex.align-items-center.gap-2
+       [:div.bg-success-subtle.rounded-2.d-flex.align-items-center.justify-content-center.shadow-sm
+        {:style "width: 40px; height: 40px;"}
+        [:i.bi.text-success-emphasis.fs-5 {:class (:icon subgrid)}]]
+       [:div
+        [:div.d-flex.align-items-center.gap-2
+         [:h6.mb-0.fw-semibold (:title subgrid)]
+         [:span.badge.rounded-pill.bg-success-subtle.text-success-emphasis.fs-7.fw-semibold "1:N"]]
+        [:small.text-muted (str (or (:count subgrid) 0) " " (i18n/tr :tabgrid/total-records))]]]
+      (when (:new actions)
+        [:a.btn.btn-sm.btn-success.px-3.fw-semibold.text-white.shadow-sm
+         {:href (str "/admin/" sg-name "/add-form/" parent-id
+                     "?return_url=" (ring-codec/url-encode return-url)
+                     "&parent_entity=" entity-name)}
+         [:i.bi.bi-plus.me-1] (i18n/tr :common/new)])]
+     [:div.card-body.p-0
+      (when (seq (:records subgrid))
+        (subgrid-search-bar (str entity-name "-" sg-name)))
+      (if (seq (:records subgrid))
+        [:div.table-responsive
+         [:table.table.table-hover.mb-0.tg-sg-table
+          {:data-sg-key (str entity-name "-" sg-name)}
+          [:thead.bg-body-tertiary
+           [:tr
+            (for [[fid label] sg-fields]
+              [:th.fw-semibold.text-uppercase.fs-7.text-muted.px-3 label])
+            [:th.text-end.fw-semibold.text-uppercase.fs-7.text-muted.px-3 (i18n/tr :common/actions)]]]
+          [:tbody
+           (for [record (:records subgrid)
+                 :let [rid (:id record)]]
+             ^{:key rid}
+             [:tr
+              (for [[fid label] sg-fields]
+                [:td.px-3.py-2 {:data-label label} (field-value (get record fid))])
+              [:td.text-end.text-nowrap.px-3.py-2 {:data-label (i18n/tr :common/actions)}
+               (action-btns record)]])]]]
+        [:div.text-center.py-5.tg-empty-state
+         [:div.d-inline-flex.align-items-center.justify-content-center.rounded-3.bg-success-subtle.mb-3
+          {:style "width: 64px; height: 64px;"}
+          [:i.bi.bi-inbox.fs-1.text-success-emphasis]]
+         [:h6.fw-semibold.text-muted.mb-1 (i18n/tr :grid/no-records)]
+         (when (:new actions)
+           [:a.btn.btn-sm.btn-outline-success.px-3.fw-semibold.mt-2
+            {:href (str "/admin/" sg-name "/add-form/" parent-id
+                        "?return_url=" (ring-codec/url-encode return-url)
+                        "&parent_entity=" entity-name)}
+            [:i.bi.bi-plus-circle.me-1] (i18n/tr :common/new)])])]]))
+
+(defn- render-subgrid-card
+  [entity-name parent-id subgrid]
+  (case (:relationship-type subgrid)
+    :many-to-many (render-m2m-card entity-name parent-id subgrid)
+    :one-to-one   (render-1to1-card entity-name parent-id subgrid)
+    (render-1toN-card entity-name parent-id subgrid)))
+
+(defn render-m2m-pane [request entity-name entity-title subgrid parent-id]
+  (render-subgrid-card entity-name parent-id subgrid))
+
+(defn render-tabgrid [request entity-name title fields rows all-rows actions subgrids]
+  (let [selected-id (or (some-> (get-in request [:params :id]) str)
+                        (when-let [row (first rows)]
+                          (str (get-record-id entity-name row))))
+        selected-row (some #(when (= (str (get-record-id entity-name %)) selected-id) %) rows)
+        search-id    (str "record-list-" entity-name "-search")]
     [:div.tabgrid-container
-     {:id                      (str entity-name "-tabgrid")
-      :data-entity             entity-name
-      :data-selected-parent-id (or selected-parent-id "")}
-      ;; Breadcrumb navigation
+     ;; ── Scroll selected into view ──
+     [:script "(function(){
+       var el=document.querySelector('.list-group-item.active');
+       if(el){var c=el.closest('.tg-list-scroll');
+       if(c){var top=el.offsetTop-c.offsetTop-c.clientHeight/2+el.clientHeight/2;
+       c.scrollTop=Math.max(0,top);}}
+     })()"]
+     ;; ── Breadcrumb ──
+     [:div.mb-2
       [:nav.breadcrumb-nav
        [:ol.breadcrumb.mb-0
         [:li.breadcrumb-item
-         [:a {:href "/"} (i18n/tr :breadcrumb/home)]]
-        [:li.breadcrumb-item.active {:aria-current "page"} title]]]
-     [:div.ws-layout
-      (render-navigator request entity-name title fields
-                        all-rows selected-parent-id actions)
-      (render-accordion-content request entity-name title fields rows actions subgrids selected-parent-id)]]))
+         [:a.text-decoration-none {:href "/"} (i18n/tr :breadcrumb/home)]]
+        [:li.breadcrumb-item.active {:aria-current "page"} title]]]]
+     ;; ── Entity heading ──
+     [:div.d-flex.align-items-center.gap-2.mb-3
+      [:h3.fw-bold.mb-0.ls-tight title]
+      [:span.text-muted.fs-7 (str "(" (count all-rows) ")")]]
+     ;; ── Main layout ──
+     [:div.row.g-4
+      [:div.col-12.col-xl-4
+       (render-record-list entity-name fields all-rows selected-id actions)]
+      [:div.col-12.col-xl-8.tg-detail-col
+       (if selected-row
+         [:div
+          (render-entity-summary entity-name title fields selected-row actions)
+          (when (seq subgrids)
+            [:div
+             (for [subgrid subgrids]
+               ^{:key (str entity-name "-" (name (:entity subgrid)))}
+               (render-subgrid-card entity-name selected-id subgrid))])]
+         ;; ── Empty state: no record selected ──
+         [:div.card.shadow-sm.border-0.overflow-hidden
+          [:div.card-body.text-center.py-5.tg-empty-state
+           [:div.d-inline-flex.align-items-center.justify-content-center.rounded-3.bg-body-tertiary.mb-3
+            {:style "width: 80px; height: 80px;"}
+            [:i.bi.bi-cursor.text-body-tertiary {:style "font-size: 2rem;"}]]
+           [:h5.fw-semibold.text-muted (i18n/tr :tabgrid/no-record-selected)]
+           [:p.text-muted.mb-0 (i18n/tr :tabgrid/select-hint)]]])]]
+     ;; ── JS: Ctrl+K, keyboard nav, mobile auto-scroll ──
+     (tabgrid-js entity-name search-id)]))

@@ -1,12 +1,14 @@
 (ns cgen.tabgrid.data
   "Data fetching and transformation for TabGrid.
    Each relationship type has its own fetch strategy:
-     :one-to-many  - lazy AJAX load (existing behaviour)
-     :one-to-one   - server-side single record
-     :many-to-many - server-side linked records + available picker list"
+     :one-to-many  - SQL WHERE filtering on foreign key
+     :one-to-one   - SQL WHERE filtering, returns single record
+     :many-to-many - junction table join + related entity merge"
   (:require
+   [clojure.string :as str]
    [cgen.engine.config :as config]
-   [cgen.engine.query :as query]))
+   [cgen.engine.query :as query]
+   [cgen.models.crud :as crud]))
 
 (defn build-fields-map
   "Builds a field map for rendering from entity config"
@@ -29,35 +31,67 @@
   (query/list-with-hooks entity))
 
 (defn fetch-subgrid-records
-  "Fetches subgrid records filtered by parent foreign key"
+  "Fetches subgrid records filtered by parent foreign key using SQL WHERE."
   [subgrid-entity parent-id foreign-key]
   (when (and subgrid-entity parent-id foreign-key)
-    (let [all-records (query/list-with-hooks subgrid-entity)
-          fk-keyword  (keyword foreign-key)
-          filtered    (filter #(= (str (get % fk-keyword)) (str parent-id)) all-records)]
-      filtered)))
+    (let [cfg     (config/get-entity-config subgrid-entity)
+          table   (:table cfg)
+          conn    (:connection cfg)
+          fk-name (name foreign-key)]
+      (if table
+        (crud/Query [(str "SELECT * FROM " table " WHERE " fk-name " = ?")
+                     (Long/parseLong (str parent-id))]
+                    :conn conn)
+        ;; fallback: no table in config, use list query + filter
+        (let [fk-kw (keyword foreign-key)]
+          (filter #(= (str (get % fk-kw)) (str parent-id))
+                  (query/list-with-hooks subgrid-entity)))))))
 
 (defn fetch-one-to-one-record
-  "Fetches the single associated record for a one-to-one relationship, or nil."
+  "Fetches the single associated record for a one-to-one relationship, or nil.
+   Uses SQL WHERE filtering."
   [sg-entity parent-id foreign-key]
   (when (and sg-entity parent-id foreign-key)
-    (let [fk-kw (keyword foreign-key)]
-      (first (filter #(= (str (get % fk-kw)) (str parent-id))
-                     (query/list-with-hooks sg-entity))))))
+    (let [cfg     (config/get-entity-config sg-entity)
+          table   (:table cfg)
+          conn    (:connection cfg)
+          fk-name (name foreign-key)]
+      (if table
+        (first (crud/Query [(str "SELECT * FROM " table " WHERE " fk-name " = ?")
+                            (Long/parseLong (str parent-id))]
+                           :conn conn))
+        ;; fallback
+        (let [fk-kw (keyword foreign-key)]
+          (first (filter #(= (str (get % fk-kw)) (str parent-id))
+                         (query/list-with-hooks sg-entity))))))))
 
 (defn fetch-many-to-many-records
   "Returns the related-entity rows linked to parent-id via a junction table,
    enriched with junction-table attributes (e.g. proficiency, role).
+   Uses SQL WHERE filtering for both junction and related queries.
    Returns {:records [...] :linked-ids #{...}}."
   [junction-entity related-entity parent-id parent-fk related-fk]
   (when (and junction-entity parent-id parent-fk)
     (let [parent-fk-kw  (keyword parent-fk)
           related-fk-kw (keyword related-fk)
-          junctions     (filter #(= (str (get % parent-fk-kw)) (str parent-id))
-                                (query/list-with-hooks junction-entity))
+          junction-cfg  (config/get-entity-config junction-entity)
+          j-table       (:table junction-cfg)
+          j-conn        (:connection junction-cfg)
+          parent-id-val (Long/parseLong (str parent-id))
+          junctions     (if j-table
+                          (crud/Query [(str "SELECT * FROM " j-table
+                                          " WHERE " (name parent-fk) " = ?")
+                                       parent-id-val]
+                                      :conn j-conn)
+                          (filter #(= (str (get % parent-fk-kw)) (str parent-id))
+                                  (query/list-with-hooks junction-entity)))
           related-by-id (when related-entity
-                          (into {} (map (fn [r] [(:id r) r])
-                                        (query/list-with-hooks related-entity))))
+                          (let [r-cfg (config/get-entity-config related-entity)]
+                            (into {} (map (fn [r] [(:id r) r])
+                                          (if (:table r-cfg)
+                                            (crud/Query (str "SELECT * FROM " (:table r-cfg))
+                                                        :conn (:connection r-cfg))
+                                            (query/list-with-hooks related-entity))))))
           linked-ids    (into #{} (map #(get % related-fk-kw) junctions))]
       {:records   (mapv (fn [j]
                           (merge (get related-by-id (get j related-fk-kw) {})
@@ -66,10 +100,23 @@
        :linked-ids linked-ids})))
 
 (defn fetch-available-for-linking
-  "Returns related-entity records that are NOT yet linked via the junction table."
+  "Returns related-entity records that are NOT yet linked via the junction table.
+   Uses SQL WHERE NOT IN for efficiency when possible."
   [related-entity linked-ids]
   (when related-entity
-    (remove #(contains? linked-ids (:id %)) (query/list-with-hooks related-entity))))
+    (let [cfg    (config/get-entity-config related-entity)
+          table  (:table cfg)
+          conn   (:connection cfg)]
+      (if (and table (seq linked-ids))
+        (let [placeholders (str/join "," (repeat (count linked-ids) "?"))
+              params       (mapv #(Long/parseLong (str %)) linked-ids)
+              sql-vec      (into [(str "SELECT * FROM " table " WHERE id NOT IN (" placeholders ")")]
+                                 params)
+              records (crud/Query sql-vec :conn conn)]
+          records)
+        ;; fallback: load all and filter
+        (remove #(contains? linked-ids (:id %))
+                (query/list-with-hooks related-entity))))))
 
 (defn prepare-subgrid-config
   "Prepares a single subgrid configuration for rendering.
@@ -86,7 +133,7 @@
                     :icon              (or (:icon subgrid-spec) "bi bi-list-ul")
                     :label             (or (:label subgrid-spec) (:title sg-config))
                     :relationship-type rel-type
-                    :through-table     (:through-table subgrid-spec)
+                    :through-table     (or (:through-table subgrid-spec) sg-entity)
                     :related-entity    (:related-entity subgrid-spec)
                     :related-fk        (:related-fk subgrid-spec)
                     :fields            sg-fields

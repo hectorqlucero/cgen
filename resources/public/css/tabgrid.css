@@ -1,2309 +1,930 @@
-/* ═══════════════════════════════════════════════════════════════
-   Entity Workspace — Complete UI
-   Replaces accordion TabGrid with a permanent workspace layout.
-   ═══════════════════════════════════════════════════════════════ */
-html,
-body {
-  height: 100%;
-  min-height: 100%;
-}
+/* ========================================================
+   TabGrid UI — Theme-aware, mobile-first CRUD layout
+   ======================================================== */
 
-body {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
+/* ── Core variables ────────────────────────────────────── */
 
-#app,
-.tabgrid-container,
-.ws-layout {
-  flex: 1 1 auto;
-  min-height: 0;
-  height: 100%;
-}
-
-/* ── Design tokens ──────────────────────────────────────────────── */
 :root {
-  --footer-height: 3rem;
-  /* Adjust to match your actual footer height */
-  --ws-primary: var(--bs-primary, #4f46e5);
-  --ws-primary-dk: var(--bs-primary-dark, #3730a3);
-  --ws-primary-lt: var(--bs-primary-light, #eef2ff);
-  --ws-primary-mid: var(--bs-primary, #818cf8);
+  --tg-bg: var(--bs-body-bg, #f8f9fc);
+  --tg-surface: var(--bs-body-bg, #ffffff);
+  --tg-card-bg: var(--bs-card-bg, #ffffff);
+  --tg-border: var(--bs-border-color, #e2e8f0);
+  --tg-primary: var(--bs-primary, #0d6efd);
+  --tg-primary-soft: color-mix(in srgb, var(--bs-primary, #0d6efd) 8%, transparent);
+  --tg-primary-10: color-mix(in srgb, var(--bs-primary, #0d6efd) 6%, transparent);
+  --tg-muted: var(--bs-secondary-color, #6c757d);
+  --tg-text: var(--bs-body-color, #1a1d21);
+  --tg-radius: var(--bs-border-radius-lg, 0.75rem);
+  --tg-radius-sm: var(--bs-border-radius, 0.5rem);
+  --tg-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --tg-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --tg-shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --tg-transition: 0.2s ease;
+  --tg-transition-slow: 0.3s ease;
+  --tg-hover-bg: var(--tg-primary-soft);
+  --tg-hover-border: var(--bs-primary, #0d6efd);
+  --tg-input-bg: var(--bs-tertiary-bg, #f8f9fa);
+  --tg-active-bg: var(--bs-primary, #0d6efd);
+  --tg-active-shadow: 0 2px 12px color-mix(in srgb, var(--bs-primary, #0d6efd) 25%, transparent);
+}
 
-  --ws-warning: var(--bs-warning, #ffc107);
-  --ws-warning-bg: var(--bs-warning-bg-subtle, #fffbe6);
-  --ws-danger: var(--bs-danger, #dc3545);
-  --ws-danger-bg: var(--bs-danger-bg-subtle, #fff0f0);
-
-  --ws-rel-o2o: var(--ws-primary, #4f46e5);
-  --ws-rel-o2o-bg: var(--ws-primary-lt, #eef2ff);
-  --ws-rel-o2o-mid: var(--ws-primary-mid, #818cf8);
-  --ws-rel-otm: var(--ws-primary, #4f46e5);
-  --ws-rel-otm-bg: var(--ws-primary-lt, #eef2ff);
-  --ws-rel-otm-mid: var(--ws-primary-mid, #818cf8);
-  --ws-rel-m2m: var(--ws-primary, #4f46e5);
-  --ws-rel-m2m-bg: var(--ws-primary-lt, #eef2ff);
-  --ws-rel-m2m-mid: var(--ws-primary-mid, #818cf8);
-
-  --ws-bg: var(--bs-body-bg, #f0f2f5);
-  --ws-surface: var(--bs-body-bg, #ffffff);
-  --ws-border: var(--bs-border-color, #e5e7eb);
-  --ws-text: var(--bs-body-color, #111827);
-  --ws-muted: var(--bs-secondary-color, #6b7280);
-
-  --ws-radius: 8px;
-  --ws-radius-sm: 5px;
-  --ws-shadow: 0 1px 3px rgba(0, 0, 0, .08), 0 1px 2px rgba(0, 0, 0, .04);
-  --ws-shadow-md: 0 4px 16px rgba(0, 0, 0, .10);
+html, body {
+  min-height: 100%;
+  background: var(--tg-bg);
+  color: var(--tg-text);
 }
 
 .tabgrid-container {
-  margin: 0;
+  padding: 1rem 0 2rem;
+  animation: tg-fade-in 0.35s ease;
+}
+
+@keyframes tg-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Breadcrumb ───────────────────────────────────────── */
+
+.tabgrid-container .breadcrumb {
+  background: transparent;
   padding: 0;
-  height: 100%;
-  padding-top: 1rem;
-  padding-bottom: var(--footer-height);
-  /* fill the flex-sized content div */
+  margin-bottom: 1.25rem;
+  font-size: 0.8125rem;
 }
 
-/* Prevent page-level scroll on workspace pages (the ws-layout fills the
-   viewport itself; each panel handles its own internal overflow). */
-body:has(.tabgrid-container) {
-  overflow: hidden;
-}
-
-/* The shared layout template wraps all page content in a div with
-   max-height + overflow-y:auto (good for list pages, bad for the workspace).
-   Strip those constraints so the workspace can fill the viewport cleanly. */
-body:has(.tabgrid-container) .container-fluid.px-4 {
-  max-height: none !important;
-  overflow-y: hidden !important;
-  padding-bottom: 0 !important;
-}
-
-/* Aggressive layout fix for grid/navbar gap and sidebar scroll */
-html,
-body,
-#app,
-.tabgrid-container,
-.ws-layout,
-.ws-nav,
-.ws-record-list {
-  height: 100% !important;
-  min-height: 0 !important;
-}
-
-body:has(.tabgrid-container) .container-fluid,
-body:has(.tabgrid-container) .container,
-body:has(.tabgrid-container) .row,
-body:has(.tabgrid-container) .content {
-  margin-top: 0 !important;
-  padding-top: 0 !important;
-}
-
-.ws-nav {
-  overflow: hidden !important;
-}
-
-.ws-record-list {
-  padding-bottom: calc(var(--footer-height) + 0.5rem) !important;
-  box-sizing: border-box;
-}
-
-.ws-record-item:last-child {
-  margin-bottom: 0 !important;
-}
-
-
-
-/* Legend/info button */
-.ws-rel-legend-btn {
-  background: none;
-  border: none;
-  color: var(--ws-muted);
-  font-size: 1.1em;
-  cursor: pointer;
-  margin-left: .5em;
-  vertical-align: middle;
-  padding: 0;
-}
-
-.ws-rel-legend-popup {
-  position: absolute;
-  right: 0;
-  top: 2.2em;
-  background: var(--ws-surface);
-  color: var(--ws-text);
-  border: 1px solid var(--ws-border);
-  border-radius: var(--ws-radius-sm);
-  box-shadow: var(--ws-shadow-md);
-  font-size: .95em;
-  padding: .7em 1.2em;
-  min-width: 180px;
-  z-index: 2000;
-  display: none;
-}
-
-.ws-rel-legend-btn:focus+.ws-rel-legend-popup,
-.ws-rel-legend-btn:hover+.ws-rel-legend-popup {
-  display: block;
-}
-
-/* Relationship pill badge (for legend popup / old tab system) */
-.ws-rel-pill {
-  display: inline-flex;
-  align-items: center;
-  height: 1.1rem;
-  padding: 0 .35rem;
-  background: var(--ws-border);
-  border-radius: 999px;
-  font-size: .6rem;
-  font-weight: 700;
-  color: var(--ws-muted);
-  vertical-align: middle;
-}
-
-/* ── Navigator header actions ────────────────────────────────── */
-.ws-nav-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: .875rem 1rem;
-  border-bottom: 1px solid var(--ws-border);
-  flex-shrink: 0;
-  gap: .5rem;
-}
-
-.ws-nav-header-actions {
-  display: flex;
-  align-items: center;
-  gap: .35rem;
-}
-
-/* ── Navigator toggle button (visible only on phones/tablets) ──── */
-.ws-nav-toggle {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border: 1px solid var(--ws-border);
-  border-radius: var(--ws-radius-sm);
-  background: var(--ws-surface);
-  color: var(--ws-text);
-  cursor: pointer;
-  font-size: .85rem;
-  transition: background .15s;
-}
-
-.ws-nav-toggle:hover {
-  background: var(--ws-primary-lt);
-}
-
-.ws-nav.ws-nav-expanded .ws-nav-toggle {
-  background: var(--ws-primary-lt);
-}
-
-.ws-nav.ws-nav-expanded .ws-nav-toggle i {
-  transform: rotate(90deg);
-  transition: transform .2s ease;
-}
-
-/* ══ Layout ══════════════════════════════════════════════════════ */
-.ws-layout {
-  display: flex;
-  height: 100%;
-  min-height: 0;
-  /* fill .tabgrid-container which fills the flex content div */
-  background: var(--ws-bg);
-  border-radius: var(--ws-radius);
-  overflow: hidden;
-  box-shadow: var(--ws-shadow-md);
-}
-
-/* ════ NAVIGATOR (left panel) ════════════════════════════════════ */
-.ws-nav {
-  width: 260px;
-  min-width: 200px;
-  display: flex;
-  flex-direction: column;
-  background: var(--ws-surface);
-  border-right: 1px solid var(--ws-border);
-  flex-shrink: 0;
-  min-height: 0;
-}
-
-.ws-nav-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: .875rem 1rem;
-  border-bottom: 1px solid var(--ws-border);
-  flex-shrink: 0;
-  gap: .5rem;
-}
-
-.ws-nav-title {
-  display: flex;
-  align-items: center;
-  gap: .4rem;
-  font-size: .75rem;
-  font-weight: 700;
-  color: var(--ws-text);
-  text-transform: uppercase;
-  letter-spacing: .07em;
-  min-width: 0;
-}
-
-.ws-count-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.4rem;
-  height: 1.4rem;
-  padding: 0 .35rem;
-  background: var(--ws-primary-lt);
-  border-radius: 999px;
-  font-size: .65rem;
-  font-weight: 700;
-  color: var(--ws-primary);
-  flex-shrink: 0;
-}
-
-.ws-new-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: var(--ws-radius-sm);
-  background: linear-gradient(135deg, var(--ws-primary) 0%, var(--ws-primary-mid) 100%);
-  border: none;
-  color: var(--ws-surface);
-  cursor: pointer;
-  transition: background .15s, transform .1s;
-  font-size: 1.1rem;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.ws-new-btn:hover {
-  background: var(--ws-primary-dk);
-  transform: scale(1.06);
-}
-
-.ws-new-btn:active {
-  transform: scale(.96);
-}
-
-.ws-nav-search {
-  padding: .5rem .75rem;
-  border-bottom: 1px solid var(--ws-border);
-  flex-shrink: 0;
-}
-
-.ws-search-wrap {
-  position: relative;
-}
-
-.ws-search-icon {
-  position: absolute;
-  left: .6rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--ws-muted);
-  font-size: .78rem;
-  pointer-events: none;
-}
-
-.ws-search-input {
-  width: 100%;
-  padding: .35rem .6rem .35rem 1.9rem;
-  font-size: .8rem;
-  border: 1px solid var(--ws-border);
-  border-radius: var(--ws-radius-sm);
-  background: var(--ws-bg);
-  color: var(--ws-text);
-  outline: none;
-  transition: border-color .15s, box-shadow .15s;
-}
-
-.ws-search-input:focus {
-  border-color: var(--ws-primary-mid);
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, .08);
-  background: var(--ws-surface);
-}
-
-.ws-search-input::placeholder {
-  color: #94a3b8;
-}
-
-.ws-record-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  box-sizing: border-box;
-}
-
-.ws-record-item {
-  display: flex;
-  align-items: center;
-  gap: .625rem;
-  padding: .5rem .875rem;
-  cursor: pointer;
-  border-left: 3px solid transparent;
-  transition: background .12s, border-color .12s;
-  user-select: none;
-}
-
-.ws-record-item:hover {
-  background: var(--ws-primary-lt);
-  border-left-color: var(--ws-primary-mid);
-}
-
-.ws-record-item.active {
-  background: var(--ws-primary-lt);
-  border-left-color: var(--ws-primary);
-}
-
-.ws-avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--ws-primary) 0%, var(--ws-primary-mid) 100%);
-  color: var(--ws-surface);
-  font-size: .65rem;
-  font-weight: 700;
-  flex-shrink: 0;
-  letter-spacing: .04em;
-  box-shadow: var(--ws-shadow);
-}
-
-.ws-record-link {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
+.tabgrid-container .breadcrumb a {
+  color: var(--tg-primary);
   text-decoration: none;
-  color: inherit;
-  flex: 1;
-  min-width: 0;
+  transition: color var(--tg-transition);
 }
 
-.ws-record-item.active .ws-avatar {
-  background: linear-gradient(135deg, var(--ws-primary-dk) 0%, var(--ws-primary) 100%);
+.tabgrid-container .breadcrumb a:hover {
+  color: color-mix(in srgb, var(--tg-primary) 80%, #000);
 }
 
-.ws-record-info {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: .35rem;
-  min-width: 0;
-  flex: 1;
+.tabgrid-container .breadcrumb-item + .breadcrumb-item::before {
+  color: var(--tg-muted);
 }
 
-.ws-record-label {
-  font-size: .82rem;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--ws-text);
-  line-height: 1.3;
+/* ── Cards ─────────────────────────────────────────────── */
+
+.tabgrid-container .card {
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius);
+  box-shadow: var(--tg-shadow-sm);
+  background: var(--tg-card-bg);
+  transition: box-shadow var(--tg-transition-slow);
 }
 
-.ws-record-item.active .ws-record-label {
-  color: #3730a3;
-  font-weight: 600;
+.tabgrid-container .card:hover {
+  box-shadow: var(--tg-shadow);
 }
 
-.ws-record-secondary {
-  font-size: .72rem;
-  color: var(--ws-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.tabgrid-container .card-header {
+  background: var(--tg-card-bg);
+  border-bottom: 1px solid var(--tg-border);
 }
 
-@keyframes ws-spotlight {
-  0% {
-    background: #c7d2fe;
-    border-left-color: var(--ws-primary);
-  }
-
-  100% {
-    background: var(--ws-primary-lt);
-    border-left-color: var(--ws-primary);
-  }
+.tabgrid-container .card-header h5,
+.tabgrid-container .card-header .fw-bold {
+  font-size: 0.9375rem;
 }
 
-.ws-record-item-spotlight {
-  animation: ws-spotlight .9s ease-out forwards;
-}
+/* ── Record list ───────────────────────────────────────── */
 
-/* ════ WORKSPACE (right side) ════════════════════════════════════ */
-.ws-main {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-}
-
-/* Pinned record header */
-.ws-record-header {
-  background: var(--ws-surface);
-  border-bottom: 1px solid var(--ws-border);
-  flex-shrink: 0;
-}
-
-.ws-record-hero {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: .875rem 1.25rem .625rem;
-}
-
-.ws-hero-avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--ws-primary) 0%, var(--ws-primary-mid) 100%);
-  color: var(--ws-surface);
-  font-size: .9rem;
-  font-weight: 700;
-  flex-shrink: 0;
-  box-shadow: var(--ws-shadow-md);
-}
-
-.ws-hero-meta {
-  display: flex;
-  flex-direction: column;
-  gap: .15rem;
-  min-width: 0;
-  flex: 1;
-}
-
-.ws-hero-name {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--ws-text);
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.3;
-}
-
-.ws-hero-id {
-  font-size: .7rem;
-  color: #94a3b8;
-  font-family: ui-monospace, monospace;
-  letter-spacing: .03em;
-  display: flex;
-  align-items: center;
-  gap: .2rem;
-}
-
-.ws-hero-actions {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  flex-shrink: 0;
-}
-
-.ws-fields-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  border-top: 1px solid #f3f4f6;
-}
-
-.ws-field {
-  padding: .55rem 1.25rem;
-  border-right: 1px solid #f3f4f6;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.ws-field-label {
-  display: block;
-  font-size: .6rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  color: #94a3b8;
-  margin-bottom: .2rem;
-}
-
-.ws-field-value {
-  display: block;
-  font-size: .82rem;
-  color: var(--ws-text);
-  word-break: break-word;
-  min-height: 1.1em;
-  line-height: 1.4;
-}
-
-.ws-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  min-height: 260px;
-  color: #cbd5e1;
-  text-align: center;
-  gap: .5rem;
-}
-
-.ws-empty-state i {
-  font-size: 2.5rem;
-}
-
-.ws-empty-state p {
-  font-size: .875rem;
-  color: #94a3b8;
-  margin: 0;
-}
-
-/* ════ RELATIONSHIP TAB STRIP ════════════════════════════════════ */
-.ws-tabs-container {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.ws-tab-strip {
-  display: flex;
-  background: var(--ws-surface);
-  border-bottom: 1px solid var(--ws-border);
-  padding: 0 1rem;
-  flex-shrink: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.ws-tab-strip::-webkit-scrollbar {
-  display: none;
-}
-
-.ws-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: .4rem;
-  padding: .7rem .875rem;
-  border: none;
-  background: none;
-  color: var(--ws-muted);
-  font-size: .8rem;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  transition: color .15s, border-color .15s;
-  user-select: none;
-}
-
-.ws-tab:hover {
-  color: var(--ws-text);
-}
-
-.ws-tab.active {
-  color: var(--ws-text);
-  font-weight: 600;
-}
-
-.ws-tab-o2o.active {
-  border-bottom-color: var(--ws-rel-o2o);
-  color: var(--ws-rel-o2o);
-}
-
-.ws-tab-otm.active {
-  border-bottom-color: var(--ws-rel-otm);
-  color: var(--ws-rel-otm);
-}
-
-.ws-tab-m2m.active {
-  border-bottom-color: var(--ws-rel-m2m);
-  color: var(--ws-rel-m2m);
-}
-
-.ws-tab-end {
-  display: inline-flex;
-  align-items: center;
-  gap: .25rem;
-}
-
-.ws-tab-pill {
-  display: inline-flex;
-  align-items: center;
-  height: 1.2rem;
-  padding: 0 .35rem;
-  background: var(--ws-border);
-  border-radius: 999px;
-  font-size: .62rem;
-  font-weight: 600;
-  color: var(--ws-muted);
-  transition: background .15s, color .15s;
-}
-
-.ws-tab-o2o.active .ws-tab-pill {
-  background: var(--ws-rel-o2o-bg);
-  color: var(--ws-rel-o2o);
-}
-
-.ws-tab-otm.active .ws-tab-pill {
-  background: var(--ws-rel-otm-bg);
-  color: var(--ws-rel-otm);
-}
-
-.ws-tab-m2m.active .ws-tab-pill {
-  background: var(--ws-rel-m2m-bg);
-  color: var(--ws-rel-m2m);
-}
-
-.ws-tab-content {
-  flex: 1;
+/* ── Page scroll container ──────────────────────────────── */
+.tg-page-scroll {
   overflow-y: auto;
-  padding: 1.25rem;
-  background: var(--ws-bg);
+  padding-bottom: 1rem;
 }
 
-.ws-tab-pane {
-  display: none;
+/* ── Desktop: viewport-locked layout ────────────────────── */
+@media (min-width: 1200px) {
+  /* When tabgrid is present, lock this container — columns scroll themselves */
+  .tg-page-scroll:has(.tabgrid-container) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: 0;
+  }
+
+  .tabgrid-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Breadcrumb + heading: fixed height */
+  .tabgrid-container > .mb-2,
+  .tabgrid-container > .mb-3 {
+    flex-shrink: 0;
+  }
+
+  /* Main row: fills remaining space with definite height */
+  .tabgrid-container > .row.g-4 {
+    flex: 1 1 0;
+    min-height: 0;
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+
+  /* Left column: ~1/3 width, scroll */
+  .tabgrid-container > .row > .col-xl-4 {
+    flex: 0 0 33.333%;
+    max-width: 33.333%;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--tg-border) transparent;
+  }
+
+  /* Right column: remaining 2/3, scroll */
+  .tabgrid-container > .row > .col-xl-8 {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--tg-border) transparent;
+  }
+
+  .tabgrid-container > .row > .col-xl-4::-webkit-scrollbar,
+  .tabgrid-container > .row > .col-xl-8::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  .tabgrid-container > .row > .col-xl-4::-webkit-scrollbar-track,
+  .tabgrid-container > .row > .col-xl-8::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .tabgrid-container > .row > .col-xl-4::-webkit-scrollbar-thumb,
+  .tabgrid-container > .row > .col-xl-8::-webkit-scrollbar-thumb {
+    background: var(--tg-border);
+    border-radius: 10px;
+  }
+
+  .tabgrid-container > .row > .col-xl-4::-webkit-scrollbar-thumb:hover,
+  .tabgrid-container > .row > .col-xl-8::-webkit-scrollbar-thumb:hover {
+    background: var(--tg-muted);
+  }
+
+  /* Inner scroll wrapper redundant on desktop — column handles it */
+  .tabgrid-container .tg-list-scroll {
+    max-height: none;
+    overflow-y: visible;
+  }
+
+  .tabgrid-container .card-header.d-flex {
+    align-items: center;
+  }
 }
 
-.ws-tab-pane.active {
-  display: block;
+/* Scroll wrapper — plain div, no flex involvement */
+.tabgrid-container .tg-list-scroll {
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--tg-border) transparent;
 }
 
-.ws-pane-card {
-  background: var(--ws-surface);
-  border: 1px solid var(--ws-border);
-  border-radius: var(--ws-radius);
-  overflow: hidden;
-  box-shadow: var(--ws-shadow);
+.tabgrid-container .tg-list-scroll::-webkit-scrollbar {
+  width: 5px;
 }
 
-.ws-pane-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: .75rem 1rem;
-  border-bottom: 1px solid #f3f4f6;
+.tabgrid-container .tg-list-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.ws-pane-title {
-  font-size: .875rem;
-  font-weight: 600;
-  color: var(--ws-text);
-  display: flex;
-  align-items: center;
-  gap: .4rem;
-  margin: 0;
+.tabgrid-container .tg-list-scroll::-webkit-scrollbar-thumb {
+  background: var(--tg-border);
+  border-radius: 10px;
 }
 
-/* ════ 1:1 RELATIONSHIP PANE ════════════════════════════════════ */
-.ws-o2o-card {
-  background: var(--ws-surface);
-  border: 1px solid var(--ws-rel-o2o-mid);
-  border-left: 3px solid var(--ws-rel-o2o);
-  border-radius: var(--ws-radius);
-  overflow: hidden;
-  box-shadow: var(--ws-shadow);
+.tabgrid-container .tg-list-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--tg-muted);
 }
 
-.ws-o2o-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: .625rem 1rem;
-  background: var(--ws-rel-o2o-bg);
-  border-bottom: 1px solid var(--ws-rel-o2o-mid);
-  flex-wrap: wrap;
-  gap: .5rem;
+/* List items */
+.tabgrid-container .list-group {
+  border: none;
 }
 
-.ws-o2o-title {
-  font-size: .8rem;
-  font-weight: 600;
-  color: var(--ws-rel-o2o);
-  display: flex;
-  align-items: center;
-  gap: .35rem;
+.tabgrid-container .list-group-item {
+  border: 1px solid var(--tg-border);
+  border-left: 3px solid transparent;
+  border-radius: var(--tg-radius-sm);
+  margin-bottom: 0.25rem;
+  padding: 0.75rem 1rem;
+  transition: all var(--tg-transition);
+  color: var(--tg-text);
+  background: var(--tg-card-bg);
+  cursor: pointer;
+  text-decoration: none;
 }
 
-.ws-o2o-status-linked {
-  font-size: .7rem;
-  font-weight: 600;
-  padding: .15em .55em;
-  border-radius: 999px;
-  background: var(--ws-rel-otm-bg);
-  color: var(--ws-rel-otm);
+.tabgrid-container .list-group-item:hover {
+  background: var(--tg-hover-bg);
+  border-color: color-mix(in srgb, var(--tg-hover-border) 20%, var(--tg-border));
+  border-left-color: var(--tg-hover-border);
+  transform: translateX(2px);
 }
 
-.ws-o2o-status-unlinked {
-  font-size: .7rem;
-  font-weight: 600;
-  padding: .15em .55em;
-  border-radius: 999px;
-  background: var(--ws-bg);
-  color: var(--ws-muted);
-  border: 1px solid var(--ws-border);
+.tabgrid-container .list-group-item.active {
+  background: var(--tg-active-bg) !important;
+  border-color: var(--tg-active-bg) !important;
+  border-left-color: color-mix(in srgb, var(--tg-active-bg) 70%, #000) !important;
+  color: #fff !important;
+  box-shadow: var(--tg-active-shadow);
+  transform: translateX(2px);
 }
 
-.ws-o2o-body {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+.tabgrid-container .list-group-item.active .badge {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #fff !important;
 }
 
-.ws-o2o-field {
-  padding: .55rem 1rem;
-  border-right: 1px solid #f3f4f6;
-  border-bottom: 1px solid #f3f4f6;
+.tabgrid-container .list-group-item.active .text-muted,
+.tabgrid-container .list-group-item.active .small {
+  color: rgba(255, 255, 255, 0.75) !important;
 }
 
-.ws-o2o-field-label {
-  display: block;
-  font-size: .6rem;
-  font-weight: 700;
+.tabgrid-container .list-group-item .text-muted {
+  color: var(--tg-muted) !important;
+}
+
+/* Stagger animation for list items */
+.tabgrid-container .list-group-item {
+  animation: tg-item-in 0.3s ease both;
+}
+
+@keyframes tg-item-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tabgrid-container .list-group-item:nth-child(1) { animation-delay: 0.02s; }
+.tabgrid-container .list-group-item:nth-child(2) { animation-delay: 0.04s; }
+.tabgrid-container .list-group-item:nth-child(3) { animation-delay: 0.06s; }
+.tabgrid-container .list-group-item:nth-child(4) { animation-delay: 0.08s; }
+.tabgrid-container .list-group-item:nth-child(5) { animation-delay: 0.10s; }
+.tabgrid-container .list-group-item:nth-child(6) { animation-delay: 0.12s; }
+.tabgrid-container .list-group-item:nth-child(7) { animation-delay: 0.14s; }
+.tabgrid-container .list-group-item:nth-child(8) { animation-delay: 0.16s; }
+.tabgrid-container .list-group-item:nth-child(9) { animation-delay: 0.18s; }
+.tabgrid-container .list-group-item:nth-child(10) { animation-delay: 0.20s; }
+
+/* ── Search input ──────────────────────────────────────── */
+
+.tabgrid-container .input-group .form-control {
+  background: var(--tg-input-bg);
+  color: var(--tg-text);
+  border-color: var(--tg-border);
+  transition: border-color var(--tg-transition), box-shadow var(--tg-transition);
+}
+
+.tabgrid-container .input-group .form-control:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tg-primary) 12%, transparent);
+  border-color: var(--tg-primary);
+  color: var(--tg-text);
+}
+
+.tabgrid-container .input-group .input-group-text {
+  border-color: var(--tg-border);
+  background: var(--tg-input-bg);
+  color: var(--tg-muted);
+  transition: border-color var(--tg-transition);
+}
+
+.tabgrid-container .input-group .form-control:focus + .btn {
+  border-color: var(--tg-primary);
+}
+
+.tabgrid-container .input-group .btn {
+  background: var(--tg-input-bg);
+  border-color: var(--tg-border);
+  color: var(--tg-muted);
+}
+
+.tabgrid-container .input-group .btn:hover {
+  background: var(--tg-primary-soft);
+  color: var(--tg-primary);
+}
+
+/* ── Search live count ─────────────────────────────────── */
+
+.tg-search-count {
+  display: inline-block;
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+/* ── Tables ────────────────────────────────────────────── */
+
+.tabgrid-container .table {
+  margin-bottom: 0;
+  color: var(--tg-text);
+}
+
+.tabgrid-container .table th {
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  letter-spacing: .08em;
-  color: #94a3b8;
-  margin-bottom: .2rem;
-}
-
-.ws-o2o-field-value {
-  display: block;
-  font-size: .82rem;
-  color: var(--ws-text);
-  word-break: break-word;
-  line-height: 1.4;
-}
-
-.ws-o2o-empty {
-  padding: 2rem 1rem;
-  text-align: center;
-  color: var(--ws-muted);
-  font-size: .82rem;
-}
-
-/* ════ M2M RELATIONSHIP PANE ════════════════════════════════════ */
-.ws-m2m-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: .75rem 1rem;
-  border-bottom: 1px solid #f3f4f6;
-  flex-wrap: wrap;
-  gap: .4rem;
-}
-
-.ws-m2m-title {
-  font-size: .875rem;
+  color: var(--tg-muted);
   font-weight: 600;
-  color: var(--ws-text);
-  display: flex;
-  align-items: center;
-  gap: .4rem;
 }
 
-.ws-m2m-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.3rem;
-  height: 1.3rem;
-  padding: 0 .3rem;
-  background: var(--ws-rel-m2m-bg);
-  border-radius: 999px;
-  font-size: .62rem;
-  font-weight: 700;
-  color: var(--ws-rel-m2m);
+.tabgrid-container .table td,
+.tabgrid-container .table th {
+  vertical-align: middle;
+  border-bottom-color: var(--tg-border);
 }
 
-.ws-link-modal-header {
-  background: var(--ws-rel-m2m);
-  color: var(--ws-surface);
+.tabgrid-container .table-hover tbody tr {
+  transition: background var(--tg-transition);
 }
 
-.ws-link-modal-header .btn-close {
-  filter: invert(1) grayscale(1);
+.tabgrid-container .table-hover tbody tr:hover {
+  background: var(--tg-primary-10);
 }
 
-.m2m-available-table tbody tr:hover {
-  background: var(--ws-rel-m2m-bg);
-  cursor: pointer;
+.tabgrid-container .table-responsive {
+  overflow-x: auto;
 }
 
-/* ════ SUBGRID LOADING (1:M lazy load) ══════════════════════════ */
-.subgrid-loading {
-  display: block;
-  text-align: center;
-  padding: 2rem;
+/* ── Buttons ───────────────────────────────────────────── */
+
+.tabgrid-container .btn {
+  border-radius: var(--tg-radius-sm);
+  transition: all var(--tg-transition);
+  font-weight: 500;
 }
 
-.subgrid-table-wrapper {
-  display: none;
+.tabgrid-container .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.tabgrid-container .btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.tabgrid-container .btn.rounded-pill {
+  border-radius: 50rem;
+}
+
+.tabgrid-container .btn-primary {
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--bs-primary, #0d6efd) 20%, transparent);
+}
+
+.tabgrid-container .btn-primary:hover {
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--bs-primary, #0d6efd) 30%, transparent);
+}
+
+/* ── Badges ────────────────────────────────────────────── */
+
+.tabgrid-container .badge.rounded-pill {
+  font-weight: 600;
+  font-size: 0.6875rem;
+  letter-spacing: 0.02em;
+}
+
+/* ── Field cards ───────────────────────────────────────── */
+
+.field-card-hover {
+  transition: all var(--tg-transition);
+  background: var(--tg-card-bg);
+  border-color: var(--tg-border);
+  border-left: 3px solid transparent;
+}
+
+.field-card-hover:hover {
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--bs-primary, #0d6efd) 8%, transparent);
+  border-color: color-mix(in srgb, var(--bs-primary, #0d6efd) 20%, transparent) !important;
+  border-left-color: var(--tg-primary) !important;
+  transform: translateY(-1px);
+}
+
+.field-card-hover .text-uppercase.text-muted {
+  color: var(--tg-muted) !important;
+}
+
+.field-card-hover i.bi {
+  opacity: 0.8;
+  transition: opacity var(--tg-transition);
+}
+
+.field-card-hover:hover i.bi {
+  opacity: 1;
+}
+
+/* ── Entity summary header ─────────────────────────────── */
+
+.tg-entity-header {
+  position: relative;
+  overflow: hidden;
+}
+
+.tg-entity-header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--tg-primary), color-mix(in srgb, var(--tg-primary) 40%, #6610f2));
+  border-radius: var(--tg-radius) var(--tg-radius) 0 0;
+}
+
+/* ── Subgrid card accents ──────────────────────────────── */
+
+.tg-subgrid-m2m .card-header { border-top: 3px solid var(--bs-primary, #0d6efd); }
+.tg-subgrid-1to1 .card-header { border-top: 3px solid var(--bs-info, #0dcaf0); }
+.tg-subgrid-1toN .card-header { border-top: 3px solid var(--bs-success, #198754); }
+
+/* ── Empty states ──────────────────────────────────────── */
+
+.tg-empty-state {
+  animation: tg-empty-pulse 3s ease-in-out infinite;
+}
+
+@keyframes tg-empty-pulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.03); }
+}
+
+/* ── Images ────────────────────────────────────────────── */
+
+.tabgrid-container img.rounded {
+  border-radius: var(--tg-radius-sm) !important;
+  transition: transform var(--tg-transition-slow), box-shadow var(--tg-transition-slow);
+}
+
+.tabgrid-container img.rounded:hover {
+  box-shadow: var(--tg-shadow-lg);
+}
+
+/* ── Accordion ─────────────────────────────────────────── */
+
+.tabgrid-container .accordion-button {
+  border: 1px solid var(--tg-border);
+  border-radius: var(--tg-radius);
+  background: var(--tg-card-bg);
+  color: var(--tg-muted);
+}
+
+.tabgrid-container .accordion-button:not(.collapsed) {
+  background: var(--tg-primary-soft);
+  color: var(--tg-primary);
+}
+
+.tabgrid-container .accordion-item {
+  border: none;
+  margin-bottom: 0.75rem;
+}
+
+.tabgrid-container .accordion-body {
   padding: 1rem;
+  border: 1px solid var(--tg-border);
+  border-top: none;
+  border-radius: 0 0 var(--tg-radius) var(--tg-radius);
+  background: var(--tg-card-bg);
 }
 
-/* ════ SUBGRID SEARCH + SORT ══════════════════════════════════════ */
-.subgrid-search-wrap {
-  padding: .5rem 1rem;
-  border-bottom: 1px solid #f3f4f6;
-  display: flex;
-  align-items: center;
-  gap: .25rem;
-}
-.subgrid-search-wrap .subgrid-search {
-  max-width: 280px;
-}
-.subgrid-clear {
-  display: none;
-  cursor: pointer;
-  font-size: .75rem;
-  padding: .15rem .45rem;
-  flex-shrink: 0;
-}
-.subgrid-clear:hover {
-  background-color: #e5e7eb !important;
-}
-th.subgrid-sortable {
-  cursor: pointer;
-  user-select: none;
-  white-space: nowrap;
-}
-th.subgrid-sortable:hover {
-  background: #f3f4f6;
+/* ── Text color overrides for theme harmony ────────────── */
+
+.tabgrid-container .text-muted {
+  color: var(--tg-muted) !important;
 }
 
-/* ════ Mobile & Responsive Enhancements ════════════════════════ */
-
-/* ── Touch action optimization ─────────────────────────────────── */
-a, button, .btn, input, select, textarea, .nav-link, .dropdown-toggle {
-  touch-action: manipulation;
+.tabgrid-container h5.fw-semibold.text-muted,
+.tabgrid-container h6.fw-semibold.text-muted {
+  color: var(--tg-text) !important;
+  opacity: 0.7;
 }
 
-/* ── Minimum touch target size (44×44px WCAG) ──────────────────── */
-.btn, button, a.nav-link, .form-check-input, .form-select, .form-control {
+/* ── Touch / Mobile-first ──────────────────────────────── */
+
+.tabgrid-container a,
+.tabgrid-container button,
+.tabgrid-container .list-group-item,
+.tabgrid-container .theme-option {
   min-height: 44px;
 }
 
-.form-check-input {
-  width: 1.3em;
-  height: 1.3em;
-  margin-top: .35em;
-}
-
-/* ── Prevent iOS input zoom on focus ────────────────────────────── */
-@media screen and (max-width: 767.98px) {
-  input[type="text"],
-  input[type="email"],
-  input[type="password"],
-  input[type="number"],
-  input[type="search"],
-  input[type="date"],
-  input[type="tel"],
-  input[type="url"],
-  select,
-  textarea {
-    font-size: 16px !important;
-  }
-}
-
-/* ── Table mobile improvements ──────────────────────────────────── */
-@media (max-width: 767.98px) {
-
-  /* Search forms full-width on mobile */
-  .row.gx-2.gy-1 {
-    flex-wrap: wrap;
-  }
-  .row.gx-2.gy-1 > .col-auto {
-    flex: 1 1 100%;
-  }
-  .row.gx-2.gy-1 > .col-auto .input-group {
-    width: 100%;
+@media (hover: none) {
+  .tabgrid-container .btn:hover,
+  .tabgrid-container .list-group-item:hover {
+    transform: none;
+    box-shadow: none;
   }
 
-  /* Report export toolbar stacking */
-  .card-header .d-flex.gap-1 {
-    flex-wrap: wrap;
-    gap: .35rem !important;
-  }
-  .card-header .btn {
-    font-size: .8rem;
-    padding: .4rem .7rem;
-    min-height: 40px;
+  .tabgrid-container .btn:active {
+    transform: scale(0.97);
+    opacity: 0.85;
   }
 
-  /* Subgrid search wrap full width */
-  .subgrid-search-wrap {
-    flex-wrap: wrap;
-    padding: .5rem;
-  }
-  .subgrid-search-wrap .subgrid-search {
-    max-width: 100%;
-    flex: 1;
-    min-height: 44px;
+  .tabgrid-container .list-group-item:active {
+    transform: scale(0.98);
   }
 
-  /* Row hover: always show action buttons on mobile (no hover) */
-  .ws-subgrid-table td:last-child .d-flex.gap-1,
-  .subgrid-table td:last-child .d-flex.gap-1 {
-    opacity: 1 !important;
-  }
-
-  /* Subgrid table action buttons: larger touch targets */
-  .subgrid-table td .btn,
-  .ws-subgrid-table td .btn {
-    min-width: 40px;
-    min-height: 40px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  /* Table text wrapping */
-  .table td {
-    white-space: normal !important;
-    word-break: break-word;
-  }
-
-  /* Card-body padding reduction for tables */
-  .card-body .table-responsive {
-    margin-bottom: 0;
-  }
-
-  /* Card headers: compact */
-  .card-header {
-    padding: .75rem 1rem !important;
-  }
-
-  /* Grid record count in header */
-  .grid-record-count {
-    font-size: .65rem;
-    padding: 0 .35rem;
-    min-width: 1.3rem;
-    height: 1.3rem;
-  }
-
-  /* Grid search form: proper touch size on phones */
-  .row.gx-2.gy-1 > .col-auto .input-group.input-group-sm {
-    height: auto;
-  }
-
-  .row.gx-2.gy-1 > .col-auto .input-group.input-group-sm .form-control {
-    min-height: 44px;
-    font-size: .9rem;
-  }
-
-  .row.gx-2.gy-1 > .col-auto .input-group.input-group-sm .btn {
-    min-height: 44px;
-    min-width: 44px;
+  .tabgrid-container .field-card-hover:hover {
+    transform: none;
+    box-shadow: none;
   }
 }
 
-/* ════ Tablet breakpoint (≤992px) ══════════════════════════════ */
-@media (max-width: 992px) {
-  /* Workspace pages: let .px-4 scroll; inner containers flow naturally */
-  body:has(.tabgrid-container) .container-fluid.px-4 {
-    overflow-y: auto !important;
-    max-height: none !important;
-  }
-
-  .ws-layout {
-    flex-direction: column;
-    height: auto !important;
-    min-height: unset !important;
-    overflow: visible;
-  }
-
-  .ws-nav {
-    width: 100%;
-    min-width: 0;
-    max-height: 320px;
-    height: auto !important;
-    border-right: none;
-    border-bottom: 1px solid var(--ws-border);
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .ws-nav-header {
-    flex-shrink: 0;
-    padding: .5rem .75rem;
-    flex-direction: row;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: .35rem;
-  }
-
-  .ws-nav-search {
-    flex-shrink: 0;
-    padding: .35rem .75rem;
-  }
-
-  .ws-record-list {
-    display: block;
-    overflow-y: auto;
-    overflow-x: hidden;
-    width: 100%;
-    height: auto !important;
-    flex: 1 1 auto;
-    min-height: 0;
-    padding-bottom: .25rem !important;
-  }
-
-  .ws-record-item {
-    min-width: 0;
-    max-width: none;
-    flex: none;
-    margin-right: 0;
-    margin-bottom: 0;
-    border-left: 3px solid transparent;
-    border-bottom: none;
-    border-radius: 0;
-    padding: .4rem .75rem;
-  }
-
-  .ws-record-item:hover {
-    border-left-color: var(--ws-primary-mid);
-  }
-
-  .ws-record-item.active {
-    border-left-color: var(--ws-primary);
-    border-bottom-color: transparent;
-  }
-
-  .ws-main {
-    padding: 0 .5rem;
-    overflow: visible;
-    flex: none;
-  }
-
-  .ws-tabs-container {
-    overflow: visible;
-  }
-
-  .ws-tab-content {
-    padding: .75rem;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* Record hero wraps on tablet */
-  .ws-record-hero {
-    flex-wrap: wrap;
-    gap: .75rem;
-  }
-  .ws-hero-actions {
-    width: 100%;
-    justify-content: flex-end;
-  }
-
-  /* Field grid min-width reduction */
-  .ws-fields-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  }
-
-  .ws-o2o-body {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  }
-
-  /* Report stat cards */
-  .col-md-3 {
-    flex: 0 0 50%;
-    max-width: 50%;
-  }
+.tabgrid-container .list-group-item {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* ════ Phone breakpoint (≤600px) ═══════════════════════════════ */
-@media (max-width: 600px) {
-  /* ── Viewport: use dvh for proper mobile chrome handling ────── */
+.tabgrid-container .btn {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Mobile responsive ─────────────────────────────────── */
+
+@media (max-width: 767px) {
   .tabgrid-container {
-    height: 100dvh;
+    padding: 0.5rem 0 1rem;
   }
 
-  body:has(.tabgrid-container) {
-    overflow: hidden;
-    overscroll-behavior: none;
+  .tabgrid-container .row > [class*='col-'] {
+    width: 100%;
   }
 
-  /* ── Navigator: collapsible strip on phones ──────────────────── */
-  .ws-nav-toggle {
-    display: inline-flex;
+  /* Scroll wrapper: shorter on mobile */
+  .tabgrid-container .tg-list-scroll {
+    max-height: 45vh;
   }
 
-  .ws-nav {
-    max-height: none;
-    height: auto !important;
-    border-right: none;
-    border-bottom: 1px solid var(--ws-border);
-    overflow: hidden;
+  .tabgrid-container .list-group-item {
+    margin-bottom: 0.375rem;
+    padding: 0.625rem 0.75rem;
   }
 
-  .ws-nav .ws-record-list {
+  /* Tables → cards on mobile */
+  .tabgrid-container .table-responsive {
+    border: none;
+    overflow: visible;
+  }
+
+  .tabgrid-container .table-responsive table {
     display: block;
-    overflow-x: hidden;
-    overflow-y: auto;
-    gap: 0;
-    padding: .35rem .6rem !important;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    max-height: 0;
-    opacity: 0;
-    transition: max-height .3s ease, opacity .2s ease, padding .2s ease;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
+    width: 100%;
   }
 
-  .ws-nav .ws-record-list::-webkit-scrollbar {
+  .tabgrid-container .table-responsive table thead {
     display: none;
   }
 
-  .ws-nav.ws-nav-expanded .ws-record-list {
-    max-height: 50vh;
-    opacity: 1;
-    padding-top: .35rem !important;
-    padding-bottom: .35rem !important;
+  .tabgrid-container .table-responsive table tbody tr {
+    display: block;
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--tg-border);
+    border-radius: var(--tg-radius);
+    padding: 0.875rem 1rem;
+    background: var(--tg-card-bg);
+    box-shadow: var(--tg-shadow-sm);
   }
 
-  .ws-nav-header {
-    padding: .4rem .6rem;
-  }
-
-  .ws-nav-search {
-    padding: .3rem .6rem;
-    max-height: 0;
-    overflow: hidden;
-    opacity: 0;
-    transition: max-height .3s ease, opacity .2s ease;
-  }
-
-  .ws-nav.ws-nav-expanded .ws-nav-search {
-    max-height: 50px;
-    opacity: 1;
-  }
-
-  .ws-record-item {
-    min-width: 0;
-    max-width: none;
-    flex: none;
-    width: 100%;
-    padding: .45rem .6rem;
-    border-left: 3px solid transparent;
-    border-bottom: none;
-    border-radius: var(--ws-radius-sm);
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid var(--ws-border);
-  }
-
-  .ws-record-item:hover,
-  .ws-record-item.active {
-    border-left-color: var(--ws-primary-mid);
-    border-bottom-color: var(--ws-border);
-    background: var(--ws-primary-lt);
-  }
-
-  .ws-record-item.active {
-    background: var(--ws-primary-lt);
-    border-left-color: var(--ws-primary);
-  }
-
-  .ws-avatar {
-    width: 1.4rem;
-    height: 1.4rem;
-    font-size: .5rem;
-  }
-
-  .ws-record-info {
-    flex-direction: column;
-    gap: .1rem;
-    align-items: flex-start;
-  }
-
-  /* ── Main workspace ──────────────────────────────────────── */
-  .ws-main {
-    padding: 0;
-    overflow: visible;
-    flex: none;
-  }
-
-  .ws-tab-content {
-    padding: .5rem;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* ── Record hero: stack vertically ───────────────────────── */
-  .ws-record-hero {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: .5rem;
-    padding: .625rem .75rem .5rem;
-  }
-
-  .ws-hero-avatar {
-    width: 2.25rem;
-    height: 2.25rem;
-    font-size: .75rem;
-  }
-
-  .ws-hero-name {
-    font-size: .95rem;
-  }
-
-  .ws-hero-actions {
-    width: 100%;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    gap: .35rem;
-  }
-  .ws-hero-actions .btn {
-    font-size: .82rem;
-    padding: .4rem .7rem;
-    min-height: 44px;
-  }
-
-  /* ── Primary fields: full width cards ──────────────────────── */
-  .ws-primary-fields {
-    flex-direction: column;
-    gap: .5rem;
-    padding: .5rem .75rem;
-  }
-
-  .ws-primary-field {
-    min-width: 100%;
-    padding: .5rem .75rem;
-  }
-
-  .ws-primary-field-value {
-    font-size: .9rem;
-  }
-
-  /* ── Status bar: compact ──────────────────────────────────── */
-  .ws-status-bar {
-    flex-direction: column;
-    gap: .35rem;
-    padding: .35rem .75rem;
-    font-size: .7rem;
-  }
-
-  /* ── Field grid: single column on phones ──────────────────── */
-  .ws-fields-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .ws-field {
-    padding: .4rem .75rem;
-  }
-
-  .ws-field-label {
-    font-size: .55rem;
-  }
-
-  .ws-field-value {
-    font-size: .78rem;
-  }
-
-  .ws-o2o-body {
-    grid-template-columns: 1fr;
-  }
-
-  .ws-o2o-field {
-    padding: .4rem .75rem;
-  }
-
-  /* ── Tab strip: horizontal scroll, compact ────────────────── */
-  .ws-tabs-container {
-    overflow: visible;
-  }
-
-  .ws-tab-strip {
-    padding: 0 .5rem;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .ws-tab {
-    padding: .55rem .65rem;
-    font-size: .75rem;
-    white-space: nowrap;
-    min-height: 44px;
-  }
-
-  .ws-tab-pill {
-    font-size: .55rem;
-    padding: 0 .25rem;
-    height: 1rem;
-  }
-
-  /* ── Pane toolbar wrapping ───────────────────────────────── */
-  .ws-pane-toolbar {
-    flex-wrap: wrap;
-    gap: .35rem;
-    padding: .5rem .75rem;
-  }
-
-  .ws-pane-title {
-    font-size: .8rem;
-  }
-
-  /* ── Pane "New" button: full width ─────────────────────────── */
-  .ws-pane-toolbar .btn-success {
-    min-height: 44px;
-    flex: 1;
-    justify-content: center;
-  }
-
-  /* ── Subgrid: full-width action buttons ────────────────────── */
-  .subgrid-table td,
-  .ws-subgrid-table td {
-    padding: .4rem .5rem;
-    font-size: .82rem;
-  }
-
-  .subgrid-table td .d-flex,
-  .ws-subgrid-table td .d-flex {
-    flex-wrap: wrap;
-    gap: .25rem;
-  }
-
-  .subgrid-table td .btn,
-  .ws-subgrid-table td .btn {
-    min-height: 40px;
-    flex: 1;
-    justify-content: center;
-  }
-
-  /* ── Empty state smaller on phones ────────────────────────── */
-  .ws-empty-state {
-    min-height: 160px;
-  }
-  .ws-empty-state i {
-    font-size: 2rem;
-  }
-  .ws-empty-state p {
-    font-size: .8rem;
-  }
-
-  /* ── Modals: near-fullscreen on phones ────────────────────── */
-  .modal-dialog {
-    margin: .5rem;
-    max-width: calc(100vw - 1rem);
-    max-height: calc(100dvh - 1rem);
-  }
-  .modal-content {
-    border-radius: 12px !important;
-    max-height: calc(100dvh - 1rem);
-    overflow-y: auto;
-  }
-  .modal-body {
-    padding: .75rem;
-  }
-  .modal-body .table > tbody > tr > td {
-    font-size: .8rem;
-    padding: .35rem .4rem;
-  }
-  .modal-footer {
-    padding: .6rem .75rem;
-    flex-wrap: wrap;
-    gap: .4rem;
-  }
-  .modal-footer .btn {
-    min-height: 44px;
-    flex: 1;
-    justify-content: center;
-  }
-
-  /* ── Select parent modal table ─────────────────────────────── */
-  .modal-body .table td .btn {
-    min-height: 40px;
-    padding: .35rem .6rem;
-  }
-
-  /* ── Report stat cards: 2 per row ─────────────────────────── */
-  .col-md-3 {
-    flex: 0 0 50%;
-    max-width: 50%;
-  }
-  .col-md-3 .card-body h3 {
-    font-size: 1.25rem;
-  }
-
-  /* ── Report table stacking on phones ───────────────────────── */
-  .report-content .card-body {
-    padding: .5rem;
-  }
-
-  /* ── Breadcrumb: compact ───────────────────────────────────── */
-  .breadcrumb {
-    font-size: .78rem !important;
-    padding: .3rem .5rem !important;
-  }
-
-  /* ── Card body: tighter padding ────────────────────────────── */
-  .card-body {
-    padding: 1rem !important;
-  }
-
-  /* ── Global form elements: bigger touch targets ────────────── */
-  .form-control,
-  .form-select {
-    min-height: 48px;
-    padding: .6rem .75rem !important;
-  }
-
-  .form-label {
-    font-size: .82rem !important;
-  }
-
-  /* ── Grid search: make input-group-sm full-size on phones ───── */
-  .input-group.input-group-sm {
-    height: auto !important;
-    min-height: 48px;
-    overflow: visible;
-  }
-
-  .input-group.input-group-sm > .form-control {
-    min-height: 48px;
-    font-size: 16px;
-    padding: .6rem .75rem;
-  }
-
-  .input-group.input-group-sm > .btn {
-    min-height: 48px;
-    min-width: 48px;
-    padding: .5rem .75rem;
-  }
-
-  /* Ensure grid search form is fully visible on phones */
-  .card-body form.row {
-    margin-bottom: .75rem;
-  }
-
-  .card-body form.row > .col-auto {
-    flex: 0 0 100%;
-    max-width: 100%;
-  }
-
-  /* ── Subgrid search: ensure visible on phones ──────────────── */
-  .ws-pane-card {
-    overflow: visible !important;
-    border-radius: 12px !important;
-  }
-
-  .subgrid-search-wrap {
-    display: flex !important;
-    flex-wrap: wrap;
-    padding: .5rem 1rem !important;
-    border-bottom: 1px solid var(--ws-border);
-    gap: .35rem;
-  }
-
-  .subgrid-search-wrap .subgrid-search {
-    flex: 1 1 100%;
-    max-width: 100%;
-    min-height: 48px;
-    font-size: 16px;
-    padding: .6rem .75rem;
-  }
-
-  .subgrid-search-wrap .subgrid-clear {
-    min-height: 36px;
-    display: inline-flex;
+  .tabgrid-container .table-responsive table tbody td {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
+    width: 100%;
+    border: none;
+    padding: 0.4rem 0;
+    text-align: right;
+    font-size: 0.875rem;
   }
 
-  /* ── Button sizes: all primary buttons at least 48px ───────── */
-  .btn-primary,
-  .btn-success,
-  .btn-danger {
-    min-height: 48px;
-    padding: .55rem 1rem !important;
+  .tabgrid-container .table-responsive table tbody td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--tg-muted);
+    text-align: left;
+    flex-shrink: 0;
+    margin-right: 0.5rem;
   }
 
-  /* ── Grid/Report search form: absolutely ensure visible ─────── */
-  .search-form,
-  .search-form form {
-    display: block !important;
+  .tabgrid-container .table-responsive table tbody td:last-child {
+    justify-content: flex-end;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--tg-border);
+    margin-top: 0.25rem;
+  }
+
+  .tabgrid-container .table-responsive table tbody td:last-child::before {
+    display: none;
+  }
+
+  .tabgrid-container .card-body {
+    padding: 0.75rem 1rem !important;
+  }
+
+  .tabgrid-container .card-header {
+    padding: 0.75rem 1rem !important;
+  }
+
+  .tabgrid-container .breadcrumb {
+    font-size: 0.8rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .tabgrid-container .input-group .form-control {
+    padding: 0.625rem 0.75rem;
+    font-size: 1rem;
+  }
+
+  .tabgrid-container .input-group .input-group-text {
+    padding: 0.625rem 0.75rem;
+  }
+
+  .tabgrid-container .input-group .btn {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .tabgrid-container .btn-sm {
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8rem;
+  }
+
+  .tabgrid-container .card-body .row.g-3 > .col-12 {
+    padding-top: 0;
+  }
+
+  /* Entity summary: stack action buttons full-width on mobile */
+  .tabgrid-container .tg-entity-header .d-flex.gap-2 {
     width: 100%;
   }
-  .search-form form > .col-auto {
-    flex: 0 0 100% !important;
-    max-width: 100% !important;
-    width: 100% !important;
+
+  .tabgrid-container .tg-entity-header .d-flex.gap-2 .btn {
+    flex: 1;
   }
-  .search-form .input-group {
-    display: flex !important;
+
+  /* Subgrids: full-width action buttons on mobile */
+  .tabgrid-container .card-header.d-flex.justify-content-between {
     flex-wrap: wrap;
-    width: 100% !important;
-  }
-  .search-form .input-group .form-control {
-    flex: 1 1 0%;
-    min-height: 48px;
-    font-size: 16px;
-  }
-  .search-form .input-group .btn {
-    min-height: 48px;
-    min-width: 48px;
+    gap: 0.5rem;
   }
 
-  /* ── Report card: ensure card-body isn't clipped ──────────── */
-  .report-content > .container-fluid > .card,
-  .report-content .card {
-    overflow: visible !important;
-  }
-}
-
-/* ════ Extra small phones (≤380px) ══════════════════════════════ */
-@media (max-width: 380px) {
-  .ws-fields-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .ws-o2o-body {
-    grid-template-columns: 1fr;
-  }
-
-  .ws-record-item {
-    min-width: 0;
-    max-width: none;
-    padding: .4rem .5rem;
-  }
-
-  .ws-hero-actions .btn {
-    font-size: .78rem;
-    padding: .35rem .55rem;
-  }
-
-  .ws-tab {
-    padding: .5rem .5rem;
-    font-size: .7rem;
-  }
-
-  .ws-primary-field {
-    padding: .4rem .6rem;
-  }
-
-  .ws-primary-field-value {
-    font-size: .82rem;
-  }
-
-  .breadcrumb {
-    font-size: .72rem !important;
-  }
-
-  .card-body {
-    padding: .75rem !important;
-  }
-}
-
-/* ── Safe area insets for notched phones ──────────────────────── */
-@supports (padding: env(safe-area-inset-bottom)) {
-  footer {
-    padding-bottom: calc(.5rem + env(safe-area-inset-bottom));
-  }
-  .ws-tab-content {
-    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
-  }
-  body:has(.tabgrid-container) {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-}
-
-/* ── Viewport height: use dvh on modern browsers ─────────────── */
-@supports (height: 100dvh) {
-  .tabgrid-container {
-    height: 100dvh;
-  }
-}
-
-/* ── Prevent rubber-banding on workspace pages ───────────────── */
-body:has(.tabgrid-container) {
-  overscroll-behavior: none;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   Legacy button overrides — kept for backward compat
-   ═══════════════════════════════════════════════════════════════════ */
-
-/* --- Button group fix for actions column --- */
-.table td .btn-group,
-.table td .btn+.btn {
-  display: inline-flex;
-  gap: .5rem;
-  vertical-align: middle;
-}
-
-.table td .btn {
-  margin-right: 0 !important;
-}
-
-.table td .btn-group .btn {
-  margin-right: 0 !important;
-}
-
-/* ════ Sticky table headers ════════════════════════════════════════ */
-.ws-subgrid-table thead,
-.table-responsive thead th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: #f8fafc;
-  box-shadow: inset 0 -2px 0 #e2e8f0;
-}
-
-/* ════ Row hover — action buttons always visible ══════════════════ */
-.ws-subgrid-table td:last-child .d-flex.gap-1,
-.table td:last-child .d-flex.gap-1 {
-  opacity: 1 !important;
-}
-
-/* ════ Column text truncation ══════════════════════════════════════ */
-.ws-subgrid-table td {
-  max-width: 280px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ws-subgrid-table td:last-child {
-  max-width: none;
-  overflow: visible;
-  white-space: normal;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   UI OVERHAUL — Theme-compatible structural improvements
-   Uses var(--bs-*) so Bootswatch themes control all colors.
-   Only structural changes: radius, shadows, spacing, font, layout.
-   ═══════════════════════════════════════════════════════════════════ */
-
-/* ── Global font ──────────────────────────────────────────────── */
-body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-}
-
-/* ── Cards — rounder, softer ──────────────────────────────────── */
-.card {
-  border-radius: 14px !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,.05), 0 4px 14px rgba(0,0,0,.06) !important;
-  transition: box-shadow .2s ease;
-}
-
-.card:hover {
-  box-shadow: 0 2px 6px rgba(0,0,0,.07), 0 8px 24px rgba(0,0,0,.09) !important;
-}
-
-.card-header {
-  border-radius: 14px 14px 0 0 !important;
-  padding: 1.15rem 1.5rem !important;
-}
-
-.card-header h5 {
-  font-weight: 800 !important;
-  letter-spacing: -.015em;
-}
-
-.card-body {
-  padding: 1.5rem !important;
-}
-
-/* ── Tables — more spacious, striped ──────────────────────────── */
-.table thead th {
-  font-weight: 700 !important;
-  font-size: .73rem !important;
-  letter-spacing: .05em !important;
-  text-transform: uppercase !important;
-  padding: .8rem 1rem !important;
-}
-
-.table tbody tr {
-  transition: background .12s ease;
-}
-
-.table tbody tr:nth-child(even) {
-  opacity: .97;
-}
-
-.table td {
-  padding: .7rem 1rem !important;
-  font-size: .88rem !important;
-  vertical-align: middle !important;
-}
-
-/* ── Buttons — rounder, smoother transitions ──────────────────── */
-.btn {
-  border-radius: 10px !important;
-  font-weight: 600 !important;
-  font-size: .87rem !important;
-  padding: .48rem 1.05rem !important;
-  transition: all .2s ease !important;
-  box-shadow: none !important;
-}
-
-.btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 3px 10px rgba(0,0,0,.12) !important;
-}
-
-.btn:active {
-  transform: translateY(0);
-  box-shadow: none !important;
-}
-
-.btn i, .btn svg {
-  font-size: 1.05em;
-}
-
-/* ── Form inputs — rounder, bigger ────────────────────────────── */
-.form-control,
-.form-select {
-  border-radius: 10px !important;
-  padding: .6rem .9rem !important;
-  font-size: .9rem !important;
-  transition: border-color .2s, box-shadow .2s !important;
-}
-
-.form-control:focus,
-.form-select:focus {
-  box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb, 13,110,253), .15) !important;
-}
-
-.form-label {
-  font-weight: 600 !important;
-  font-size: .84rem !important;
-  margin-bottom: .35rem !important;
-}
-
-/* ── Pagination — rounder ─────────────────────────────────────── */
-.pagination .page-item .page-link {
-  border-radius: 8px !important;
-  margin: 0 2px !important;
-  font-weight: 600 !important;
-  font-size: .82rem !important;
-  padding: .4rem .7rem !important;
-  transition: all .15s ease !important;
-}
-
-/* ── Badges — rounder ─────────────────────────────────────────── */
-.badge {
-  font-weight: 600 !important;
-  font-size: .7rem !important;
-  border-radius: 8px !important;
-  letter-spacing: .01em;
-}
-
-/* ── Dropdown menus — rounder, bigger ─────────────────────────── */
-.dropdown-menu {
-  border-radius: 12px !important;
-  box-shadow: 0 8px 30px rgba(0,0,0,.12) !important;
-  padding: .4rem !important;
-  border: 1px solid var(--bs-border-color, #dee2e6) !important;
-}
-
-.dropdown-item {
-  border-radius: 8px !important;
-  padding: .5rem .8rem !important;
-  font-weight: 500 !important;
-  transition: background .12s;
-}
-
-/* ── Modal — rounder ──────────────────────────────────────────── */
-.modal-content {
-  border: none !important;
-  border-radius: 16px !important;
-  box-shadow: 0 20px 60px rgba(0,0,0,.2) !important;
-}
-
-.modal-header {
-  border-bottom: none !important;
-  padding: 1.2rem 1.5rem !important;
-  border-radius: 16px 16px 0 0 !important;
-}
-
-.modal-footer {
-  border-top: 1px solid var(--bs-border-color, #dee2e6) !important;
-}
-
-.modal-title {
-  font-weight: 700 !important;
-}
-
-/* ── Alerts — rounder, no border ──────────────────────────────── */
-.alert {
-  border-radius: 12px !important;
-  border: none !important;
-  font-weight: 500;
-}
-
-/* ── Scrollbar — thin ─────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--bs-secondary-color, #6c757d); border-radius: 999px; opacity: .4; }
-
-/* ── Focus ring — accessible ──────────────────────────────────── */
-*:focus-visible {
-  outline: 2px solid var(--bs-primary, #0d6efd) !important;
-  outline-offset: 2px !important;
-}
-
-/* ── Selection color ──────────────────────────────────────────── */
-::selection {
-  background: rgba(var(--bs-primary-rgb, 13,110,253), .2);
-}
-
-/* ── Breadcrumb ───────────────────────────────────────────────── */
-.breadcrumb-nav {
-  padding: .4rem 0;
-  margin-bottom: .6rem;
-}
-
-.breadcrumb {
-  background: transparent !important;
-  border-radius: 10px !important;
-  padding: .4rem .65rem !important;
-  font-size: .84rem !important;
-}
-
-.breadcrumb-item a {
-  text-decoration: none !important;
-  font-weight: 500 !important;
-}
-
-.breadcrumb-item + .breadcrumb-item::before {
-  content: "\f285" !important;
-  font-family: "bootstrap-icons" !important;
-  font-size: .65rem;
-}
-
-/* ── Record count badge ───────────────────────────────────────── */
-.grid-record-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.6rem;
-  height: 1.6rem;
-  padding: 0 .45rem;
-  background: rgba(255,255,255,.2);
-  border-radius: 999px;
-  font-size: .72rem;
-  font-weight: 700;
-  margin-left: .5rem;
-}
-
-/* ── Empty state ──────────────────────────────────────────────── */
-.grid-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3.5rem 1.5rem;
-  text-align: center;
-  gap: .6rem;
-}
-
-.grid-empty-state i {
-  font-size: 3rem !important;
-  opacity: .35;
-}
-
-.grid-empty-state p {
-  font-size: .95rem !important;
-  margin: 0;
-}
-
-/* ── Sticky table headers ─────────────────────────────────────── */
-.table-responsive thead th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-}
-
-/* ── Action buttons always visible ────────────────────────────── */
-.ws-subgrid-table td:last-child .d-flex.gap-1,
-.table td:last-child .d-flex.gap-1 {
-  opacity: 1 !important;
-}
-
-/* ── Column truncation ────────────────────────────────────────── */
-.ws-subgrid-table td {
-  max-width: 280px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ws-subgrid-table td:last-child {
-  max-width: none;
-  overflow: visible;
-  white-space: normal;
-}
-
-/* ── Workspace sidebar ────────────────────────────────────────── */
-.ws-nav-header {
-  padding: .9rem 1rem !important;
-}
-
-.ws-nav-title {
-  font-weight: 700 !important;
-  letter-spacing: .04em;
-}
-
-.ws-count-badge {
-  font-weight: 700 !important;
-}
-
-.ws-new-btn {
-  border-radius: 8px !important;
-}
-
-.ws-search-input {
-  border-radius: 8px !important;
-}
-
-.ws-record-item {
-  border-left: 3px solid transparent !important;
-  transition: background .12s, border-color .12s !important;
-}
-
-/* ── Record hero ──────────────────────────────────────────────── */
-.ws-hero-name {
-  font-weight: 800 !important;
-  letter-spacing: -.015em;
-}
-
-.ws-field-label {
-  font-weight: 700 !important;
-  font-size: .62rem !important;
-  letter-spacing: .06em;
-}
-
-.ws-field-value {
-  font-weight: 500 !important;
-}
-
-/* ── Tab strip ────────────────────────────────────────────────── */
-.ws-tab {
-  font-weight: 500 !important;
-  transition: all .15s ease !important;
-}
-
-.ws-tab.active {
-  font-weight: 700 !important;
-}
-
-/* ── Pane cards ───────────────────────────────────────────────── */
-.ws-pane-card {
-  border-radius: 12px !important;
-  overflow: hidden;
-}
-
-.ws-pane-toolbar {
-  border-radius: 12px 12px 0 0 !important;
-}
-
-.ws-pane-title {
-  font-weight: 700 !important;
-}
-
-/* ── 1:1 card ─────────────────────────────────────────────────── */
-.ws-o2o-card {
-  border-radius: 12px !important;
-  overflow: hidden;
-}
-
-.ws-o2o-header {
-  border-radius: 12px 12px 0 0 !important;
-}
-
-.ws-o2o-title {
-  font-weight: 700 !important;
-}
-
-/* ── Subgrid tables ───────────────────────────────────────────── */
-.subgrid-search {
-  border-radius: 8px !important;
-}
-
-.subgrid-clear {
-  border-radius: 8px !important;
-  transition: all .12s;
-}
-
-/* ── Login / password cards ───────────────────────────────────── */
-.card.shadow-lg {
-  border-radius: 18px !important;
-}
-
-/* ── Loading spinner ──────────────────────────────────────────── */
-.subgrid-loading {
-  padding: 2.5rem !important;
-  text-align: center;
-  color: var(--bs-secondary-color, #6c757d);
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.subgrid-loading::before {
-  content: '';
-  display: inline-block;
-  width: 2rem;
-  height: 2rem;
-  border: 3px solid var(--bs-border-color, #dee2e6);
-  border-top-color: var(--bs-primary, #0d6efd);
-  border-radius: 50%;
-  animation: spin .7s linear infinite;
-}
-
-/* ── Mobile: stack form buttons ───────────────────────────────── */
-@media (max-width: 767.98px) {
-  .form-actions {
-    flex-direction: column;
-  }
-  .form-actions .btn {
-    width: 100%;
-    justify-content: center;
-  }
-  .ws-hero-actions {
+  .tabgrid-container .card-header.d-flex.justify-content-between > .btn {
     width: 100%;
   }
-}
 
-/* ═══════════════════════════════════════════════════════════════════
-   CARD-BASED GRID VIEW
-   ═══════════════════════════════════════════════════════════════════ */
-
-.grid-record-card {
-  transition: transform .2s ease, box-shadow .2s ease;
-  border: 1px solid var(--bs-border-color, #dee2e6);
-}
-
-.grid-record-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,.1) !important;
-}
-
-.grid-record-card .card-title {
-  color: var(--bs-body-color, #111827);
-  font-size: .95rem;
-}
-
-.grid-record-card .badge {
-  font-size: .65rem;
-  background-color: var(--bs-secondary, #6c757d) !important;
-}
-
-.grid-record-card .text-muted {
-  font-size: .75rem;
-  text-transform: uppercase;
-  letter-spacing: .03em;
-}
-
-.grid-record-card .mt-2 > div:not(.text-muted) {
-  font-size: .85rem;
-  color: var(--bs-body-color, #111827);
-}
-
-/* Card action buttons: full-width touch targets on phones */
-.grid-record-card .d-flex.gap-2 {
-  flex-wrap: wrap;
-}
-
-.grid-record-card .d-flex.gap-2 .btn {
-  flex: 1;
-  justify-content: center;
-  min-height: 44px;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   WORKSPACE DASHBOARD LAYOUT
-   ═══════════════════════════════════════════════════════════════════ */
-
-.ws-dashboard-hero {
-  background: linear-gradient(135deg, var(--bs-body-bg, #f8f9fa) 0%, var(--bs-surface, #ffffff) 100%);
-  border-bottom: 1px solid var(--bs-border-color, #dee2e6);
-}
-
-.ws-primary-fields {
-  display: flex;
-  gap: 1rem;
-  padding: .75rem 1.25rem;
-  background: var(--bs-body-bg, #f8f9fa);
-  border-bottom: 1px solid var(--bs-border-color, #dee2e6);
-  overflow-x: auto;
-}
-
-.ws-primary-field {
-  display: flex;
-  flex-direction: column;
-  min-width: 150px;
-  padding: .5rem .75rem;
-  background: var(--bs-surface, #ffffff);
-  border-radius: 8px;
-  border: 1px solid var(--bs-border-color, #dee2e6);
-  box-shadow: 0 1px 3px rgba(0,0,0,.05);
-}
-
-.ws-primary-field-label {
-  display: block;
-  font-size: .65rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  color: var(--bs-secondary-color, #6c7280);
-  margin-bottom: .2rem;
-}
-
-.ws-primary-field-value {
-  display: block;
-  font-size: .95rem;
-  font-weight: 600;
-  color: var(--bs-body-color, #111827);
-  word-break: break-word;
-  min-height: 1.2em;
-  line-height: 1.4;
-}
-
-/* ── Status bar ───────────────────────────────────────────────── */
-.ws-status-bar {
-  display: flex;
-  gap: 1.5rem;
-  padding: .5rem 1.25rem;
-  background: linear-gradient(90deg, rgba(var(--bs-primary-rgb, 13,110,253), .05) 0%, transparent 100%);
-  border-bottom: 1px solid var(--bs-border-color, #dee2e6);
-  font-size: .75rem;
-  color: var(--bs-secondary-color, #6c7280);
-}
-
-.ws-status-item {
-  display: flex;
-  align-items: center;
-  gap: .3rem;
-}
-
-.ws-status-item i {
-  font-size: .85rem;
-  opacity: .7;
-}
-
-/* ── Responsive adjustments ───────────────────────────────────── */
-@media (max-width: 767.98px) {
-  .ws-primary-fields {
-    flex-direction: column;
-    gap: .5rem;
-    padding: .5rem;
-  }
-  
-  .ws-primary-field {
-    min-width: 100%;
-  }
-  
-  .ws-status-bar {
-    flex-direction: column;
-    gap: .5rem;
-    padding: .4rem .75rem;
-  }
-  
-  .grid-record-card {
-    margin-bottom: .5rem;
-  }
-  
-  /* Cards single-column on phones */
-  .grid-record-card .d-flex.gap-2 .btn {
+  /* Record list: full-width search */
+  .tabgrid-container .tg-list-card .input-group {
     min-height: 44px;
-    padding: .5rem .75rem;
-    font-size: .85rem;
   }
-  
-  /* Form card: full-width, no centering restriction */
-  .form-card {
-    max-width: 100% !important;
-  }
-  
-  .form-card .card-body {
-    padding: 1rem !important;
-  }
-  
-  /* Multi-column forms: single column on phones */
-  .form-card .row.g-3 > .col-md-6 {
-    flex: 0 0 100%;
-    max-width: 100%;
-  }
-  
-  /* Form actions: full-width stacked */
-  .form-actions {
-    flex-direction: column !important;
-    gap: .5rem !important;
-  }
-  
-  .form-actions .btn {
-    width: 100%;
-    min-height: 48px;
-    justify-content: center;
+
+  /* Hide list-card border/overflow on mobile — let scroll wrapper handle it */
+  .tabgrid-container .tg-list-card {
+    border-radius: var(--tg-radius);
   }
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   MULTI-COLUMN FORM LAYOUT
-   ═══════════════════════════════════════════════════════════════════ */
-
-.form-card {
-  transition: box-shadow .2s ease;
+/* Tablet */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .tabgrid-container .tg-list-scroll {
+    max-height: 60vh;
+  }
 }
 
-.form-card:hover {
-  box-shadow: 0 8px 24px rgba(0,0,0,.12) !important;
+/* Landscape phone */
+@media (max-height: 500px) and (orientation: landscape) {
+  .tabgrid-container .tg-list-scroll {
+    max-height: 35vh;
+  }
+
+  .tabgrid-container .card-body {
+    padding: 0.5rem 0.75rem !important;
+  }
+
+  .tabgrid-container .field-card-hover {
+    padding: 0.5rem !important;
+  }
 }
 
-.form-card .card-header {
-  background: linear-gradient(135deg, var(--bs-primary, #0d6efd) 0%, rgba(var(--bs-primary-rgb, 13,110,253), .9) 100%);
-  border-bottom: none;
+/* ── Dark theme overrides ──────────────────────────────── */
+
+.theme-darkly,
+.theme-cyborg,
+.theme-slate,
+.theme-solar,
+.theme-superhero,
+.theme-quartz,
+.theme-vapor {
+  --tg-bg: var(--bs-body-bg);
+  --tg-surface: var(--bs-body-bg);
+  --tg-card-bg: var(--bs-card-bg, var(--bs-body-bg));
+  --tg-border: var(--bs-border-color);
+  --tg-input-bg: var(--bs-tertiary-bg, color-mix(in srgb, var(--bs-body-bg) 80%, #000));
+  --tg-hover-bg: color-mix(in srgb, var(--bs-primary) 15%, transparent);
+  --tg-primary-soft: color-mix(in srgb, var(--bs-primary) 12%, transparent);
+  --tg-primary-10: color-mix(in srgb, var(--bs-primary) 10%, transparent);
+  --tg-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --tg-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --tg-shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
-.form-card .card-body {
-  padding: 1.5rem;
+.theme-darkly .tabgrid-container,
+.theme-cyborg .tabgrid-container,
+.theme-slate .tabgrid-container,
+.theme-solar .tabgrid-container,
+.theme-superhero .tabgrid-container,
+.theme-quartz .tabgrid-container,
+.theme-vapor .tabgrid-container {
+  --tg-text: var(--bs-body-color);
 }
 
-/* Multi-column form fields */
-.form-card .row.g-3 > .col-md-6 {
-  margin-bottom: 0;
+.theme-darkly .tabgrid-container .list-group-item.active,
+.theme-cyborg .tabgrid-container .list-group-item.active,
+.theme-slate .tabgrid-container .list-group-item.active,
+.theme-solar .tabgrid-container .list-group-item.active,
+.theme-superhero .tabgrid-container .list-group-item.active,
+.theme-quartz .tabgrid-container .list-group-item.active,
+.theme-vapor .tabgrid-container .list-group-item.active {
+  background: var(--bs-primary) !important;
 }
 
-.form-card .form-field-groups > div.mb-3,
-.form-card .row.g-3 > div > div.mb-3 {
-  padding: .75rem;
-  border-radius: 8px;
-  transition: background .15s ease;
+.theme-darkly .field-card-hover:hover,
+.theme-cyborg .field-card-hover:hover,
+.theme-slate .field-card-hover:hover,
+.theme-solar .field-card-hover:hover,
+.theme-superhero .field-card-hover:hover,
+.theme-quartz .field-card-hover:hover,
+.theme-vapor .field-card-hover:hover {
+  background: color-mix(in srgb, var(--bs-primary) 8%, var(--bs-body-bg)) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.form-card .form-field-groups > div.mb-3:hover,
-.form-card .row.g-3 > div > div.mb-3:hover {
-  background: rgba(var(--bs-primary-rgb, 13,110,253), .03);
+.theme-darkly .tabgrid-container .input-group .form-control,
+.theme-cyborg .tabgrid-container .input-group .form-control,
+.theme-slate .tabgrid-container .input-group .form-control,
+.theme-solar .tabgrid-container .input-group .form-control,
+.theme-superhero .tabgrid-container .input-group .form-control,
+.theme-quartz .tabgrid-container .input-group .form-control,
+.theme-vapor .tabgrid-container .input-group .form-control {
+  background: var(--tg-input-bg);
+  color: var(--tg-text);
+  border-color: var(--tg-border);
 }
 
-/* Form section dividers */
-.form-card .form-field-groups > div.mb-3,
-.form-card .row.g-3 > div > div.mb-3 {
-  border-left: 3px solid transparent;
-  transition: border-color .15s, background .15s;
+.theme-darkly .tabgrid-container .input-group .input-group-text,
+.theme-cyborg .tabgrid-container .input-group .input-group-text,
+.theme-slate .tabgrid-container .input-group .input-group-text,
+.theme-solar .tabgrid-container .input-group .input-group-text,
+.theme-superhero .tabgrid-container .input-group .input-group-text,
+.theme-quartz .tabgrid-container .input-group .input-group-text,
+.theme-vapor .tabgrid-container .input-group .input-group-text {
+  background: var(--tg-input-bg);
+  color: var(--tg-muted);
+  border-color: var(--tg-border);
 }
 
-.form-card .form-field-groups > div.mb-3:focus-within,
-.form-card .row.g-3 > div > div.mb-3:focus-within {
-  border-left-color: var(--bs-primary, #0d6efd);
-  background: rgba(var(--bs-primary-rgb, 13,110,253), .05);
+.theme-darkly .tabgrid-container .breadcrumb-item + .breadcrumb-item::before,
+.theme-cyborg .tabgrid-container .breadcrumb-item + .breadcrumb-item::before,
+.theme-slate .tabgrid-container .breadcrumb-item + .breadcrumb-item::before,
+.theme-solar .tabgrid-container .breadcrumb-item + .breadcrumb-item::before,
+.theme-superhero .tabgrid-container .breadcrumb-item + .breadcrumb-item::before,
+.theme-quartz .tabgrid-container .breadcrumb-item + .breadcrumb-item::before,
+.theme-vapor .tabgrid-container .breadcrumb-item + .breadcrumb-item::before {
+  color: var(--tg-muted);
 }
+
+.theme-darkly .tabgrid-container [class*="-subtle"],
+.theme-cyborg .tabgrid-container [class*="-subtle"],
+.theme-slate .tabgrid-container [class*="-subtle"],
+.theme-solar .tabgrid-container [class*="-subtle"],
+.theme-superhero .tabgrid-container [class*="-subtle"],
+.theme-quartz .tabgrid-container [class*="-subtle"],
+.theme-vapor .tabgrid-container [class*="-subtle"] {
+  background-color: color-mix(in srgb, currentColor 10%, var(--bs-body-bg)) !important;
+}
+
+/* ── Utility classes ───────────────────────────────────── */
+
+/* ── Ctrl+K keyboard hint ──────────────────────────────── */
+
+.tg-kbd-hint {
+  font-size: 0.6875rem;
+  font-family: var(--bs-font-monospace);
+  color: var(--tg-muted);
+  background: var(--tg-input-bg);
+  border: 1px solid var(--tg-border);
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.45rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  letter-spacing: 0.03em;
+  opacity: 0.65;
+  transition: opacity var(--tg-transition);
+  pointer-events: none;
+}
+
+.tg-search-group:hover .tg-kbd-hint,
+.tg-search-group:focus-within .tg-kbd-hint {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .tg-kbd-hint { display: none !important; }
+}
+
+/* ── Search group focus ring ───────────────────────────── */
+
+.tg-search-group .form-control:focus {
+  z-index: 1;
+}
+
+/* ── Floating action button (mobile only) ──────────────── */
+
+.tg-fab {
+  display: none;
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--tg-primary);
+  color: #fff;
+  font-size: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--tg-primary) 40%, transparent);
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  z-index: 1050;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tg-fab:active {
+  transform: scale(0.9);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--tg-primary) 30%, transparent);
+}
+
+@media (max-width: 767px) {
+  .tg-fab {
+    display: flex;
+  }
+}
+
+/* ── Detail column smooth scroll ───────────────────────── */
+
+.tg-detail-col {
+  scroll-behavior: smooth;
+}
+
+.tg-detail-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--tg-border) transparent;
+}
+
+.tg-detail-scroll::-webkit-scrollbar { width: 5px; }
+.tg-detail-scroll::-webkit-scrollbar-track { background: transparent; }
+.tg-detail-scroll::-webkit-scrollbar-thumb { background: var(--tg-border); border-radius: 10px; }
+.tg-detail-scroll::-webkit-scrollbar-thumb:hover { background: var(--tg-muted); }
+
+/* ── Subgrid search ──────────────────────────────────────── */
+
+.tg-sg-search-bar {
+  border-bottom: 1px solid var(--tg-border);
+  background: var(--tg-card-bg);
+}
+
+.tg-sg-search-bar .form-control {
+  font-size: 0.8125rem;
+  padding: 0.35rem 0.5rem;
+}
+
+.tg-sg-search-bar .input-group-text {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.tg-sg-count {
+  font-size: 0.6875rem;
+  min-width: 3rem;
+  text-align: right;
+}
+
+/* ── Utility classes ───────────────────────────────────── */
+
+.text-purple { color: #6f42c1 !important; }
+.text-orange { color: #fd7e14 !important; }
+.ls-tight { letter-spacing: -0.02em; }
+.fs-7 { font-size: 0.6875rem; }

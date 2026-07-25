@@ -17,6 +17,31 @@
   [hiccup-body]
   (str (html hiccup-body)))
 
+(defn- safe-parse-long
+  "Safely parses a string to long. Returns nil on nil or invalid input."
+  [s]
+  (when s
+    (try (Long/parseLong (str s))
+         (catch NumberFormatException _ nil))))
+
+(defn- validate-m2m-params
+  "Validates through_table, parent_fk, related_fk against known entity configs.
+   Returns a map of validated keyword values, or nil if validation fails."
+  [through-table parent-fk related-fk]
+  (when (and through-table parent-fk related-fk)
+    (try
+      (let [entity-kw  (keyword through-table)
+            entity-cfg (config/get-entity-config entity-kw)
+            field-ids  (set (map :id (:fields entity-cfg)))
+            parent-kw  (keyword parent-fk)
+            related-kw (keyword related-fk)]
+        (when (and (contains? field-ids parent-kw)
+                   (contains? field-ids related-kw))
+          {:through-table entity-kw
+           :parent-fk     parent-kw
+           :related-fk    related-kw}))
+      (catch Exception _ nil))))
+
 (defn handle-load-subgrid
   "AJAX handler: loads subgrid data for a specific parent"
   [request]
@@ -71,13 +96,8 @@
   "POST /tabgrid/dissociate — deletes a row from the junction table, then redirects."
   [request]
   (let [params        (:params request)
-        through-table (:through_table params)
-        parent-fk     (keyword (:parent_fk params))
-        parent-id     (Long/parseLong (:parent_id params))
-        related-fk    (keyword (:related_fk params))
-        related-id    (Long/parseLong (:related_id params))
-        active-tab    (:active_tab params)
         referer       (get-in request [:headers "referer"] "/")
+        active-tab    (:active_tab params)
         location      (if active-tab
                         (let [base (str/replace referer #"active_tab=[^&]*"
                                                 (str "active_tab=" active-tab))]
@@ -86,14 +106,22 @@
                                  (if (.contains ^String referer "?") "&" "?")
                                  "active_tab=" active-tab)
                             base))
-                        referer)]
-    (try
-      (let [where [(str (name parent-fk) " = ? AND " (name related-fk) " = ?")
-                   parent-id related-id]]
-        (crud/Delete through-table where))
-      {:status 302 :headers {"Location" location}}
-      (catch Exception _e
-        {:status 302 :headers {"Location" location}}))))
+                        referer)
+        validated     (validate-m2m-params (:through_table params)
+                                          (:parent_fk params)
+                                          (:related_fk params))
+        parent-id     (safe-parse-long (:parent_id params))
+        related-id    (safe-parse-long (:related_id params))]
+    (if (and validated parent-id related-id)
+      (try
+        (let [where [(str (name (:parent-fk validated)) " = ? AND "
+                          (name (:related-fk validated)) " = ?")
+                     parent-id related-id]]
+          (crud/Delete (:through-table validated) where))
+        {:status 302 :headers {"Location" location}}
+        (catch Exception _e
+          {:status 302 :headers {"Location" location}}))
+      {:status 302 :headers {"Location" location}})))
 
 (defn handle-m2m-pane
   "GET /tabgrid/m2m-pane — returns fresh HTML fragment for one M2M accordion section.
@@ -107,7 +135,6 @@
         entity-title    (or (:title entity-config) (name entity))
         parent-record   (data/fetch-parent-record entity parent-id)
         fields          (data/build-fields-map entity)
-        parent-display  (render/parent-display-label fields parent-record parent-id)
         subgrid-spec    (first (filter #(= (name (:entity %)) subgrid-entity)
                                        (:subgrids entity-config)))
         subgrid         (data/prepare-subgrid-config entity subgrid-spec parent-id)]
@@ -128,100 +155,102 @@
   "GET /tabgrid/pivot-form — returns HTML form for editing junction pivot attributes."
   [request]
   (let [params      (:params request)
-        through-str (:through_table params)
-        parent-fk   (:parent_fk params)
-        parent-id   (:parent_id params)
-        related-fk  (:related_fk params)
-        related-id  (:related_id params)
-        active-tab  (:active_tab params)
-        return-url  (:return_url params)
-        junction    (keyword through-str)
-        title       (i18n/tr :pivot/edit-title
-                             {:title (try (:title (config/get-entity-config junction))
-                                          (catch Exception _ through-str))})
-        fields      (pivot-visible-fields junction parent-fk related-fk)
-        sql         [(str "SELECT * FROM " through-str
-                          " WHERE " parent-fk " = ? AND " related-fk " = ?")
-                     (Long/parseLong parent-id) (Long/parseLong related-id)]
-        current-row (first (crud/Query sql))]
-    (application request title (get-session-id request) nil
-                 [:div.container.py-4
-                  [:h4.mb-3 title]
-                  [:form {:method "POST" :action "/tabgrid/save-pivot"}
-                   (csrf-field)
-                   [:input {:type "hidden" :name "through_table" :value through-str}]
-                   [:input {:type "hidden" :name "parent_fk"     :value parent-fk}]
-                   [:input {:type "hidden" :name "parent_id"     :value parent-id}]
-                   [:input {:type "hidden" :name "related_fk"    :value related-fk}]
-                   [:input {:type "hidden" :name "related_id"    :value related-id}]
-                   (when active-tab
-                     [:input {:type "hidden" :name "active_tab" :value active-tab}])
-                   (when return-url
-                     [:input {:type "hidden" :name "return_url" :value return-url}])
-                   (if (seq fields)
-                     (for [field fields
-                           :let [fid   (:id field)
-                                 ftype (or (:type field) :text)
-                                 options (or (:options field) [])
-                                 value (or (get current-row fid) (:value field) "")]]
-                       [:div.mb-3
-                        [:label.form-label (:label field)]
-                        (case ftype
-                          :number   [:input.form-control
-                                     {:type "number" :name (name fid) :value (str value)}]
-                          :date     [:input.form-control
-                                     {:type "date" :name (name fid) :value (str value)}]
-                          :select   [:select.form-select {:name (name fid)}
-                                     (for [opt options]
-                                       [:option {:value (:value opt)} (:label opt)])]
-                          :radio    [:div.mb-3
-                                     [:div.mt-2
-                                      (for [opt options]
-                                        [:div.form-check.form-check-inline.me-4
-                                         [:input.form-check-input
-                                          {:type "radio"
-                                           :name (name fid)
-                                           :value (:value opt)
-                                           :id (:id opt)
-                                           :checked (when (= (str value) (str (:value opt))) true)}]
-                                         [:label.form-check-label.fw-medium.ms-2
-                                          {:for (:id opt)}
-                                          (:label opt)]])]]
-                          :textarea [:textarea.form-control {:name (name fid) :rows 3} (str value)]
-                          [:input.form-control {:type "text" :name (name fid) :value (str value)}])])
-                     [:p.text-muted (i18n/tr :pivot/no-attributes)])
-                   [:div.d-flex.gap-2.mt-3
-                    [:button.btn.btn-primary {:type "submit"}
-                     [:i.bi.bi-check.me-1] (i18n/tr :common/save)]
-                    [:a.btn.btn-secondary
-                     {:href (if return-url
-                              (if active-tab
-                                (str return-url
-                                     (if (.contains ^String return-url "?") "&" "?")
-                                     "active_tab=" active-tab)
-                                return-url)
-                              "javascript:history.back()")}
-                     (i18n/tr :common/cancel)]]]])))
+        validated   (validate-m2m-params (:through_table params)
+                                        (:parent_fk params)
+                                        (:related_fk params))]
+    (if-not validated
+      (application request "Invalid parameters" (get-session-id request) nil
+                   [:div.container.py-4.text-center
+                    [:h4.text-danger "Invalid parameters"]
+                    [:p.text-muted "The submitted form data is invalid."]])
+      (let [parent-id   (:parent_id params)
+            related-id  (:related_id params)
+            active-tab  (:active_tab params)
+            return-url  (:return_url params)
+            through-str (:through_table params)
+            p-id        (safe-parse-long parent-id)
+            r-id        (safe-parse-long related-id)
+            junction    (:through-table validated)
+            parent-fk   (name (:parent-fk validated))
+            related-fk  (name (:related-fk validated))
+            title       (i18n/tr :pivot/edit-title
+                                 {:title (try (:title (config/get-entity-config junction))
+                                              (catch Exception _ through-str))})
+            fields      (pivot-visible-fields junction parent-fk related-fk)
+            sql         [(str "SELECT * FROM " through-str
+                              " WHERE " parent-fk " = ? AND " related-fk " = ?")
+                         p-id r-id]
+            current-row (first (crud/Query sql))]
+        (application request title (get-session-id request) nil
+                     [:div.container.py-4
+                      [:h4.mb-3 title]
+                      [:form {:method "POST" :action "/tabgrid/save-pivot"}
+                       (csrf-field)
+                       [:input {:type "hidden" :name "through_table" :value through-str}]
+                       [:input {:type "hidden" :name "parent_fk"     :value parent-fk}]
+                       [:input {:type "hidden" :name "parent_id"     :value parent-id}]
+                       [:input {:type "hidden" :name "related_fk"    :value related-fk}]
+                       [:input {:type "hidden" :name "related_id"    :value related-id}]
+                       (when active-tab
+                         [:input {:type "hidden" :name "active_tab" :value active-tab}])
+                       (when return-url
+                         [:input {:type "hidden" :name "return_url" :value return-url}])
+                        (if (seq fields)
+                          (for [field fields
+                                :let [fid   (:id field)
+                                      ftype (or (:type field) :text)
+                                      options (or (:options field) [])
+                                      value (or (get current-row fid) (:value field) "")]]
+                            [:div.mb-3
+                             [:label.form-label.fw-semibold (:label field)]
+                             (case ftype
+                               :number   [:input.form-control-lg.form-control
+                                          {:type "number" :name (name fid) :value (str value)}]
+                               :date     [:input.form-control-lg.form-control
+                                          {:type "date" :name (name fid) :value (str value)}]
+                               :select   [:select.form-select-lg.form-select {:name (name fid)}
+                                          (for [opt options]
+                                            [:option {:value (:value opt)} (:label opt)])]
+                               :radio    [:div.mb-3
+                                          [:div.mt-2
+                                           (for [opt options]
+                                             [:div.form-check.form-check-inline.me-4
+                                              [:input.form-check-input
+                                               {:type "radio"
+                                                :name (name fid)
+                                                :value (:value opt)
+                                                :id (:id opt)
+                                                :checked (when (= (str value) (str (:value opt))) true)}]
+                                              [:label.form-check-label.fw-medium.ms-2
+                                               {:for (:id opt)}
+                                               (:label opt)]])]]
+                               :textarea [:textarea.form-control-lg.form-control {:name (name fid) :rows 3} (str value)]
+                               [:input.form-control-lg.form-control {:type "text" :name (name fid) :value (str value)}])])
+                         [:p.text-muted (i18n/tr :pivot/no-attributes)])
+                       [:div.d-flex.gap-2.mt-3
+                        [:button.btn.btn-primary {:type "submit"}
+                         [:i.bi.bi-check.me-1] (i18n/tr :common/save)]
+                        [:a.btn.btn-secondary
+                         {:href (if return-url
+                                  (if active-tab
+                                    (str return-url
+                                         (if (.contains ^String return-url "?") "&" "?")
+                                         "active_tab=" active-tab)
+                                    return-url)
+                                  "javascript:history.back()")}
+                         (i18n/tr :common/cancel)]]]])))))
 
 (defn handle-save-pivot
   "POST /tabgrid/save-pivot — updates pivot attributes on a junction table row."
   [request]
   (let [params          (:params request)
-        through-str     (:through_table params)
-        parent-fk       (:parent_fk params)
-        parent-id       (Long/parseLong (:parent_id params))
-        related-fk      (:related_fk params)
-        related-id      (Long/parseLong (:related_id params))
+        validated       (validate-m2m-params (:through_table params)
+                                            (:parent_fk params)
+                                            (:related_fk params))
+        parent-id       (safe-parse-long (:parent_id params))
+        related-id      (safe-parse-long (:related_id params))
         active-tab      (:active_tab params)
         return-url      (:return_url params)
-        junction        (keyword through-str)
-        pivot-field-ids (map :id (pivot-visible-fields junction parent-fk related-fk))
-        row             (into {} (for [fid pivot-field-ids
-                                       :let [v (get params (keyword (name fid)))]
-                                       :when (some? v)]
-                                   [fid v]))
-        where           [(str parent-fk " = ? AND " related-fk " = ?")
-                         parent-id related-id]
         location        (if return-url
                           (if active-tab
                             (str return-url
@@ -229,98 +258,118 @@
                                  "active_tab=" active-tab)
                             return-url)
                           (get-in request [:headers "referer"] "/"))]
-    (try
-      (when (seq row)
-        (crud/Update junction row where))
-      {:status 302 :headers {"Location" location}}
-      (catch Exception _e
-        {:status 302 :headers {"Location" location}}))))
+    (if (and validated parent-id related-id)
+      (let [junction        (:through-table validated)
+            parent-fk       (name (:parent-fk validated))
+            related-fk      (name (:related-fk validated))
+            pivot-field-ids (map :id (pivot-visible-fields junction parent-fk related-fk))
+            row             (into {} (for [fid pivot-field-ids
+                                           :let [v (get params (keyword (name fid)))]
+                                           :when (some? v)]
+                                       [fid v]))
+            where           [(str parent-fk " = ? AND " related-fk " = ?")
+                             parent-id related-id]]
+        (try
+          (when (seq row)
+            (crud/Update junction row where))
+          {:status 302 :headers {"Location" location}}
+          (catch Exception _e
+            {:status 302 :headers {"Location" location}})))
+      {:status 302 :headers {"Location" location}})))
 
 (defn handle-link-form
   "GET /tabgrid/link-form — full-page form with checkboxes to link M2M records."
   [request]
   (let [params          (:params request)
-        through-str     (:through_table params)
-        parent-fk       (:parent_fk params)
-        parent-id       (:parent_id params)
-        related-entity  (keyword (:related_entity params))
-        related-fk      (:related_fk params)
-        return-url      (:return_url params)
-        active-tab      (:active_tab params)
-        junction        (keyword through-str)
-        junction-cfg    (try (config/get-entity-config junction) (catch Exception _ nil))
-        title           (or (:title junction-cfg) (name junction))
-        heading         (i18n/tr :subgrid/link-form-title {:title title})
-        m2m-data        (data/fetch-many-to-many-records junction related-entity
-                                                         (Long/parseLong parent-id)
-                                                         parent-fk related-fk)
-        linked-ids      (or (:linked-ids m2m-data) #{})
-        available       (data/fetch-available-for-linking related-entity linked-ids)
-        fields          (data/build-fields-map related-entity)]
-    (application request heading (get-session-id request) nil
-                 [:div.container.py-4
-                  [:h4.mb-3 heading]
-                  [:form {:method "POST" :action "/tabgrid/link-save"}
-                   (csrf-field)
-                   [:input {:type "hidden" :name "through_table" :value through-str}]
-                   [:input {:type "hidden" :name "parent_fk"     :value parent-fk}]
-                   [:input {:type "hidden" :name "parent_id"     :value parent-id}]
-                   [:input {:type "hidden" :name "related_fk"    :value related-fk}]
-                   (when return-url
-                     [:input {:type "hidden" :name "return_url" :value return-url}])
-                   (when active-tab
-                     [:input {:type "hidden" :name "active_tab" :value active-tab}])
-                   (if (seq available)
-                     [:div
-                      [:p.text-muted (i18n/tr :subgrid/select-records)]
-                      [:table.table.table-hover.table-sm
-                       [:thead
-                        [:tr
-                         [:th {:style "width:40px"}
-                          [:input {:type "checkbox" :id "m2m-select-all"}]]
-                         (for [[_ label] fields] [:th label])]]
-                       (into [:tbody]
-                             (for [row available]
-                               [:tr
-                                [:td
-                                 [:input {:type "checkbox" :name "selected_ids"
-                                          :value (:id row)}]]
-                                (for [[fid _] fields]
-                                  [:td.small (get row fid)])]))]
-                      [:div.d-flex.gap-2.mt-3
-                       [:button.btn.btn-primary {:type "submit"}
-                        [:i.bi.bi-check.me-1] (i18n/tr :common/save)]
-                       [:a.btn.btn-secondary
-                        {:href (if return-url
-                                 (if active-tab
-                                   (str return-url
-                                        (if (.contains ^String return-url "?") "&" "?")
-                                        "active_tab=" active-tab)
-                                   return-url)
-                                 "javascript:history.back()")}
-                        (i18n/tr :common/cancel)]]]
-                     [:div.text-center.p-4.text-muted
-                      [:i.bi.bi-check-circle {:style "font-size:2rem"}]
-                      [:p.mt-2 (i18n/tr :subgrid/no-available-records)]
-                      [:a.btn.btn-secondary
-                       {:href (if return-url
-                                (if active-tab
-                                  (str return-url
-                                       (if (.contains ^String return-url "?") "&" "?")
-                                       "active_tab=" active-tab)
-                                  return-url)
-                                "javascript:history.back()")}
-                       (i18n/tr :common/back)]])
-                   [:script
-                    "document.getElementById('m2m-select-all').addEventListener('change',function(){var c=document.querySelectorAll('input[name=\"selected_ids\"]');for(var i=0;i<c.length;i++)c[i].checked=this.checked;})"]]])))
+        validated       (validate-m2m-params (:through_table params)
+                                            (:parent_fk params)
+                                            (:related_fk params))
+        parent-id       (safe-parse-long (:parent_id params))
+        return-url      (:return_url params)]
+    (if-not (and validated parent-id)
+      (application request "Invalid parameters" (get-session-id request) nil
+                   [:div.container.py-4.text-center
+                    [:h4.text-danger "Invalid parameters"]
+                    [:p.text-muted "The submitted form data is invalid."]])
+      (let [through-str    (:through_table params)
+            parent-fk      (name (:parent-fk validated))
+            related-fk     (name (:related-fk validated))
+            related-entity (keyword (:related_entity params))
+            junction       (:through-table validated)
+            junction-cfg   (try (config/get-entity-config junction) (catch Exception _ nil))
+            title          (or (:title junction-cfg) (name junction))
+            heading        (i18n/tr :subgrid/link-form-title {:title title})
+            m2m-data       (data/fetch-many-to-many-records junction related-entity
+                                                           parent-id
+                                                           parent-fk related-fk)
+            linked-ids     (or (:linked-ids m2m-data) #{})
+            available      (data/fetch-available-for-linking related-entity linked-ids)
+            fields         (data/build-fields-map related-entity)]
+        (application request heading (get-session-id request) nil
+                     [:div.container.py-4
+                      [:h4.mb-3 heading]
+                      [:form {:method "POST" :action "/tabgrid/link-save"}
+                       (csrf-field)
+                       [:input {:type "hidden" :name "through_table" :value through-str}]
+                       [:input {:type "hidden" :name "parent_fk"     :value parent-fk}]
+                       [:input {:type "hidden" :name "parent_id"     :value (:parent_id params)}]
+                       [:input {:type "hidden" :name "related_fk"    :value related-fk}]
+                       (when return-url
+                         [:input {:type "hidden" :name "return_url" :value return-url}])
+                       (when (:active_tab params)
+                         [:input {:type "hidden" :name "active_tab" :value (:active_tab params)}])
+                        (if (seq available)
+                          [:div
+                           [:p.text-muted (i18n/tr :subgrid/select-records)]
+                           [:div.table-responsive
+                            [:table.table.table-hover.table-sm
+                             [:thead
+                              [:tr
+                               [:th {:style "width:48px"}
+                                [:input.form-check-input {:type "checkbox" :id "m2m-select-all"}]]
+                               (for [[_ label] fields] [:th label])]]
+                             (into [:tbody]
+                                   (for [row available]
+                                     [:tr
+                                      [:td {:data-label ""}
+                                       [:input.form-check-input {:type "checkbox" :name "selected_ids"
+                                                                 :value (:id row)}]]
+                                      (for [[fid label] fields]
+                                        [:td.small {:data-label label} (get row fid)])]))]]
+                          [:div.d-flex.gap-2.mt-3
+                           [:button.btn.btn-primary {:type "submit"}
+                            [:i.bi.bi-check.me-1] (i18n/tr :common/save)]
+                           [:a.btn.btn-secondary
+                            {:href (if return-url
+                                     (if (:active_tab params)
+                                       (str return-url
+                                            (if (.contains ^String return-url "?") "&" "?")
+                                            "active_tab=" (:active_tab params))
+                                       return-url)
+                                     "javascript:history.back()")}
+                            (i18n/tr :common/cancel)]]]
+                         [:div.text-center.p-4.text-muted
+                          [:i.bi.bi-check-circle {:style "font-size:2rem"}]
+                          [:p.mt-2 (i18n/tr :subgrid/no-available-records)]
+                          [:a.btn.btn-secondary
+                           {:href (if return-url
+                                    (if (:active_tab params)
+                                      (str return-url
+                                           (if (.contains ^String return-url "?") "&" "?")
+                                           "active_tab=" (:active_tab params))
+                                      return-url)
+                                    "javascript:history.back()")}
+                           (i18n/tr :common/back)]])
+                       [:script
+                        "document.getElementById('m2m-select-all').addEventListener('change',function(){var c=document.querySelectorAll('input[name=\"selected_ids\"]');for(var i=0;i<c.length;i++)c[i].checked=this.checked;})"]]])))))
 (defn handle-link-save
   "POST /tabgrid/link-save — inserts junction rows for each selected record, then redirects."
   [request]
   (let [params        (:params request)
-        through-table (:through_table params)
-        parent-fk     (keyword (:parent_fk params))
-        parent-id     (Long/parseLong (:parent_id params))
-        related-fk    (keyword (:related_fk params))
+        validated     (validate-m2m-params (:through_table params)
+                                          (:parent_fk params)
+                                          (:related_fk params))
+        parent-id     (safe-parse-long (:parent_id params))
         selected-ids  (:selected_ids params)
         return-url    (:return_url params)
         active-tab    (:active_tab params)
@@ -332,9 +381,15 @@
                                "active_tab=" active-tab)
                           return-url)
                         "/")]
-    (try
-      (doseq [rid ids]
-        (crud/Insert through-table {parent-fk parent-id related-fk (Long/parseLong rid)}))
-      {:status 302 :headers {"Location" location}}
-      (catch Exception _e
-        {:status 302 :headers {"Location" location}}))))
+    (if (and validated parent-id ids)
+      (try
+        (doseq [rid ids]
+          (let [parsed-rid (safe-parse-long rid)]
+            (when parsed-rid
+              (crud/Insert (:through-table validated)
+                           {(:parent-fk validated) parent-id
+                            (:related-fk validated) parsed-rid}))))
+        {:status 302 :headers {"Location" location}}
+        (catch Exception _e
+          {:status 302 :headers {"Location" location}}))
+      {:status 302 :headers {"Location" location}})))

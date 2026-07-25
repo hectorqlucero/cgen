@@ -53,9 +53,16 @@
 (s/def ::foreign-key keyword?)
 (s/def ::href string?)
 (s/def ::icon string?)
+(s/def ::label string?)
+(s/def ::relationship-type #{:one-to-one :one-to-many :many-to-many})
+(s/def ::through-table keyword?)
+(s/def ::related-entity keyword?)
+(s/def ::related-fk keyword?)
 (s/def ::subgrid
   (s/keys :req-un [::entity ::foreign-key]
-          :opt-un [::title ::href ::icon]))
+          :opt-un [::title ::href ::icon ::label
+                   ::relationship-type ::through-table
+                   ::related-entity ::related-fk]))
 
 (s/def ::subgrids (s/coll-of ::subgrid))
 

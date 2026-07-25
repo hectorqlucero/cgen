@@ -186,8 +186,20 @@
  :subgrid/rel-1n-desc "Related records"
  :subgrid/rel-nm-desc "Multiple associations"
  :subgrid/relationships "{count} relationships"
-  :subgrid/last-updated "Last updated"
-  :subgrid/total-records "{count} records"
+   :subgrid/last-updated "Last updated"
+   :subgrid/total-records "{count} records"
+   :subgrid/has-record "1 record"
+   :subgrid/no-record "No record"
+   :subgrid/search "Filter..."
+   :subgrid/clear-filter "Clear filter"
+   :subgrid/showing-n "Showing {n} of {total}"
+
+ ;; [GENERIC] TabGrid
+ :tabgrid/record-list "Records"
+ :tabgrid/total-records "records"
+ :tabgrid/select-record "Select a record to view its details."
+ :tabgrid/no-record-selected "Select a record to view details."
+ :tabgrid/select-hint "Choose a record from the list on the left."
 
  ;; [GENERIC] Pivot Attributes
  :pivot/edit-attributes "Edit attributes"
