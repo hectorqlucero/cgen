@@ -943,6 +943,18 @@ th.tg-sg-actions {
   text-align: right;
 }
 
+/* ── Edited row highlight ──────────────────────────────── */
+
+.tg-row-highlighted {
+  animation: tg-row-glow 2s ease;
+}
+
+@keyframes tg-row-glow {
+  0%   { background-color: rgba(13, 110, 253, 0.15); box-shadow: inset 3px 0 0 var(--tg-primary); }
+  70%  { background-color: rgba(13, 110, 253, 0.08); box-shadow: inset 3px 0 0 var(--tg-primary); }
+  100% { background-color: transparent; box-shadow: inset 3px 0 0 transparent; }
+}
+
 /* ── Utility classes ───────────────────────────────────── */
 
 .text-purple { color: #6f42c1 !important; }

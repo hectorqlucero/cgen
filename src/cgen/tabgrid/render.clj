@@ -256,6 +256,32 @@
     "if(input){input.value='';sessionStorage.removeItem('sgf_'+key);filterSubgrid(key);input.focus();}"
     "});"
     "});"
+    ;; ── Scroll-to & highlight edited subgrid row ──
+    "var params=new URLSearchParams(window.location.search);"
+    "var eid=params.get('edited_id');"
+    "if(eid){"
+    "params.delete('edited_id');"
+    "var qs=params.toString();"
+    "window.history.replaceState(null,'',qs?'?'+qs:window.location.pathname);"
+    "function scrollToEdited(){"
+    "var row=document.getElementById('sg-row-'+eid);"
+    "if(!row||row.style.display==='none'){"
+    "document.querySelectorAll('.tg-sg-search').forEach(function(inp){"
+    "if(inp.value){inp.value='';sessionStorage.removeItem('sgf_'+inp.getAttribute('data-sg-key'));filterSubgrid(inp.getAttribute('data-sg-key'));}"
+    "});"
+    "row=document.getElementById('sg-row-'+eid);"
+    "}"
+    "if(row){"
+    "row.classList.add('tg-row-highlighted');"
+    "setTimeout(function(){row.scrollIntoView({behavior:'smooth',block:'center'});},50);"
+    "setTimeout(function(){row.classList.remove('tg-row-highlighted');},2200);"
+    "}else{"
+    "var card=document.querySelector('[id^=\"sg-card-\"]');"
+    "if(card)card.scrollIntoView({behavior:'smooth',block:'start'});"
+    "}"
+    "}"
+    "scrollToEdited();"
+    "}"
     "})()")])
 
 (defn- render-entity-summary [entity-name title fields row actions]
@@ -374,6 +400,7 @@
         related-fk  (name (:related-fk subgrid))
         related-ent (name (:related-entity subgrid))]
     [:div.card.mb-3.shadow-sm.border-0.tg-subgrid-m2m
+     {:id (str "sg-card-" related-ent)}
      [:div.card-header.d-flex.justify-content-between.align-items-center.py-3.border-0
       {:style "background: linear-gradient(135deg, rgba(13,110,253,0.04) 0%, rgba(111,66,193,0.04) 100%);"}
       [:div.d-flex.align-items-center.gap-2
@@ -406,15 +433,15 @@
             (for [[fid label] sg-fields]
               [:th.fw-semibold.text-uppercase.fs-7.text-muted.px-3 label])
             [:th.text-center.fw-semibold.text-uppercase.fs-7.text-muted.px-3.tg-sg-actions (i18n/tr :common/actions)]]]
-           [:tbody
-            (for [record (:records subgrid)
-                  :let [rid (:id record)]]
-              ^{:key rid}
-              [:tr
-               (for [[fid label] sg-fields]
-                 [:td.px-3.py-2 {:data-label label} (field-value (get record fid))])
-               [:td.text-center.text-nowrap.px-3.py-2.tg-sg-actions {:data-label (i18n/tr :common/actions)}
-                (m2m-action-btns subgrid parent-id record return-url)]])]]]
+          [:tbody
+           (for [record (:records subgrid)
+                 :let [rid (:id record)]]
+             ^{:key rid}
+             [:tr {:id (str "sg-row-" rid)}
+              (for [[fid label] sg-fields]
+                [:td.px-3.py-2 {:data-label label} (field-value (get record fid))])
+              [:td.text-center.text-nowrap.px-3.py-2.tg-sg-actions {:data-label (i18n/tr :common/actions)}
+               (m2m-action-btns subgrid parent-id record return-url)]])]]]
         [:div.text-center.py-5.tg-empty-state
          [:div.d-inline-flex.align-items-center.justify-content-center.rounded-3.bg-primary-subtle.mb-3
           {:style "width: 64px; height: 64px;"}
@@ -439,6 +466,7 @@
         record     (:record subgrid)
         return-url (str "/admin/" entity-name "/" parent-id)]
     [:div.card.mb-3.shadow-sm.border-0.tg-subgrid-1to1
+     {:id (str "sg-card-" sg-name)}
      [:div.card-header.d-flex.justify-content-between.align-items-center.py-3.border-0
       {:style "background: linear-gradient(135deg, rgba(13,202,240,0.06) 0%, rgba(108,117,125,0.03) 100%);"}
       [:div.d-flex.align-items-center.gap-2
@@ -464,14 +492,14 @@
            [:tr
             (for [[fid label] sg-fields]
               [:th.fw-semibold.text-uppercase.fs-7.text-muted.px-3 label])
-             (when (:edit actions)
-               [:th.text-center.fw-semibold.text-uppercase.fs-7.text-muted.px-3.tg-sg-actions (i18n/tr :common/actions)])]]
-           [:tbody
-            [:tr
-             (for [[fid label] sg-fields]
-               [:td.px-3.py-2 {:data-label label} (field-value (get record fid))])
-             (when (:edit actions)
-               [:td.text-center.text-nowrap.px-3.py-2.tg-sg-actions {:data-label (i18n/tr :common/actions)}
+            (when (:edit actions)
+              [:th.text-center.fw-semibold.text-uppercase.fs-7.text-muted.px-3.tg-sg-actions (i18n/tr :common/actions)])]]
+          [:tbody
+           [:tr {:id (str "sg-row-" (:id record))}
+            (for [[fid label] sg-fields]
+              [:td.px-3.py-2 {:data-label label} (field-value (get record fid))])
+            (when (:edit actions)
+              [:td.text-center.text-nowrap.px-3.py-2.tg-sg-actions {:data-label (i18n/tr :common/actions)}
                [:a.btn.btn-outline-primary.btn-sm.rounded-pill
                 {:href (str "/admin/" sg-name "/edit-form/" (:id record)
                             "?return_url=" (ring-codec/url-encode return-url))
@@ -519,6 +547,7 @@
         return-url (str "/admin/" entity-name "/" parent-id)
         action-btns (partial action-btns-1toN sg-name actions return-url)]
     [:div.card.mb-3.shadow-sm.border-0.tg-subgrid-1toN
+     {:id (str "sg-card-" sg-name)}
      [:div.card-header.d-flex.justify-content-between.align-items-center.py-3.border-0
       {:style "background: linear-gradient(135deg, rgba(25,135,84,0.06) 0%, rgba(108,117,125,0.03) 100%);"}
       [:div.d-flex.align-items-center.gap-2
@@ -548,15 +577,15 @@
             (for [[fid label] sg-fields]
               [:th.fw-semibold.text-uppercase.fs-7.text-muted.px-3 label])
             [:th.text-center.fw-semibold.text-uppercase.fs-7.text-muted.px-3.tg-sg-actions (i18n/tr :common/actions)]]]
-           [:tbody
-            (for [record (:records subgrid)
-                  :let [rid (:id record)]]
-              ^{:key rid}
-              [:tr
-               (for [[fid label] sg-fields]
-                 [:td.px-3.py-2 {:data-label label} (field-value (get record fid))])
-               [:td.text-center.text-nowrap.px-3.py-2.tg-sg-actions {:data-label (i18n/tr :common/actions)}
-                (action-btns record)]])]]]
+          [:tbody
+           (for [record (:records subgrid)
+                 :let [rid (:id record)]]
+             ^{:key rid}
+             [:tr {:id (str "sg-row-" rid)}
+              (for [[fid label] sg-fields]
+                [:td.px-3.py-2 {:data-label label} (field-value (get record fid))])
+              [:td.text-center.text-nowrap.px-3.py-2.tg-sg-actions {:data-label (i18n/tr :common/actions)}
+               (action-btns record)]])]]]
         [:div.text-center.py-5.tg-empty-state
          [:div.d-inline-flex.align-items-center.justify-content-center.rounded-3.bg-success-subtle.mb-3
           {:style "width: 64px; height: 64px;"}
