@@ -352,7 +352,7 @@
    [:div.input-group.input-group-sm
     [:span.input-group-text.border-0.bg-body-tertiary.text-muted
      [:i.bi.bi-search {:style "font-size: 0.8rem;"}]]
-     [:input.form-control.border-0.bg-body-tertiary.tg-sg-search
+    [:input.form-control.border-0.bg-body-tertiary.tg-sg-search
      {:type "text"
       :placeholder (i18n/tr :subgrid/search)
       :data-sg-key sg-key
@@ -373,7 +373,7 @@
         parent-fk   (name (:foreign-key subgrid))
         related-fk  (name (:related-fk subgrid))
         related-ent (name (:related-entity subgrid))]
-    [:div.card.mb-3.shadow-sm.border-0.overflow-hidden.tg-subgrid-m2m
+    [:div.card.mb-3.shadow-sm.border-0.tg-subgrid-m2m
      [:div.card-header.d-flex.justify-content-between.align-items-center.py-3.border-0
       {:style "background: linear-gradient(135deg, rgba(13,110,253,0.04) 0%, rgba(111,66,193,0.04) 100%);"}
       [:div.d-flex.align-items-center.gap-2
@@ -405,16 +405,16 @@
            [:tr
             (for [[fid label] sg-fields]
               [:th.fw-semibold.text-uppercase.fs-7.text-muted.px-3 label])
-            [:th.text-end.fw-semibold.text-uppercase.fs-7.text-muted.px-3 (i18n/tr :common/actions)]]]
-          [:tbody
-           (for [record (:records subgrid)
-                 :let [rid (:id record)]]
-             ^{:key rid}
-             [:tr
-              (for [[fid label] sg-fields]
-                [:td.px-3.py-2 {:data-label label} (field-value (get record fid))])
-              [:td.text-end.text-nowrap.px-3.py-2 {:data-label (i18n/tr :common/actions)}
-               (m2m-action-btns subgrid parent-id record return-url)]])]]]
+            [:th.text-center.fw-semibold.text-uppercase.fs-7.text-muted.px-3.tg-sg-actions (i18n/tr :common/actions)]]]
+           [:tbody
+            (for [record (:records subgrid)
+                  :let [rid (:id record)]]
+              ^{:key rid}
+              [:tr
+               (for [[fid label] sg-fields]
+                 [:td.px-3.py-2 {:data-label label} (field-value (get record fid))])
+               [:td.text-center.text-nowrap.px-3.py-2.tg-sg-actions {:data-label (i18n/tr :common/actions)}
+                (m2m-action-btns subgrid parent-id record return-url)]])]]]
         [:div.text-center.py-5.tg-empty-state
          [:div.d-inline-flex.align-items-center.justify-content-center.rounded-3.bg-primary-subtle.mb-3
           {:style "width: 64px; height: 64px;"}
@@ -438,7 +438,7 @@
         actions    (:actions subgrid)
         record     (:record subgrid)
         return-url (str "/admin/" entity-name "/" parent-id)]
-    [:div.card.mb-3.shadow-sm.border-0.overflow-hidden.tg-subgrid-1to1
+    [:div.card.mb-3.shadow-sm.border-0.tg-subgrid-1to1
      [:div.card-header.d-flex.justify-content-between.align-items-center.py-3.border-0
       {:style "background: linear-gradient(135deg, rgba(13,202,240,0.06) 0%, rgba(108,117,125,0.03) 100%);"}
       [:div.d-flex.align-items-center.gap-2
@@ -464,14 +464,14 @@
            [:tr
             (for [[fid label] sg-fields]
               [:th.fw-semibold.text-uppercase.fs-7.text-muted.px-3 label])
-            (when (:edit actions)
-              [:th.text-end.fw-semibold.text-uppercase.fs-7.text-muted.px-3 (i18n/tr :common/actions)])]]
-          [:tbody
-           [:tr
-            (for [[fid label] sg-fields]
-              [:td.px-3.py-2 {:data-label label} (field-value (get record fid))])
-            (when (:edit actions)
-              [:td.text-end.text-nowrap.px-3.py-2 {:data-label (i18n/tr :common/actions)}
+             (when (:edit actions)
+               [:th.text-center.fw-semibold.text-uppercase.fs-7.text-muted.px-3.tg-sg-actions (i18n/tr :common/actions)])]]
+           [:tbody
+            [:tr
+             (for [[fid label] sg-fields]
+               [:td.px-3.py-2 {:data-label label} (field-value (get record fid))])
+             (when (:edit actions)
+               [:td.text-center.text-nowrap.px-3.py-2.tg-sg-actions {:data-label (i18n/tr :common/actions)}
                [:a.btn.btn-outline-primary.btn-sm.rounded-pill
                 {:href (str "/admin/" sg-name "/edit-form/" (:id record)
                             "?return_url=" (ring-codec/url-encode return-url))
@@ -518,7 +518,7 @@
         actions    (:actions subgrid)
         return-url (str "/admin/" entity-name "/" parent-id)
         action-btns (partial action-btns-1toN sg-name actions return-url)]
-    [:div.card.mb-3.shadow-sm.border-0.overflow-hidden.tg-subgrid-1toN
+    [:div.card.mb-3.shadow-sm.border-0.tg-subgrid-1toN
      [:div.card-header.d-flex.justify-content-between.align-items-center.py-3.border-0
       {:style "background: linear-gradient(135deg, rgba(25,135,84,0.06) 0%, rgba(108,117,125,0.03) 100%);"}
       [:div.d-flex.align-items-center.gap-2
@@ -547,16 +547,16 @@
            [:tr
             (for [[fid label] sg-fields]
               [:th.fw-semibold.text-uppercase.fs-7.text-muted.px-3 label])
-            [:th.text-end.fw-semibold.text-uppercase.fs-7.text-muted.px-3 (i18n/tr :common/actions)]]]
-          [:tbody
-           (for [record (:records subgrid)
-                 :let [rid (:id record)]]
-             ^{:key rid}
-             [:tr
-              (for [[fid label] sg-fields]
-                [:td.px-3.py-2 {:data-label label} (field-value (get record fid))])
-              [:td.text-end.text-nowrap.px-3.py-2 {:data-label (i18n/tr :common/actions)}
-               (action-btns record)]])]]]
+            [:th.text-center.fw-semibold.text-uppercase.fs-7.text-muted.px-3.tg-sg-actions (i18n/tr :common/actions)]]]
+           [:tbody
+            (for [record (:records subgrid)
+                  :let [rid (:id record)]]
+              ^{:key rid}
+              [:tr
+               (for [[fid label] sg-fields]
+                 [:td.px-3.py-2 {:data-label label} (field-value (get record fid))])
+               [:td.text-center.text-nowrap.px-3.py-2.tg-sg-actions {:data-label (i18n/tr :common/actions)}
+                (action-btns record)]])]]]
         [:div.text-center.py-5.tg-empty-state
          [:div.d-inline-flex.align-items-center.justify-content-center.rounded-3.bg-success-subtle.mb-3
           {:style "width: 64px; height: 64px;"}

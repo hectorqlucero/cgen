@@ -131,10 +131,10 @@ html, body {
     align-items: stretch;
   }
 
-  /* Left column: ~1/3 width, scroll */
+  /* Left column: 1/4 width, scroll */
   .tabgrid-container > .row > .col-xl-4 {
-    flex: 0 0 33.333%;
-    max-width: 33.333%;
+    flex: 0 0 25%;
+    max-width: 25%;
     min-height: 0;
     overflow-y: auto;
     scrollbar-width: thin;
@@ -444,6 +444,27 @@ html, body {
 .tg-subgrid-m2m .card-header { border-top: 3px solid var(--bs-primary, #0d6efd); }
 .tg-subgrid-1to1 .card-header { border-top: 3px solid var(--bs-info, #0dcaf0); }
 .tg-subgrid-1toN .card-header { border-top: 3px solid var(--bs-success, #198754); }
+
+.tg-subgrid-1toN,
+.tg-subgrid-m2m,
+.tg-subgrid-1to1 {
+  border: 1px solid var(--tg-border, #dee2e6) !important;
+}
+
+.tg-sg-actions {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  border-left: 1px solid var(--tg-border, #dee2e6);
+}
+
+td.tg-sg-actions {
+  background: var(--tg-card-bg, #fff);
+}
+
+th.tg-sg-actions {
+  background: var(--bs-body-bg, #fff);
+}
 
 /* ── Empty states ──────────────────────────────────────── */
 
