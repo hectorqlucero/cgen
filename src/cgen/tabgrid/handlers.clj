@@ -108,8 +108,8 @@
                             base))
                         referer)
         validated     (validate-m2m-params (:through_table params)
-                                          (:parent_fk params)
-                                          (:related_fk params))
+                                           (:parent_fk params)
+                                           (:related_fk params))
         parent-id     (safe-parse-long (:parent_id params))
         related-id    (safe-parse-long (:related_id params))]
     (if (and validated parent-id related-id)
@@ -143,6 +143,24 @@
      :body (render-html (render/render-m2m-pane request (name entity) entity-title
                                                 subgrid parent-id))}))
 
+(defn handle-subgrid-pane
+  "GET /tabgrid/subgrid-pane — returns fresh HTML fragment for any subgrid type (1:N, 1:1, M:M).
+   Used by the 'Show all' link and client-side refresh after associate/dissociate."
+  [request]
+  (let [params          (:params request)
+        entity          (keyword (:entity params))
+        parent-id       (:parent_id params)
+        subgrid-entity  (:subgrid_entity params)
+        show-all?       (= "true" (:show_all params))
+        entity-config   (config/get-entity-config entity)
+        subgrid-spec    (first (filter #(= (name (:entity %)) subgrid-entity)
+                                       (:subgrids entity-config)))
+        subgrid         (data/prepare-subgrid-config entity subgrid-spec parent-id)]
+    {:status 200
+     :headers {"Content-Type" "text/html; charset=utf-8"}
+     :body (render-html (render/subgrid-pane-body (name entity) parent-id subgrid
+                                                  :show-all? show-all?))}))
+
 (defn- pivot-visible-fields
   "Returns non-hidden, non-FK fields from a junction entity config."
   [junction-kw parent-fk-str related-fk-str]
@@ -156,8 +174,8 @@
   [request]
   (let [params      (:params request)
         validated   (validate-m2m-params (:through_table params)
-                                        (:parent_fk params)
-                                        (:related_fk params))]
+                                         (:parent_fk params)
+                                         (:related_fk params))]
     (if-not validated
       (application request "Invalid parameters" (get-session-id request) nil
                    [:div.container.py-4.text-center
@@ -195,37 +213,37 @@
                          [:input {:type "hidden" :name "active_tab" :value active-tab}])
                        (when return-url
                          [:input {:type "hidden" :name "return_url" :value return-url}])
-                        (if (seq fields)
-                          (for [field fields
-                                :let [fid   (:id field)
-                                      ftype (or (:type field) :text)
-                                      options (or (:options field) [])
-                                      value (or (get current-row fid) (:value field) "")]]
-                            [:div.mb-3
-                             [:label.form-label.fw-semibold (:label field)]
-                             (case ftype
-                               :number   [:input.form-control-lg.form-control
-                                          {:type "number" :name (name fid) :value (str value)}]
-                               :date     [:input.form-control-lg.form-control
-                                          {:type "date" :name (name fid) :value (str value)}]
-                               :select   [:select.form-select-lg.form-select {:name (name fid)}
+                       (if (seq fields)
+                         (for [field fields
+                               :let [fid   (:id field)
+                                     ftype (or (:type field) :text)
+                                     options (or (:options field) [])
+                                     value (or (get current-row fid) (:value field) "")]]
+                           [:div.mb-3
+                            [:label.form-label.fw-semibold (:label field)]
+                            (case ftype
+                              :number   [:input.form-control-lg.form-control
+                                         {:type "number" :name (name fid) :value (str value)}]
+                              :date     [:input.form-control-lg.form-control
+                                         {:type "date" :name (name fid) :value (str value)}]
+                              :select   [:select.form-select-lg.form-select {:name (name fid)}
+                                         (for [opt options]
+                                           [:option {:value (:value opt)} (:label opt)])]
+                              :radio    [:div.mb-3
+                                         [:div.mt-2
                                           (for [opt options]
-                                            [:option {:value (:value opt)} (:label opt)])]
-                               :radio    [:div.mb-3
-                                          [:div.mt-2
-                                           (for [opt options]
-                                             [:div.form-check.form-check-inline.me-4
-                                              [:input.form-check-input
-                                               {:type "radio"
-                                                :name (name fid)
-                                                :value (:value opt)
-                                                :id (:id opt)
-                                                :checked (when (= (str value) (str (:value opt))) true)}]
-                                              [:label.form-check-label.fw-medium.ms-2
-                                               {:for (:id opt)}
-                                               (:label opt)]])]]
-                               :textarea [:textarea.form-control-lg.form-control {:name (name fid) :rows 3} (str value)]
-                               [:input.form-control-lg.form-control {:type "text" :name (name fid) :value (str value)}])])
+                                            [:div.form-check.form-check-inline.me-4
+                                             [:input.form-check-input
+                                              {:type "radio"
+                                               :name (name fid)
+                                               :value (:value opt)
+                                               :id (:id opt)
+                                               :checked (when (= (str value) (str (:value opt))) true)}]
+                                             [:label.form-check-label.fw-medium.ms-2
+                                              {:for (:id opt)}
+                                              (:label opt)]])]]
+                              :textarea [:textarea.form-control-lg.form-control {:name (name fid) :rows 3} (str value)]
+                              [:input.form-control-lg.form-control {:type "text" :name (name fid) :value (str value)}])])
                          [:p.text-muted (i18n/tr :pivot/no-attributes)])
                        [:div.d-flex.gap-2.mt-3
                         [:button.btn.btn-primary {:type "submit"}
@@ -245,8 +263,8 @@
   [request]
   (let [params          (:params request)
         validated       (validate-m2m-params (:through_table params)
-                                            (:parent_fk params)
-                                            (:related_fk params))
+                                             (:parent_fk params)
+                                             (:related_fk params))
         parent-id       (safe-parse-long (:parent_id params))
         related-id      (safe-parse-long (:related_id params))
         active-tab      (:active_tab params)
@@ -282,8 +300,8 @@
   [request]
   (let [params          (:params request)
         validated       (validate-m2m-params (:through_table params)
-                                            (:parent_fk params)
-                                            (:related_fk params))
+                                             (:parent_fk params)
+                                             (:related_fk params))
         parent-id       (safe-parse-long (:parent_id params))
         return-url      (:return_url params)]
     (if-not (and validated parent-id)
@@ -300,8 +318,8 @@
             title          (or (:title junction-cfg) (name junction))
             heading        (i18n/tr :subgrid/link-form-title {:title title})
             m2m-data       (data/fetch-many-to-many-records junction related-entity
-                                                           parent-id
-                                                           parent-fk related-fk)
+                                                            parent-id
+                                                            parent-fk related-fk)
             linked-ids     (or (:linked-ids m2m-data) #{})
             available      (data/fetch-available-for-linking related-entity linked-ids)
             fields         (data/build-fields-map related-entity)]
@@ -318,24 +336,24 @@
                          [:input {:type "hidden" :name "return_url" :value return-url}])
                        (when (:active_tab params)
                          [:input {:type "hidden" :name "active_tab" :value (:active_tab params)}])
-                        (if (seq available)
-                          [:div
-                           [:p.text-muted (i18n/tr :subgrid/select-records)]
-                           [:div.table-responsive
-                            [:table.table.table-hover.table-sm
-                             [:thead
-                              [:tr
-                               [:th {:style "width:48px"}
-                                [:input.form-check-input {:type "checkbox" :id "m2m-select-all"}]]
-                               (for [[_ label] fields] [:th label])]]
-                             (into [:tbody]
-                                   (for [row available]
-                                     [:tr
-                                      [:td {:data-label ""}
-                                       [:input.form-check-input {:type "checkbox" :name "selected_ids"
-                                                                 :value (:id row)}]]
-                                      (for [[fid label] fields]
-                                        [:td.small {:data-label label} (get row fid)])]))]]
+                       (if (seq available)
+                         [:div
+                          [:p.text-muted (i18n/tr :subgrid/select-records)]
+                          [:div.table-responsive
+                           [:table.table.table-hover.table-sm
+                            [:thead
+                             [:tr
+                              [:th {:style "width:48px"}
+                               [:input.form-check-input {:type "checkbox" :id "m2m-select-all"}]]
+                              (for [[_ label] fields] [:th label])]]
+                            (into [:tbody]
+                                  (for [row available]
+                                    [:tr
+                                     [:td {:data-label ""}
+                                      [:input.form-check-input {:type "checkbox" :name "selected_ids"
+                                                                :value (:id row)}]]
+                                     (for [[fid label] fields]
+                                       [:td.small {:data-label label} (get row fid)])]))]]
                           [:div.d-flex.gap-2.mt-3
                            [:button.btn.btn-primary {:type "submit"}
                             [:i.bi.bi-check.me-1] (i18n/tr :common/save)]
@@ -367,8 +385,8 @@
   [request]
   (let [params        (:params request)
         validated     (validate-m2m-params (:through_table params)
-                                          (:parent_fk params)
-                                          (:related_fk params))
+                                           (:parent_fk params)
+                                           (:related_fk params))
         parent-id     (safe-parse-long (:parent_id params))
         selected-ids  (:selected_ids params)
         return-url    (:return_url params)

@@ -24,6 +24,10 @@
   (GET "/tabgrid/m2m-pane" request
     (handlers/handle-m2m-pane request))
 
+  ;; Generic subgrid pane fragment (1:N, 1:1, M:M) for "Show all" / refresh
+  (GET "/tabgrid/subgrid-pane" request
+    (handlers/handle-subgrid-pane request))
+
   (POST "/tabgrid/save-pivot" request
     (handlers/handle-save-pivot request))
 

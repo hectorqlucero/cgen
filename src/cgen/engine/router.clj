@@ -193,7 +193,7 @@
   (if-let [entity (get-entity-from-request request)]
     (if (check-permission entity request)
       (try
-        (let [params (or (:params request) (:form-params request))
+        (let [params (or (:params request) (:form-params request) (:multipart-params request))
               user-id (get-in request [:session :user_id])
               config (config/get-entity-config entity)
 
@@ -221,16 +221,15 @@
                                   (parse-id (get params "id")))
                   return-url (or (get params :return_url) (get params "return_url"))
                   active-tab (or (get params :active_tab) (get params "active_tab"))
-                  edited-id (or (get params :edited_id) (get params "edited_id")
-                                (when (and return-url selected-id) (str selected-id)))
                   url (or (let [base (if (and return-url active-tab)
                                        (str return-url
                                             (if (.contains ^String return-url "?") "&" "?")
                                             "active_tab=" active-tab)
                                        return-url)]
-                            (cond-> base
-                              (and base edited-id)
-                              (str (if (re-find #"\?" base) "&" "?") "edited_id=" edited-id)))
+                            (when base
+                              (if selected-id
+                                (str base "#sg-row-" selected-id)
+                                base)))
                           (str "/admin/" entity-name
                                (when selected-id
                                  (str "/" selected-id))))]

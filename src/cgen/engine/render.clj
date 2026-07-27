@@ -334,14 +334,14 @@
   ([entity row subgrid-fk] (render-form entity row subgrid-fk nil nil nil))
   ([entity row subgrid-fk return-url] (render-form entity row subgrid-fk return-url nil nil))
   ([entity row subgrid-fk return-url active-tab] (render-form entity row subgrid-fk return-url active-tab nil))
-   ([entity row subgrid-fk return-url active-tab edited-id]
-    (let [config (config/get-entity-config entity)
-          fields (config/get-form-fields entity subgrid-fk)
-          entity-name (name entity)
-          href (str "/admin/" entity-name "/save")
-          custom-form-fn (get-in config [:ui :form-fn])
-          form-title (str (if (:id row) (i18n/tr :common/edit) (i18n/tr :common/new))
-                          " " (resolve-title (:title config)))]
+  ([entity row subgrid-fk return-url active-tab edited-id]
+   (let [config (config/get-entity-config entity)
+         fields (config/get-form-fields entity subgrid-fk)
+         entity-name (name entity)
+         href (str "/admin/" entity-name "/save")
+         custom-form-fn (get-in config [:ui :form-fn])
+         form-title (str (if (:id row) (i18n/tr :common/edit) (i18n/tr :common/new))
+                         " " (resolve-title (:title config)))]
      (if custom-form-fn
        (custom-form-fn entity row)
        (let [fk-hidden (when (and subgrid-fk (get row subgrid-fk))
@@ -375,10 +375,16 @@
                                (str "/admin/" entity-name "/" id)
                                (str "/admin/" entity-name)))
              cancel-q (str/join "&"
-                                (filter seq [(when active-tab (str "active_tab=" active-tab))
-                                             (when edited-id (str "edited_id=" edited-id))]))
-             cancel-url (if (seq cancel-q)
+                                (filter seq [(when active-tab (str "active_tab=" active-tab))]))
+             cancel-fragment (when edited-id (str "#sg-row-" edited-id))
+             cancel-url (cond
+                          (and (seq cancel-q) cancel-fragment)
+                          (str cancel-base "?" cancel-q cancel-fragment)
+                          (seq cancel-q)
                           (str cancel-base "?" cancel-q)
+                          cancel-fragment
+                          (str cancel-base cancel-fragment)
+                          :else
                           cancel-base)
              buttons (form/build-form-buttons {:cancel-url cancel-url})]
          (form/form href all-elements buttons form-title))))))

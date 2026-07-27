@@ -9,6 +9,8 @@
    [cgen.models.crud :as crud]
    [cgen.web.csrf :refer [csrf-field]]))
 
+(declare action-btns-1toN one-to1-action-btns m2m-action-btns)
+
 (defn get-record-id [entity-name row]
   (try
     (let [pk (:primary-key (config/get-entity-config entity-name))]
@@ -163,16 +165,16 @@
              :let [rid (str (get-record-id entity-name row))
                    active? (= rid selected-id)]
              :when row]
-         [:a.list-group-item.list-group-item-action.py-3
+         [:a.list-group-item.list-group-item-action.py-2
           {:href (str "/admin/" entity-name "/" rid)
            :class (when active? "active")
            :data-id rid}
           [:div.d-flex.justify-content-between.align-items-center
            [:div.me-2.min-w-0
-            [:div.fw-semibold.text-truncate (row-label fields row)]
+            [:div.fw-semibold.text-truncate.small.tg-expandable {:title (row-label fields row)} (row-label fields row)]
             (when-let [subtitle (row-subtitle fields row)]
-              [:div.text-muted.small.text-truncate.mt-1 subtitle])]
-           [:span.badge.rounded-pill.bg-secondary-subtle.text-secondary-emphasis.flex-shrink-0.ms-2
+              [:div.text-muted.text-truncate.subtitle.tg-expandable {:title subtitle} subtitle])]
+           [:span.badge.rounded-pill.bg-secondary-subtle.text-secondary-emphasis.flex-shrink-0.ms-2.fs-7
             (str "#" rid)]]])
        (when (zero? total)
          [:div.text-center.py-5.tg-empty-state
@@ -190,7 +192,331 @@
         {:href new-url :title (i18n/tr :common/new)}
         [:i.bi.bi-plus-lg]])]))
 
-(defn- tabgrid-js [entity-name search-id]
+(defn- subgrid-pane-search-bar
+  "Renders a persistent search input for a subgrid table. Keyed by sg-key."
+  [sg-key]
+  [:div.px-3.py-2.tg-sg-search-bar.d-flex.align-items-center.gap-2
+   [:div.input-group.input-group-sm
+    [:span.input-group-text.border-0.bg-body-tertiary.text-muted
+     [:i.bi.bi-search {:style "font-size: 0.8rem;"}]]
+    [:input.form-control.border-0.bg-body-tertiary.tg-sg-search
+     {:type "text"
+      :placeholder (i18n/tr :subgrid/search)
+      :data-sg-key sg-key
+      :aria-label (i18n/tr :subgrid/search)}]
+    [:button.btn.btn-outline-secondary.border-0.tg-sg-clear
+     {:type "button"
+      :data-sg-key sg-key
+      :title (i18n/tr :subgrid/clear-filter)
+      :style "display:none;"}
+     [:i.bi.bi-x-lg]]]
+   [:small.text-muted.tg-sg-count {:data-sg-key sg-key :style "white-space:nowrap;"}]])
+
+(defn subgrid-pane-body
+  "Renders the body content for a subgrid: search bar + table with all records.
+   Used by both accordion rendering and AJAX refresh (/tabgrid/subgrid-pane)."
+  [entity-name parent-id subgrid & {:keys [show-all?]}]
+  (let [sg-entity  (:entity subgrid)
+        sg-name    (name sg-entity)
+        sg-fields  (:fields subgrid)
+        actions    (:actions subgrid)
+        records    (:records subgrid)
+        sg-key     (str entity-name "-" sg-name)
+        return-url (str "/admin/" entity-name "/" parent-id)]
+    (list
+     (when (seq records)
+       (subgrid-pane-search-bar sg-key))
+     (if (seq records)
+       [:div.table-responsive
+        [:table.table.table-hover.mb-0.tg-sg-table
+         {:data-sg-key sg-key}
+         [:thead.bg-body-tertiary
+          [:tr
+           (for [[fid label] sg-fields]
+             [:th.fw-semibold.text-uppercase.fs-7.text-muted.px-3 label])
+           [:th.text-center.fw-semibold.text-uppercase.fs-7.text-muted.px-3.tg-sg-actions (i18n/tr :common/actions)]]]
+         [:tbody
+          (for [record records
+                :let [rid (:id record)]]
+            ^{:key rid}
+            [:tr {:id (str "sg-row-" rid)}
+             (for [[fid label] sg-fields]
+               [:td.px-3.py-2 {:data-label label} (field-value (get record fid))])
+             [:td.text-center.text-nowrap.px-3.py-2.tg-sg-actions {:data-label (i18n/tr :common/actions)}
+              (case (:relationship-type subgrid)
+                :many-to-many (m2m-action-btns subgrid parent-id record return-url)
+                :one-to-one   (one-to1-action-btns sg-name actions return-url record)
+                (action-btns-1toN sg-name actions return-url record))]])]]]
+       [:div.text-center.py-5.tg-empty-state
+        [:div.d-inline-flex.align-items-center.justify-content-center.rounded-3.bg-body-tertiary.mb-3
+         {:style "width: 64px; height: 64px;"}
+         [:i.bi.bi-inbox.fs-1.text-body-tertiary]]
+        [:h6.fw-semibold.text-muted.mb-1 (i18n/tr :grid/no-records)]
+        (when (:new actions)
+          [:a.btn.btn-sm.btn-outline-primary.px-3.fw-semibold.mt-2
+           {:href (str "/admin/" sg-name "/add-form/" parent-id
+                       "?return_url=" (ring-codec/url-encode return-url)
+                       "&parent_entity=" entity-name)}
+           [:i.bi.bi-plus-circle.me-1] (i18n/tr :common/new)])]))))
+
+(defn- pivot-fields?
+  [through-table parent-fk related-fk]
+  (try
+    (let [cfg     (config/get-entity-config through-table)
+          fk-ids  #{parent-fk related-fk}
+          visible (remove #(or (= :hidden (:type %))
+                               (contains? fk-ids (:id %)))
+                          (:fields cfg))]
+      (seq visible))
+    (catch Exception _ false)))
+
+(defn- m2m-action-btns
+  [subgrid parent-id record return-url]
+  (let [through-table (:through-table subgrid)
+        parent-fk     (name (:foreign-key subgrid))
+        related-fk    (name (:related-fk subgrid))
+        related-id    (:id record)]
+    [:div.d-flex.gap-1
+     (when (pivot-fields? through-table
+                          (keyword parent-fk) (keyword related-fk))
+       [:a.btn.btn-outline-secondary.btn-sm.rounded-pill
+        {:href (str "/tabgrid/pivot-form"
+                    "?through_table=" (name through-table)
+                    "&parent_fk=" parent-fk
+                    "&parent_id=" parent-id
+                    "&related_fk=" related-fk
+                    "&related_id=" related-id
+                    "&return_url=" (ring-codec/url-encode return-url))
+         :title (i18n/tr :common/edit)}
+        [:i.bi.bi-sliders]])
+     [:form.d-inline
+      {:method "POST"
+       :action "/tabgrid/dissociate"}
+      (csrf-field)
+      [:input {:type "hidden" :name "through_table" :value (name through-table)}]
+      [:input {:type "hidden" :name "parent_fk" :value parent-fk}]
+      [:input {:type "hidden" :name "parent_id" :value (str parent-id)}]
+      [:input {:type "hidden" :name "related_fk" :value related-fk}]
+      [:input {:type "hidden" :name "related_id" :value (str related-id)}]
+      [:input {:type "hidden" :name "return_url" :value return-url}]
+      [:button.btn.btn-outline-danger.btn-sm.rounded-pill
+       {:type "submit"
+        :onclick "return confirm('¿Desvincular?')"
+        :title (i18n/tr :subgrid/unlink)}
+       [:i.bi.bi-x-lg]]]]))
+
+(defn- one-to1-action-btns
+  [sg-name actions return-url record]
+  (when (:edit actions)
+    [:a.btn.btn-outline-primary.btn-sm.rounded-pill
+     {:href (str "/admin/" sg-name "/edit-form/" (:id record)
+                 "?return_url=" (ring-codec/url-encode return-url)
+                 "&edited_id=" (:id record))
+      :title (i18n/tr :common/edit)}
+     [:i.bi.bi-pencil.me-1] (i18n/tr :common/edit)]))
+
+(defn- action-btns-1toN
+  [sg-name actions return-url record]
+  (let [rid (:id record)]
+    [:div.d-flex.gap-1
+     (when (:edit actions)
+       [:a.btn.btn-outline-primary.btn-sm.rounded-pill
+        {:href (str "/admin/" sg-name "/edit-form/" rid
+                    "?return_url=" (ring-codec/url-encode return-url)
+                    "&edited_id=" rid)
+         :title (i18n/tr :common/edit)}
+        [:i.bi.bi-pencil.me-1] (i18n/tr :common/edit)])
+     (when (:delete actions)
+       [:form.d-inline
+        {:method "POST"
+         :action (str "/admin/" sg-name "/delete/" rid)}
+        (csrf-field)
+        [:input {:type "hidden" :name "return_url" :value return-url}]
+        [:button.btn.btn-outline-danger.btn-sm.rounded-pill
+         {:type "submit" :onclick "return confirm('¿Está seguro?')"
+          :title (i18n/tr :common/delete)}
+         [:i.bi.bi-trash3.me-1] (i18n/tr :common/delete)]])]))
+
+(defn- render-m2m-card
+  [entity-name parent-id subgrid]
+  (let [sg-entity  (:entity subgrid)
+        sg-name    (name sg-entity)
+        body-id    (str "sg-body-" entity-name "-" sg-name)
+        return-url (str "/admin/" entity-name "/" parent-id)
+        through     (name (:through-table subgrid))
+        parent-fk   (name (:foreign-key subgrid))
+        related-fk  (name (:related-fk subgrid))
+        related-ent (name (:related-entity subgrid))
+        new-url     (str "/tabgrid/link-form"
+                         "?through_table=" through
+                         "&parent_fk=" parent-fk
+                         "&parent_id=" parent-id
+                         "&related_entity=" related-ent
+                         "&related_fk=" related-fk
+                         "&return_url=" (ring-codec/url-encode return-url))]
+    [:div.accordion-item.tg-subgrid-m2m
+     {:id (str "sg-card-" entity-name "-" related-ent)}
+     [:div.accordion-header.d-flex.align-items-center
+      [:button.accordion-button.collapsed.py-3
+       {:type "button"
+        :data-bs-toggle "collapse"
+        :data-bs-target (str "#" body-id)
+        :aria-expanded "false"
+        :aria-controls body-id}
+       [:div.d-flex.align-items-center.gap-2.flex-grow-1.min-w-0
+        [:div.bg-primary-subtle.rounded-2.d-flex.align-items-center.justify-content-center.shadow-sm.flex-shrink-0
+         {:style "width: 36px; height: 36px;"}
+         [:i.bi.text-primary-emphasis.fs-6 {:class (:icon subgrid)}]]
+        [:div.min-w-0
+         [:div.d-flex.align-items-center.gap-2
+          [:span.fw-semibold.text-truncate (:title subgrid)]
+          [:span.badge.rounded-pill.bg-primary-subtle.text-primary-emphasis.fs-7.fw-semibold "M:M"]]
+         [:small.text-muted (str (or (:count subgrid) 0) " " (i18n/tr :subgrid/linked))]]]]
+      [:a.btn.btn-sm.btn-primary.px-3.fw-semibold.shadow-sm.flex-shrink-0.ms-2.me-3
+       {:href new-url :onclick "event.stopPropagation()"}
+       [:i.bi.bi-link-45deg.me-1] (i18n/tr :subgrid/link)]]
+     [:div.accordion-collapse.collapse
+      {:id body-id
+       :data-bs-parent (str "#subgrids-" entity-name)}
+      [:div.accordion-body.p-0
+       (subgrid-pane-body entity-name parent-id subgrid)]]]))
+
+(defn- render-1to1-card
+  [entity-name parent-id subgrid]
+  (let [sg-entity  (:entity subgrid)
+        sg-name    (name sg-entity)
+        body-id    (str "sg-body-" entity-name "-" sg-name)
+        record     (:record subgrid)
+        actions    (:actions subgrid)
+        return-url (str "/admin/" entity-name "/" parent-id)
+        new-url    (when (and (:new actions) (not record))
+                     (str "/admin/" sg-name "/add-form/" parent-id
+                          "?return_url=" (ring-codec/url-encode return-url)
+                          "&parent_entity=" entity-name))]
+    [:div.accordion-item.tg-subgrid-1to1
+     {:id (str "sg-card-" entity-name "-" sg-name)}
+     [:div.accordion-header.d-flex.align-items-center
+      [:button.accordion-button.collapsed.py-3
+       {:type "button"
+        :data-bs-toggle "collapse"
+        :data-bs-target (str "#" body-id)
+        :aria-expanded "false"
+        :aria-controls body-id}
+       [:div.d-flex.align-items-center.gap-2.flex-grow-1.min-w-0
+        [:div.bg-info-subtle.rounded-2.d-flex.align-items-center.justify-content-center.shadow-sm.flex-shrink-0
+         {:style "width: 36px; height: 36px;"}
+         [:i.bi.text-info-emphasis.fs-6 {:class (:icon subgrid)}]]
+        [:div.min-w-0
+         [:div.d-flex.align-items-center.gap-2
+          [:span.fw-semibold.text-truncate (:title subgrid)]
+          [:span.badge.rounded-pill.bg-info-subtle.text-info-emphasis.fs-7.fw-semibold "1:1"]]
+         [:small.text-muted (if record (i18n/tr :subgrid/has-record) (i18n/tr :subgrid/no-record))]]]]
+      (when new-url
+        [:a.btn.btn-sm.btn-info.px-3.fw-semibold.text-white.shadow-sm.flex-shrink-0.ms-2.me-3
+         {:href new-url :onclick "event.stopPropagation()"}
+         [:i.bi.bi-plus.me-1] (i18n/tr :common/new)])]
+     [:div.accordion-collapse.collapse
+      {:id body-id
+       :data-bs-parent (str "#subgrids-" entity-name)}
+      [:div.accordion-body.p-0
+       (subgrid-pane-body entity-name parent-id subgrid)]]]))
+
+(defn- render-1toN-card
+  [entity-name parent-id subgrid]
+  (let [sg-entity  (:entity subgrid)
+        sg-name    (name sg-entity)
+        body-id    (str "sg-body-" entity-name "-" sg-name)
+        return-url (str "/admin/" entity-name "/" parent-id)
+        new-url    (when (:actions subgrid)
+                     (when (get-in subgrid [:actions :new])
+                       (str "/admin/" sg-name "/add-form/" parent-id
+                            "?return_url=" (ring-codec/url-encode return-url)
+                            "&parent_entity=" entity-name)))]
+    [:div.accordion-item.tg-subgrid-1toN
+     {:id (str "sg-card-" entity-name "-" sg-name)}
+     [:div.accordion-header.d-flex.align-items-center
+      [:button.accordion-button.collapsed.py-3
+       {:type "button"
+        :data-bs-toggle "collapse"
+        :data-bs-target (str "#" body-id)
+        :aria-expanded "false"
+        :aria-controls body-id}
+       [:div.d-flex.align-items-center.gap-2.flex-grow-1.min-w-0
+        [:div.bg-success-subtle.rounded-2.d-flex.align-items-center.justify-content-center.shadow-sm.flex-shrink-0
+         {:style "width: 36px; height: 36px;"}
+         [:i.bi.text-success-emphasis.fs-6 {:class (:icon subgrid)}]]
+        [:div.min-w-0
+         [:div.d-flex.align-items-center.gap-2
+          [:span.fw-semibold.text-truncate (:title subgrid)]
+          [:span.badge.rounded-pill.bg-success-subtle.text-success-emphasis.fs-7.fw-semibold "1:N"]]
+         [:small.text-muted (str (or (:count subgrid) 0) " " (i18n/tr :tabgrid/total-records))]]]]
+      (when new-url
+        [:a.btn.btn-sm.btn-success.px-3.fw-semibold.text-white.shadow-sm.flex-shrink-0.ms-2.me-3
+         {:href new-url :onclick "event.stopPropagation()"}
+         [:i.bi.bi-plus.me-1] (i18n/tr :common/new)])]
+     [:div.accordion-collapse.collapse
+      {:id body-id
+       :data-bs-parent (str "#subgrids-" entity-name)}
+      [:div.accordion-body.p-0
+       (subgrid-pane-body entity-name parent-id subgrid)]]]))
+
+(defn- render-subgrid-card
+  [entity-name parent-id subgrid]
+  (case (:relationship-type subgrid)
+    :many-to-many (render-m2m-card entity-name parent-id subgrid)
+    :one-to-one   (render-1to1-card entity-name parent-id subgrid)
+    (render-1toN-card entity-name parent-id subgrid)))
+
+(defn render-subgrid-pane
+  "Renders the body content of a subgrid for AJAX refresh.
+   Used by GET /tabgrid/subgrid-pane endpoint."
+  [entity-name parent-id subgrid]
+  (subgrid-pane-body entity-name parent-id subgrid :show-all? true))
+
+(defn render-m2m-pane [request entity-name entity-title subgrid parent-id]
+  (render-subgrid-pane entity-name parent-id subgrid))
+
+(defn- render-entity-summary [entity-name title fields row actions]
+  (let [display-name (or (some-> (first fields) key row str) title)]
+    [:div.card.mb-3.shadow-sm.border-0.overflow-hidden.tg-entity-header
+     ;; ── Compact header (always visible) ──
+     [:div.card-header.border-0.py-3.px-4.d-flex.align-items-center.gap-3
+      {:style "background: linear-gradient(135deg, rgba(13,110,253,0.05) 0%, rgba(108,117,125,0.02) 100%);"}
+      [:div.d-flex.align-items-center.justify-content-center.rounded-3.shadow-sm.flex-shrink-0
+       {:style "width: 40px; height: 40px; background: linear-gradient(135deg, var(--tg-primary) 0%, color-mix(in srgb, var(--tg-primary) 60%, #6610f2) 100%);"}
+       [:i.bi.bi-folder2-open.text-white.fs-6]]
+      [:div.flex-grow-1.min-w-0
+       [:div.fw-bold.ls-tight.text-truncate.tg-expandable {:title (str display-name)} (str display-name)]
+       [:span.badge.bg-secondary-subtle.text-secondary-emphasis.rounded-pill.fs-7
+        (str "#" (get-record-id entity-name row))]]
+      [:div.d-flex.gap-2.flex-shrink-0
+       (when (:edit actions)
+         [:a.btn.btn-primary.btn-sm.px-3.fw-semibold.shadow-sm
+          {:href (str "/admin/" entity-name "/edit-form/" (get-record-id entity-name row))}
+          [:i.bi.bi-pencil-square.me-1] (i18n/tr :common/edit)])
+       (when (:delete actions)
+         [:form.d-inline {:method "POST"
+                          :action (str "/admin/" entity-name "/delete/" (get-record-id entity-name row))
+                          :onsubmit (str "return confirm('" (i18n/tr :confirm/delete) "')")}
+          (csrf-field)
+          [:button.btn.btn-sm.btn-outline-danger.px-3.fw-semibold
+           {:type "submit"}
+           [:i.bi.bi-trash3.me-1] (i18n/tr :common/delete)]])]]
+     ;; ── Fields grid (always visible) ──
+     [:div.card-body.pt-3.pb-4.px-4.border-top
+      [:div.row.g-3
+       (for [[field-id label] fields
+             :let [val (get row field-id)
+                   icon (field-type-icon field-id)
+                   color (field-type-color field-id)]]
+         [:div.col-12.col-md-6
+          [:div.border.rounded-3.p-3.h-100.field-card-hover
+           [:div.d-flex.align-items-center.gap-2.mb-1
+            [:i.bi {:class [icon color] :style "font-size: 0.8rem;"}]
+            [:div.text-uppercase.text-muted.fs-7.fw-semibold label]]
+           [:div.fs-6 {:style "min-height: 1.5em; word-break: break-word;"} (field-value val)]]])]]]))
+
+(defn- tabgrid-js [entity-name search-id subgrids-acc-id]
   [:script
    (str
     "(function(){"
@@ -239,7 +565,8 @@
     "else{countEl.textContent='';}"
     "}"
     "}"
-    "document.querySelectorAll('.tg-sg-search').forEach(function(input){"
+    "function initSgSearch(root){"
+    "(root||document).querySelectorAll('.tg-sg-search').forEach(function(input){"
     "var key=input.getAttribute('data-sg-key');"
     "var saved=sessionStorage.getItem('sgf_'+key);"
     "if(saved){input.value=saved;}"
@@ -249,371 +576,46 @@
     "filterSubgrid(key);"
     "});"
     "});"
-    "document.querySelectorAll('.tg-sg-clear').forEach(function(btn){"
+    "(root||document).querySelectorAll('.tg-sg-clear').forEach(function(btn){"
     "btn.addEventListener('click',function(){"
     "var key=btn.getAttribute('data-sg-key');"
     "var input=document.querySelector('.tg-sg-search[data-sg-key=\"'+key+'\"]');"
     "if(input){input.value='';sessionStorage.removeItem('sgf_'+key);filterSubgrid(key);input.focus();}"
     "});"
     "});"
-    ;; ── Scroll-to & highlight edited subgrid row ──
-    "var params=new URLSearchParams(window.location.search);"
-    "var eid=params.get('edited_id');"
-    "if(eid){"
-    "params.delete('edited_id');"
-    "var qs=params.toString();"
-    "window.history.replaceState(null,'',qs?'?'+qs:window.location.pathname);"
-    "function scrollToEdited(){"
-    "var row=document.getElementById('sg-row-'+eid);"
-    "if(!row||row.style.display==='none'){"
-    "document.querySelectorAll('.tg-sg-search').forEach(function(inp){"
-    "if(inp.value){inp.value='';sessionStorage.removeItem('sgf_'+inp.getAttribute('data-sg-key'));filterSubgrid(inp.getAttribute('data-sg-key'));}"
+    "}"
+    "initSgSearch();"
+    ;; ── Tap-to-expand truncated text ──
+    "document.addEventListener('click',function(e){"
+    "var el=e.target.closest('.tg-expandable');"
+    "if(el){e.preventDefault();e.stopPropagation();"
+    "el.classList.toggle('tg-expanded');return;}"
+    "document.querySelectorAll('.tg-expandable.tg-expanded').forEach(function(x){"
+    "x.classList.remove('tg-expanded');});"
     "});"
-    "row=document.getElementById('sg-row-'+eid);"
+    ;; ── Auto-expand accordion on fragment navigation ──
+    "var hash=window.location.hash;"
+    "if(hash&&hash.indexOf('sg-row-')!==-1){"
+    "var target=document.querySelector(hash);"
+    "if(target){"
+    "var collapse=target.closest('.accordion-collapse');"
+    "if(collapse&&!collapse.classList.contains('show')){"
+    "function doExpand(){if(typeof bootstrap!=='undefined'&&bootstrap.Collapse){bootstrap.Collapse.getOrCreateInstance(collapse,{toggle:false}).show();}}"
+    "if(typeof bootstrap!=='undefined'){doExpand();}else{document.addEventListener('DOMContentLoaded',doExpand);}"
     "}"
-    "if(row){"
-    "row.classList.add('tg-row-highlighted');"
-    "setTimeout(function(){row.scrollIntoView({behavior:'smooth',block:'center'});},50);"
-    "setTimeout(function(){row.classList.remove('tg-row-highlighted');},2200);"
-    "}else{"
-    "var card=document.querySelector('[id^=\"sg-card-\"]');"
-    "if(card)card.scrollIntoView({behavior:'smooth',block:'start'});"
+    "setTimeout(function(){target.scrollIntoView({behavior:'smooth',block:'center'});},300);"
     "}"
-    "}"
-    "scrollToEdited();"
+    "setTimeout(function(){history.replaceState(null,'',window.location.pathname+window.location.search);},2500);"
     "}"
     "})()")])
 
-(defn- render-entity-summary [entity-name title fields row actions]
-  (let [display-name (or (some-> (first fields) key row str) title)]
-    [:div.card.mb-4.shadow-sm.border-0.overflow-hidden.tg-entity-header
-     ;; ── Header with accent bar ──
-     [:div.card-header.border-0.pb-0.pt-4.px-4
-      {:style "background: linear-gradient(135deg, rgba(13,110,253,0.05) 0%, rgba(108,117,125,0.02) 100%);"}
-      [:div.d-flex.justify-content-between.align-items-start.flex-column.flex-md-row.g-3
-       [:div.d-flex.align-items-center.gap-3
-        [:div.d-flex.align-items-center.justify-content-center.rounded-3.shadow-sm
-         {:style "width: 48px; height: 48px; background: linear-gradient(135deg, var(--tg-primary) 0%, color-mix(in srgb, var(--tg-primary) 60%, #6610f2) 100%);"}
-         [:i.bi.bi-folder2-open.text-white.fs-5]]
-        [:div
-         [:h4.fw-bold.mb-0.ls-tight (str display-name)]
-         [:span.badge.bg-secondary-subtle.text-secondary-emphasis.rounded-pill.fs-7.mt-1
-          (str "#" (get-record-id entity-name row))]]]
-       [:div.d-flex.flex-wrap.gap-2
-        (when (:edit actions)
-          [:a.btn.btn-primary.btn-sm.px-3.fw-semibold.shadow-sm
-           {:href (str "/admin/" entity-name "/edit-form/" (get-record-id entity-name row))}
-           [:i.bi.bi-pencil-square.me-1] (i18n/tr :common/edit)])
-        (when (:delete actions)
-          [:form.d-inline {:method "POST" :action (str "/admin/" entity-name "/delete/" (get-record-id entity-name row))
-                           :onsubmit (str "return confirm('" (i18n/tr :confirm/delete) "')")}
-           (csrf-field)
-           [:button.btn.btn-sm.btn-outline-danger.px-3.fw-semibold
-            {:type "submit"}
-            [:i.bi.bi-trash3.me-1] (i18n/tr :common/delete)]])]]]
-     ;; ── Fields grid ──
-     [:div.card-body.pt-3.pb-4.px-4
-      [:div.row.g-3
-       (for [[field-id label] fields
-             :let [val (get row field-id)
-                   icon (field-type-icon field-id)
-                   color (field-type-color field-id)]]
-         [:div.col-12.col-md-6
-          [:div.border.rounded-3.p-3.h-100.field-card-hover
-           [:div.d-flex.align-items-center.gap-2.mb-1
-            [:i.bi {:class [icon color] :style "font-size: 0.8rem;"}]
-            [:div.text-uppercase.text-muted.fs-7.fw-semibold label]]
-           [:div.fs-6 {:style "min-height: 1.5em; word-break: break-word;"} (field-value val)]]])]]]))
-
-(defn- pivot-fields?
-  [through-table parent-fk related-fk]
-  (try
-    (let [cfg     (config/get-entity-config through-table)
-          fk-ids  #{parent-fk related-fk}
-          visible (remove #(or (= :hidden (:type %))
-                               (contains? fk-ids (:id %)))
-                          (:fields cfg))]
-      (seq visible))
-    (catch Exception _ false)))
-
-(defn- m2m-action-btns
-  [subgrid parent-id record return-url]
-  (let [through-table (:through-table subgrid)
-        parent-fk     (name (:foreign-key subgrid))
-        related-fk    (name (:related-fk subgrid))
-        related-id    (:id record)]
-    [:div.d-flex.gap-1
-     (when (pivot-fields? through-table
-                          (keyword parent-fk) (keyword related-fk))
-       [:a.btn.btn-outline-secondary.btn-sm.rounded-pill
-        {:href (str "/tabgrid/pivot-form"
-                    "?through_table=" (name through-table)
-                    "&parent_fk=" parent-fk
-                    "&parent_id=" parent-id
-                    "&related_fk=" related-fk
-                    "&related_id=" related-id
-                    "&return_url=" (ring-codec/url-encode return-url))
-         :title (i18n/tr :common/edit)}
-        [:i.bi.bi-sliders]])
-     [:form.d-inline
-      {:method "POST"
-       :action "/tabgrid/dissociate"}
-      (csrf-field)
-      [:input {:type "hidden" :name "through_table" :value (name through-table)}]
-      [:input {:type "hidden" :name "parent_fk" :value parent-fk}]
-      [:input {:type "hidden" :name "parent_id" :value (str parent-id)}]
-      [:input {:type "hidden" :name "related_fk" :value related-fk}]
-      [:input {:type "hidden" :name "related_id" :value (str related-id)}]
-      [:input {:type "hidden" :name "return_url" :value return-url}]
-      [:button.btn.btn-outline-danger.btn-sm.rounded-pill
-       {:type "submit"
-        :onclick "return confirm('¿Desvincular?')"
-        :title (i18n/tr :subgrid/unlink)}
-       [:i.bi.bi-x-lg]]]]))
-
-(defn- subgrid-search-bar
-  "Renders a persistent search input for a subgrid table. Keyed by sg-key."
-  [sg-key]
-  [:div.px-3.py-2.tg-sg-search-bar.d-flex.align-items-center.gap-2
-   [:div.input-group.input-group-sm
-    [:span.input-group-text.border-0.bg-body-tertiary.text-muted
-     [:i.bi.bi-search {:style "font-size: 0.8rem;"}]]
-    [:input.form-control.border-0.bg-body-tertiary.tg-sg-search
-     {:type "text"
-      :placeholder (i18n/tr :subgrid/search)
-      :data-sg-key sg-key
-      :aria-label (i18n/tr :subgrid/search)}]
-    [:button.btn.btn-outline-secondary.border-0.tg-sg-clear
-     {:type "button"
-      :data-sg-key sg-key
-      :title (i18n/tr :subgrid/clear-filter)
-      :style "display:none;"}
-     [:i.bi.bi-x-lg]]]
-   [:small.text-muted.tg-sg-count {:data-sg-key sg-key :style "white-space:nowrap;"}]])
-
-(defn- render-m2m-card
-  [entity-name parent-id subgrid]
-  (let [sg-fields  (:fields subgrid)
-        return-url (str "/admin/" entity-name "/" parent-id)
-        through     (name (:through-table subgrid))
-        parent-fk   (name (:foreign-key subgrid))
-        related-fk  (name (:related-fk subgrid))
-        related-ent (name (:related-entity subgrid))]
-    [:div.card.mb-3.shadow-sm.border-0.tg-subgrid-m2m
-     {:id (str "sg-card-" related-ent)}
-     [:div.card-header.d-flex.justify-content-between.align-items-center.py-3.border-0
-      {:style "background: linear-gradient(135deg, rgba(13,110,253,0.04) 0%, rgba(111,66,193,0.04) 100%);"}
-      [:div.d-flex.align-items-center.gap-2
-       [:div.bg-primary-subtle.rounded-2.d-flex.align-items-center.justify-content-center.shadow-sm
-        {:style "width: 40px; height: 40px;"}
-        [:i.bi.text-primary-emphasis.fs-5 {:class (:icon subgrid)}]]
-       [:div
-        [:div.d-flex.align-items-center.gap-2
-         [:h6.mb-0.fw-semibold (:title subgrid)]
-         [:span.badge.rounded-pill.bg-primary-subtle.text-primary-emphasis.fs-7.fw-semibold "M:M"]]
-        [:small.text-muted (str (or (:count subgrid) 0) " " (i18n/tr :subgrid/linked))]]]
-      [:a.btn.btn-sm.btn-primary.px-3.fw-semibold.shadow-sm
-       {:href (str "/tabgrid/link-form"
-                   "?through_table=" through
-                   "&parent_fk=" parent-fk
-                   "&parent_id=" parent-id
-                   "&related_entity=" related-ent
-                   "&related_fk=" related-fk
-                   "&return_url=" (ring-codec/url-encode return-url))}
-       [:i.bi.bi-link-45deg.me-1] (i18n/tr :subgrid/link)]]
-     [:div.card-body.p-0
-      (when (seq (:records subgrid))
-        (subgrid-search-bar (str entity-name "-" related-ent)))
-      (if (seq (:records subgrid))
-        [:div.table-responsive
-         [:table.table.table-hover.mb-0.tg-sg-table
-          {:data-sg-key (str entity-name "-" related-ent)}
-          [:thead.bg-body-tertiary
-           [:tr
-            (for [[fid label] sg-fields]
-              [:th.fw-semibold.text-uppercase.fs-7.text-muted.px-3 label])
-            [:th.text-center.fw-semibold.text-uppercase.fs-7.text-muted.px-3.tg-sg-actions (i18n/tr :common/actions)]]]
-          [:tbody
-           (for [record (:records subgrid)
-                 :let [rid (:id record)]]
-             ^{:key rid}
-             [:tr {:id (str "sg-row-" rid)}
-              (for [[fid label] sg-fields]
-                [:td.px-3.py-2 {:data-label label} (field-value (get record fid))])
-              [:td.text-center.text-nowrap.px-3.py-2.tg-sg-actions {:data-label (i18n/tr :common/actions)}
-               (m2m-action-btns subgrid parent-id record return-url)]])]]]
-        [:div.text-center.py-5.tg-empty-state
-         [:div.d-inline-flex.align-items-center.justify-content-center.rounded-3.bg-primary-subtle.mb-3
-          {:style "width: 64px; height: 64px;"}
-          [:i.bi.bi-link-45deg.fs-1.text-primary-emphasis]]
-         [:h6.fw-semibold.text-muted.mb-1 (i18n/tr :grid/no-records)]
-         [:a.btn.btn-sm.btn-outline-primary.px-3.fw-semibold.mt-2
-          {:href (str "/tabgrid/link-form"
-                      "?through_table=" through
-                      "&parent_fk=" parent-fk
-                      "&parent_id=" parent-id
-                      "&related_entity=" related-ent
-                      "&related_fk=" related-fk
-                      "&return_url=" (ring-codec/url-encode return-url))}
-          [:i.bi.bi-link-45deg.me-1] (i18n/tr :subgrid/link)]])]]))
-
-(defn- render-1to1-card
-  [entity-name parent-id subgrid]
-  (let [sg-entity  (:entity subgrid)
-        sg-name    (name sg-entity)
-        sg-fields  (:fields subgrid)
-        actions    (:actions subgrid)
-        record     (:record subgrid)
-        return-url (str "/admin/" entity-name "/" parent-id)]
-    [:div.card.mb-3.shadow-sm.border-0.tg-subgrid-1to1
-     {:id (str "sg-card-" sg-name)}
-     [:div.card-header.d-flex.justify-content-between.align-items-center.py-3.border-0
-      {:style "background: linear-gradient(135deg, rgba(13,202,240,0.06) 0%, rgba(108,117,125,0.03) 100%);"}
-      [:div.d-flex.align-items-center.gap-2
-       [:div.bg-info-subtle.rounded-2.d-flex.align-items-center.justify-content-center.shadow-sm
-        {:style "width: 40px; height: 40px;"}
-        [:i.bi.text-info-emphasis.fs-5 {:class (:icon subgrid)}]]
-       [:div
-        [:div.d-flex.align-items-center.gap-2
-         [:h6.mb-0.fw-semibold (:title subgrid)]
-         [:span.badge.rounded-pill.bg-info-subtle.text-info-emphasis.fs-7.fw-semibold "1:1"]]
-        [:small.text-muted (if record (i18n/tr :subgrid/has-record) (i18n/tr :subgrid/no-record))]]]
-      (when (and (:new actions) (not record))
-        [:a.btn.btn-sm.btn-info.px-3.fw-semibold.text-white.shadow-sm
-         {:href (str "/admin/" sg-name "/add-form/" parent-id
-                     "?return_url=" (ring-codec/url-encode return-url)
-                     "&parent_entity=" entity-name)}
-         [:i.bi.bi-plus.me-1] (i18n/tr :common/new)])]
-     [:div.card-body.p-0
-      (if record
-        [:div.table-responsive
-         [:table.table.table-hover.mb-0
-          [:thead.bg-body-tertiary
-           [:tr
-            (for [[fid label] sg-fields]
-              [:th.fw-semibold.text-uppercase.fs-7.text-muted.px-3 label])
-            (when (:edit actions)
-              [:th.text-center.fw-semibold.text-uppercase.fs-7.text-muted.px-3.tg-sg-actions (i18n/tr :common/actions)])]]
-          [:tbody
-           [:tr {:id (str "sg-row-" (:id record))}
-            (for [[fid label] sg-fields]
-              [:td.px-3.py-2 {:data-label label} (field-value (get record fid))])
-            (when (:edit actions)
-              [:td.text-center.text-nowrap.px-3.py-2.tg-sg-actions {:data-label (i18n/tr :common/actions)}
-               [:a.btn.btn-outline-primary.btn-sm.rounded-pill
-                {:href (str "/admin/" sg-name "/edit-form/" (:id record)
-                            "?return_url=" (ring-codec/url-encode return-url))
-                 :title (i18n/tr :common/edit)}
-                [:i.bi.bi-pencil.me-1] (i18n/tr :common/edit)]])]]]]
-        [:div.text-center.py-5.tg-empty-state
-         [:div.d-inline-flex.align-items-center.justify-content-center.rounded-3.bg-info-subtle.mb-3
-          {:style "width: 64px; height: 64px;"}
-          [:i.bi.bi-inbox.fs-1.text-info-emphasis]]
-         [:h6.fw-semibold.text-muted.mb-1 (i18n/tr :grid/no-records)]
-         (when (:new actions)
-           [:a.btn.btn-sm.btn-outline-info.px-3.fw-semibold.mt-2
-            {:href (str "/admin/" sg-name "/add-form/" parent-id
-                        "?return_url=" (ring-codec/url-encode return-url)
-                        "&parent_entity=" entity-name)}
-            [:i.bi.bi-plus-circle.me-1] (i18n/tr :common/new)])])]]))
-
-(defn- action-btns-1toN
-  [sg-name actions return-url record]
-  (let [rid (:id record)]
-    [:div.d-flex.gap-1
-     (when (:edit actions)
-       [:a.btn.btn-outline-primary.btn-sm.rounded-pill
-        {:href (str "/admin/" sg-name "/edit-form/" rid
-                    "?return_url=" (ring-codec/url-encode return-url))
-         :title (i18n/tr :common/edit)}
-        [:i.bi.bi-pencil.me-1] (i18n/tr :common/edit)])
-     (when (:delete actions)
-       [:form.d-inline
-        {:method "POST"
-         :action (str "/admin/" sg-name "/delete/" rid)}
-        (csrf-field)
-        [:input {:type "hidden" :name "return_url" :value return-url}]
-        [:button.btn.btn-outline-danger.btn-sm.rounded-pill
-         {:type "submit" :onclick "return confirm('¿Está seguro?')"
-          :title (i18n/tr :common/delete)}
-         [:i.bi.bi-trash3.me-1] (i18n/tr :common/delete)]])]))
-
-(defn- render-1toN-card
-  [entity-name parent-id subgrid]
-  (let [sg-entity  (:entity subgrid)
-        sg-name    (name sg-entity)
-        sg-fields  (:fields subgrid)
-        actions    (:actions subgrid)
-        return-url (str "/admin/" entity-name "/" parent-id)
-        action-btns (partial action-btns-1toN sg-name actions return-url)]
-    [:div.card.mb-3.shadow-sm.border-0.tg-subgrid-1toN
-     {:id (str "sg-card-" sg-name)}
-     [:div.card-header.d-flex.justify-content-between.align-items-center.py-3.border-0
-      {:style "background: linear-gradient(135deg, rgba(25,135,84,0.06) 0%, rgba(108,117,125,0.03) 100%);"}
-      [:div.d-flex.align-items-center.gap-2
-       [:div.bg-success-subtle.rounded-2.d-flex.align-items-center.justify-content-center.shadow-sm
-        {:style "width: 40px; height: 40px;"}
-        [:i.bi.text-success-emphasis.fs-5 {:class (:icon subgrid)}]]
-       [:div
-        [:div.d-flex.align-items-center.gap-2
-         [:h6.mb-0.fw-semibold (:title subgrid)]
-         [:span.badge.rounded-pill.bg-success-subtle.text-success-emphasis.fs-7.fw-semibold "1:N"]]
-        [:small.text-muted (str (or (:count subgrid) 0) " " (i18n/tr :tabgrid/total-records))]]]
-      (when (:new actions)
-        [:a.btn.btn-sm.btn-success.px-3.fw-semibold.text-white.shadow-sm
-         {:href (str "/admin/" sg-name "/add-form/" parent-id
-                     "?return_url=" (ring-codec/url-encode return-url)
-                     "&parent_entity=" entity-name)}
-         [:i.bi.bi-plus.me-1] (i18n/tr :common/new)])]
-     [:div.card-body.p-0
-      (when (seq (:records subgrid))
-        (subgrid-search-bar (str entity-name "-" sg-name)))
-      (if (seq (:records subgrid))
-        [:div.table-responsive
-         [:table.table.table-hover.mb-0.tg-sg-table
-          {:data-sg-key (str entity-name "-" sg-name)}
-          [:thead.bg-body-tertiary
-           [:tr
-            (for [[fid label] sg-fields]
-              [:th.fw-semibold.text-uppercase.fs-7.text-muted.px-3 label])
-            [:th.text-center.fw-semibold.text-uppercase.fs-7.text-muted.px-3.tg-sg-actions (i18n/tr :common/actions)]]]
-          [:tbody
-           (for [record (:records subgrid)
-                 :let [rid (:id record)]]
-             ^{:key rid}
-             [:tr {:id (str "sg-row-" rid)}
-              (for [[fid label] sg-fields]
-                [:td.px-3.py-2 {:data-label label} (field-value (get record fid))])
-              [:td.text-center.text-nowrap.px-3.py-2.tg-sg-actions {:data-label (i18n/tr :common/actions)}
-               (action-btns record)]])]]]
-        [:div.text-center.py-5.tg-empty-state
-         [:div.d-inline-flex.align-items-center.justify-content-center.rounded-3.bg-success-subtle.mb-3
-          {:style "width: 64px; height: 64px;"}
-          [:i.bi.bi-inbox.fs-1.text-success-emphasis]]
-         [:h6.fw-semibold.text-muted.mb-1 (i18n/tr :grid/no-records)]
-         (when (:new actions)
-           [:a.btn.btn-sm.btn-outline-success.px-3.fw-semibold.mt-2
-            {:href (str "/admin/" sg-name "/add-form/" parent-id
-                        "?return_url=" (ring-codec/url-encode return-url)
-                        "&parent_entity=" entity-name)}
-            [:i.bi.bi-plus-circle.me-1] (i18n/tr :common/new)])])]]))
-
-(defn- render-subgrid-card
-  [entity-name parent-id subgrid]
-  (case (:relationship-type subgrid)
-    :many-to-many (render-m2m-card entity-name parent-id subgrid)
-    :one-to-one   (render-1to1-card entity-name parent-id subgrid)
-    (render-1toN-card entity-name parent-id subgrid)))
-
-(defn render-m2m-pane [request entity-name entity-title subgrid parent-id]
-  (render-subgrid-card entity-name parent-id subgrid))
-
 (defn render-tabgrid [request entity-name title fields rows all-rows actions subgrids]
-  (let [selected-id (or (some-> (get-in request [:params :id]) str)
-                        (when-let [row (first rows)]
-                          (str (get-record-id entity-name row))))
+  (let [selected-id  (or (some-> (get-in request [:params :id]) str)
+                         (when-let [row (first rows)]
+                           (str (get-record-id entity-name row))))
         selected-row (some #(when (= (str (get-record-id entity-name %)) selected-id) %) rows)
-        search-id    (str "record-list-" entity-name "-search")]
+        search-id    (str "record-list-" entity-name "-search")
+        acc-id       (str "subgrids-" entity-name)]
     [:div.tabgrid-container
      ;; ── Scroll selected into view ──
      [:script "(function(){
@@ -642,10 +644,13 @@
          [:div
           (render-entity-summary entity-name title fields selected-row actions)
           (when (seq subgrids)
-            [:div
-             (for [subgrid subgrids]
-               ^{:key (str entity-name "-" (name (:entity subgrid)))}
-               (render-subgrid-card entity-name selected-id subgrid))])]
+            [:div.mt-4
+             [:h6.fw-bold.text-uppercase.text-muted.fs-7.mb-2.px-1
+              (i18n/tr :subgrid/relationships {:count (count subgrids)})]
+             [:div.accordion.tg-subgrid-accordion {:id acc-id}
+              (for [subgrid subgrids]
+                ^{:key (str entity-name "-" (name (:entity subgrid)))}
+                (render-subgrid-card entity-name selected-id subgrid))]])]
          ;; ── Empty state: no record selected ──
          [:div.card.shadow-sm.border-0.overflow-hidden
           [:div.card-body.text-center.py-5.tg-empty-state
@@ -655,4 +660,4 @@
            [:h5.fw-semibold.text-muted (i18n/tr :tabgrid/no-record-selected)]
            [:p.text-muted.mb-0 (i18n/tr :tabgrid/select-hint)]]])]]
      ;; ── JS: Ctrl+K, keyboard nav, mobile auto-scroll ──
-     (tabgrid-js entity-name search-id)]))
+     (tabgrid-js entity-name search-id acc-id)]))

@@ -193,6 +193,7 @@
    :subgrid/search "Filtrar..."
    :subgrid/clear-filter "Limpiar filtro"
    :subgrid/showing-n "Mostrando {n} de {total}"
+   :subgrid/show-all "Mostrando todos"
 
  ;; [GENERIC] TabGrid
  :tabgrid/record-list "Registros"
