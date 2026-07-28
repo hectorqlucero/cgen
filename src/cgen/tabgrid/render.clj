@@ -171,9 +171,9 @@
            :data-id rid}
           [:div.d-flex.justify-content-between.align-items-center
            [:div.me-2.min-w-0
-            [:div.fw-semibold.text-truncate.small.tg-expandable {:title (row-label fields row)} (row-label fields row)]
+            [:div.fw-semibold.text-truncate.small {:title (row-label fields row)} (row-label fields row)]
             (when-let [subtitle (row-subtitle fields row)]
-              [:div.text-muted.text-truncate.subtitle.tg-expandable {:title subtitle} subtitle])]
+              [:div.text-muted.text-truncate.subtitle {:title subtitle} subtitle])]
            [:span.badge.rounded-pill.bg-secondary-subtle.text-secondary-emphasis.flex-shrink-0.ms-2.fs-7
             (str "#" rid)]]])
        (when (zero? total)
@@ -353,7 +353,8 @@
                          "&parent_id=" parent-id
                          "&related_entity=" related-ent
                          "&related_fk=" related-fk
-                         "&return_url=" (ring-codec/url-encode return-url))]
+                         "&return_url=" (ring-codec/url-encode return-url)
+                         "&open_accordion=" body-id)]
     [:div.accordion-item.tg-subgrid-m2m
      {:id (str "sg-card-" entity-name "-" related-ent)}
      [:div.accordion-header.d-flex.align-items-center
@@ -486,7 +487,7 @@
        {:style "width: 40px; height: 40px; background: linear-gradient(135deg, var(--tg-primary) 0%, color-mix(in srgb, var(--tg-primary) 60%, #6610f2) 100%);"}
        [:i.bi.bi-folder2-open.text-white.fs-6]]
       [:div.flex-grow-1.min-w-0
-       [:div.fw-bold.ls-tight.text-truncate.tg-expandable {:title (str display-name)} (str display-name)]
+       [:div.fw-bold.ls-tight.text-truncate {:title (str display-name)} (str display-name)]
        [:span.badge.bg-secondary-subtle.text-secondary-emphasis.rounded-pill.fs-7
         (str "#" (get-record-id entity-name row))]]
       [:div.d-flex.gap-2.flex-shrink-0
@@ -585,14 +586,6 @@
     "});"
     "}"
     "initSgSearch();"
-    ;; ── Tap-to-expand truncated text ──
-    "document.addEventListener('click',function(e){"
-    "var el=e.target.closest('.tg-expandable');"
-    "if(el){e.preventDefault();e.stopPropagation();"
-    "el.classList.toggle('tg-expanded');return;}"
-    "document.querySelectorAll('.tg-expandable.tg-expanded').forEach(function(x){"
-    "x.classList.remove('tg-expanded');});"
-    "});"
     ;; ── Auto-expand accordion on fragment navigation ──
     "var hash=window.location.hash;"
     "if(hash&&hash.indexOf('sg-row-')!==-1){"

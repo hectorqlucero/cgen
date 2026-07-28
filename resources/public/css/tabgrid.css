@@ -220,23 +220,6 @@ html, body {
   margin-top: 0.125rem;
 }
 
-/* Tap-to-expand truncated text on touch devices */
-.tg-expandable {
-  cursor: pointer;
-}
-.tg-expandable.tg-expanded {
-  white-space: normal !important;
-  overflow: visible !important;
-  text-overflow: unset !important;
-  word-break: break-word;
-  position: relative;
-  z-index: 1;
-}
-.list-group-item.tg-expanded {
-  z-index: 2;
-  background: var(--tg-card-bg);
-}
-
 .tabgrid-container .list-group-item {
   border: 1px solid var(--tg-border);
   border-left: 3px solid transparent;

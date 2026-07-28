@@ -322,7 +322,22 @@
                                                             parent-fk related-fk)
             linked-ids     (or (:linked-ids m2m-data) #{})
             available      (data/fetch-available-for-linking related-entity linked-ids)
-            fields         (data/build-fields-map related-entity)]
+            fields         (data/build-fields-map related-entity)
+            build-url      (fn [base]
+                        (if base
+                          (let [p1 (if (:active_tab params)
+                                      (str base
+                                           (if (.contains ^String base "?") "&" "?")
+                                           "active_tab=" (:active_tab params))
+                                      base)
+                                p2 (if (:open_accordion params)
+                                      (str p1
+                                           (if (.contains ^String p1 "?") "&" "?")
+                                           "open_accordion=" (:open_accordion params))
+                                      p1)]
+                            p2)
+                          "javascript:history.back()"))
+            ]
         (application request heading (get-session-id request) nil
                      [:div.container.py-4
                       [:h4.mb-3 heading]
@@ -334,8 +349,10 @@
                        [:input {:type "hidden" :name "related_fk"    :value related-fk}]
                        (when return-url
                          [:input {:type "hidden" :name "return_url" :value return-url}])
-                       (when (:active_tab params)
-                         [:input {:type "hidden" :name "active_tab" :value (:active_tab params)}])
+                        (when (:active_tab params)
+                          [:input {:type "hidden" :name "active_tab" :value (:active_tab params)}])
+                        (when (:open_accordion params)
+                          [:input {:type "hidden" :name "open_accordion" :value (:open_accordion params)}])
                        (if (seq available)
                          [:div
                           [:p.text-muted (i18n/tr :subgrid/select-records)]
@@ -358,26 +375,14 @@
                            [:button.btn.btn-primary {:type "submit"}
                             [:i.bi.bi-check.me-1] (i18n/tr :common/save)]
                            [:a.btn.btn-secondary
-                            {:href (if return-url
-                                     (if (:active_tab params)
-                                       (str return-url
-                                            (if (.contains ^String return-url "?") "&" "?")
-                                            "active_tab=" (:active_tab params))
-                                       return-url)
-                                     "javascript:history.back()")}
-                            (i18n/tr :common/cancel)]]]
-                         [:div.text-center.p-4.text-muted
-                          [:i.bi.bi-check-circle {:style "font-size:2rem"}]
-                          [:p.mt-2 (i18n/tr :subgrid/no-available-records)]
-                          [:a.btn.btn-secondary
-                           {:href (if return-url
-                                    (if (:active_tab params)
-                                      (str return-url
-                                           (if (.contains ^String return-url "?") "&" "?")
-                                           "active_tab=" (:active_tab params))
-                                      return-url)
-                                    "javascript:history.back()")}
-                           (i18n/tr :common/back)]])
+                             {:href (build-url return-url)}
+                             (i18n/tr :common/cancel)]]]
+                          [:div.text-center.p-4.text-muted
+                           [:i.bi.bi-check-circle {:style "font-size:2rem"}]
+                           [:p.mt-2 (i18n/tr :subgrid/no-available-records)]
+                           [:a.btn.btn-secondary
+                            {:href (build-url return-url)}
+                            (i18n/tr :common/back)]])
                        [:script
                         "document.getElementById('m2m-select-all').addEventListener('change',function(){var c=document.querySelectorAll('input[name=\"selected_ids\"]');for(var i=0;i<c.length;i++)c[i].checked=this.checked;})"]]])))))
 (defn handle-link-save
@@ -391,13 +396,20 @@
         selected-ids  (:selected_ids params)
         return-url    (:return_url params)
         active-tab    (:active_tab params)
+        open-accordion (:open_accordion params)
         ids           (if (sequential? selected-ids) selected-ids [selected-ids])
         location      (if return-url
-                        (if active-tab
-                          (str return-url
-                               (if (.contains ^String return-url "?") "&" "?")
-                               "active_tab=" active-tab)
-                          return-url)
+                        (let [p1 (if active-tab
+                                    (str return-url
+                                         (if (.contains ^String return-url "?") "&" "?")
+                                         "active_tab=" active-tab)
+                                    return-url)
+                              p2 (if open-accordion
+                                    (str p1
+                                         (if (.contains ^String p1 "?") "&" "?")
+                                         "open_accordion=" open-accordion)
+                                    p1)]
+                          p2)
                         "/")]
     (if (and validated parent-id ids)
       (try
